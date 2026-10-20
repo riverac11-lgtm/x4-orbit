@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstring>
+#include <strings.h>
 #include <memory>
 
 #include "CrossPointSettings.h"
@@ -304,8 +306,69 @@ void OpdsBookBrowserActivity::onEnter() {
   checkAndConnectWifi();
 }
 
+namespace {
+// FNV-1a of the name up to its last '.', ASCII case folded: FAT names compare without case.
+uint32_t bookNameHash(const char* name) {
+  const char* end = strrchr(name, '.');
+  if (!end || end == name) end = name + strlen(name);
+  uint32_t h = 2166136261u;
+  for (const char* p = name; p < end; ++p) {
+    const char c = (*p >= 'A' && *p <= 'Z') ? static_cast<char>(*p + 32) : *p;
+    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+  }
+  return h;
+}
+
+bool isBookFileName(const char* name) {
+  const char* dot = strrchr(name, '.');
+  if (!dot) return false;
+  return strcasecmp(dot, ".epub") == 0 || strcasecmp(dot, ".kepub") == 0 || strcasecmp(dot, ".txt") == 0 ||
+         strcasecmp(dot, ".md") == 0 || strcasecmp(dot, ".xtc") == 0 || strcasecmp(dot, ".xtch") == 0;
+}
+}  // namespace
+
+void OpdsBookBrowserActivity::scanOnDeviceBooks() {
+  onDeviceScanned = true;
+  onDeviceHashes.clear();
+  const char* folder = SETTINGS.opdsDownloadFolder[0] ? SETTINGS.opdsDownloadFolder : "/";
+  auto dir = Storage.open(folder);
+  if (!dir || !dir.isDirectory()) return;
+  dir.rewindDirectory();
+  char name[256];
+  for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+    if (file.isDirectory()) continue;
+    file.getName(name, sizeof(name));
+    if (isBookFileName(name)) onDeviceHashes.push_back(bookNameHash(name));
+  }
+  dir.close();
+  std::sort(onDeviceHashes.begin(), onDeviceHashes.end());
+  LOG_DBG("OPDS", "On-device scan: %u books in %s", static_cast<unsigned>(onDeviceHashes.size()), folder);
+}
+
+bool OpdsBookBrowserActivity::isOnDevice(const OpdsEntry& book) const {
+  if (onDeviceHashes.empty()) return false;
+  // No extension: the hashes leave theirs off, so any format of the book counts.
+  const std::string name =
+      opdsBookFilename(book.author, book.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat), "") +
+      ".x";
+  return std::binary_search(onDeviceHashes.begin(), onDeviceHashes.end(), bookNameHash(name.c_str()));
+}
+
+void OpdsBookBrowserActivity::markOnDevice(const std::string& path) {
+  const size_t slash = path.rfind('/');
+  const uint32_t h = bookNameHash(slash == std::string::npos ? path.c_str() : path.c_str() + slash + 1);
+  const auto it = std::lower_bound(onDeviceHashes.begin(), onDeviceHashes.end(), h);
+  if (it == onDeviceHashes.end() || *it != h) onDeviceHashes.insert(it, h);
+}
+
+HttpDownloader::Session& OpdsBookBrowserActivity::session() {
+  if (!netSession) netSession = std::make_unique<HttpDownloader::Session>();
+  return *netSession;
+}
+
 void OpdsBookBrowserActivity::onExit() {
   Activity::onExit();
+  netSession.reset();  // close the TLS connection while Wi-Fi is still up
 
   entryOffsets.clear();
   navigationHistory.clear();
@@ -712,6 +775,8 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
   for (size_t i = pageStartIndex; i < entryOffsets.size() && i < static_cast<size_t>(pageStartIndex + rowsPerPage);
        i++) {
     const auto entry = getEntry(i);
+    if (!onDeviceScanned && entry.type == OpdsEntryType::BOOK) scanOnDeviceBooks();
+    const bool onDevice = entry.type == OpdsEntryType::BOOK && isOnDevice(entry);
 
     // Format display text with type indicator
     std::string displayText;
@@ -729,9 +794,18 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
       }
     }
 
-    auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), body.width - 40);
-    renderer.drawText(UI_10_FONT_ID, body.x + 20, body.y + (i % rowsPerPage) * CATALOG_ROW_HEIGHT, item.c_str(),
-                      i != static_cast<size_t>(selectorIndex));
+    const int rowY = body.y + (i % rowsPerPage) * CATALOG_ROW_HEIGHT;
+    const bool black = i != static_cast<size_t>(selectorIndex);
+    // Downloaded before: say so at the right edge, so a book is not fetched twice.
+    int markerWidth = 0;
+    if (onDevice) {
+      const char* marker = tr(STR_OPDS_ON_DEVICE);
+      const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, marker);
+      markerWidth = textWidth + 12;
+      renderer.drawText(SMALL_FONT_ID, body.x + body.width - 12 - textWidth, rowY + 3, marker, black);
+    }
+    auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), body.width - 40 - markerWidth);
+    renderer.drawText(UI_10_FONT_ID, body.x + 20, rowY, item.c_str(), black);
   }
 
   drawFormatNotice();
@@ -819,7 +893,7 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
   {
     OpdsParserStream stream{parser};
     const HttpDownloader::DownloadError fetched =
-        HttpDownloader::fetchUrl(url, stream, server.username, server.password, catalogTlsPolicy());
+        HttpDownloader::fetchUrl(session(), url, stream, server.username, server.password, catalogTlsPolicy());
     if (fetched != HttpDownloader::OK) {
       state = BrowserState::ERROR;
       errorMessage = fetched == HttpDownloader::AUTH_ERROR ? tr(STR_AUTH_FAILED) : tr(STR_FETCH_FEED_FAILED);
@@ -965,7 +1039,7 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcqu
 
   uint32_t lastProgressUpdateMs = 0;
   const auto result = HttpDownloader::downloadToFile(
-      downloadUrl, filename,
+      session(), downloadUrl, filename,
       [this, &lastProgressUpdateMs](const unsigned int downloaded, const unsigned int total) {
         mappedInput.update();
         downloadProgress = downloaded;
@@ -983,6 +1057,7 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcqu
   buttonEvents.drain();
 
   if (result == HttpDownloader::OK) {
+    markOnDevice(filename);
     FsFile downloadedFile;
     if (!Storage.openFileForRead("OPDS", filename, downloadedFile) || downloadedFile.size() == 0) {
       LOG_ERR("OPDS", "Downloaded file is empty or unreadable: %s", filename.c_str());
@@ -1030,7 +1105,7 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcqu
 
         uint32_t lastCoverProgressMs = 0;
         const auto coverDlResult = HttpDownloader::downloadToFile(
-            coverUrl, sidecarPath,
+            session(), coverUrl, sidecarPath,
             [this, &lastCoverProgressMs](const unsigned int downloaded, const unsigned int total) {
               mappedInput.update();
               downloadProgress = downloaded;
@@ -1050,6 +1125,7 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcqu
         }
       }
 
+      netSession.reset();  // the book's first index pass wants the TLS buffers' heap
       Epub epub(filename, "/.crosspoint");
       epub.clearCache();
     } else if (acquisition.formatKey == "xtc" || acquisition.formatKey == "xtch") {
@@ -1123,7 +1199,7 @@ void OpdsBookBrowserActivity::fetchCoverForEntry(const OpdsEntry& entry) {
       (entry.imageHref.rfind("http", 0) == 0) ? entry.imageHref : UrlUtils::buildUrl(server.url, entry.imageHref);
   LOG_DBG("OPDS", "Fetching cover: %s", coverUrl.c_str());
 
-  if (HttpDownloader::downloadToFile(coverUrl, OPDS_COVER_JPG, nullptr, server.username, server.password,
+  if (HttpDownloader::downloadToFile(session(), coverUrl, OPDS_COVER_JPG, nullptr, server.username, server.password,
                                      catalogTlsPolicy()) != HttpDownloader::OK) {
     LOG_DBG("OPDS", "Cover download failed");
     return;

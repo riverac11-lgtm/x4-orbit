@@ -262,6 +262,15 @@ HttpDownloader::DownloadError HttpDownloader::fetchUrl(const std::string& url, S
   return runGetDispatch(url, username, password, sink, tls);
 }
 
+HttpDownloader::DownloadError HttpDownloader::fetchUrl(Session& session, const std::string& url, Stream& outContent,
+                                                      const std::string& username, const std::string& password,
+                                                      TlsPolicy tls) {
+  LOG_DBG("HTTP", "Fetching (session): %s", url.c_str());
+  Sink sink;
+  sink.write = [&outContent](const uint8_t* data, size_t len) { return outContent.write(data, len) == len; };
+  return runGetOnSession(session, url, username, password, sink, tls);
+}
+
 bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData, const std::string& username,
                               const std::string& password) {
   // Preserve historic semantics: callback abort => failure.

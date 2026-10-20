@@ -92,6 +92,14 @@ class HttpDownloader {
                        const std::string& password = "");
 
   /**
+   * fetchUrl() on a kept-alive Session: catalog pages, searches and covers from one server share a
+   * single TLS handshake instead of paying one per request.
+   */
+  static DownloadError fetchUrl(Session& session, const std::string& url, Stream& stream,
+                                const std::string& username = "", const std::string& password = "",
+                                TlsPolicy tls = TlsPolicy::VerifiedThenUnverified);
+
+  /**
    * Streaming fetch variant with explicit abort semantics.
    *
    * When treatAbortAsSuccess is false (default behavior), a callback abort
