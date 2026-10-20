@@ -215,6 +215,7 @@ void convertLineToGray(const uint8_t* pPixels, uint8_t* grayLine, int width, int
 int pngDrawCallback(PNGDRAW* pDraw) {
   PngContext* ctx = reinterpret_cast<PngContext*>(pDraw->pUser);
   if (!ctx || !ctx->config || !ctx->renderer || !ctx->grayLineBuffer) return 0;
+  if (ctx->config->cacheOnly && ImageToFramebufferDecoder::lookAheadShouldStop()) return 0;
 
   ImageToFramebufferDecoder::yieldDuringDecode(ctx->lastYieldMs);
 
@@ -253,6 +254,7 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   // Pre-compute orientation and render-mode state once per callback.
   DirectPixelWriter pw;
   pw.init(*ctx->renderer);
+  if (ctx->config->cacheOnly) pw.suppress();
 
   for (int dstY = firstDstY; dstY < endDstY; dstY++) {
     ctx->lastDstY = dstY;
@@ -459,6 +461,7 @@ bool PngToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
       ctx.caching = false;
     }
   }
+  if (config.cacheOnly && !ctx.caching) return false;  // nothing to produce
 
   unsigned long decodeStart = millis();
   ctx.lastYieldMs = decodeStart;

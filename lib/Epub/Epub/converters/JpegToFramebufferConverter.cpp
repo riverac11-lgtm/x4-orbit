@@ -131,6 +131,7 @@ constexpr int32_t FP_MASK = FP_ONE - 1;
 int jpegDrawCallback(JPEGDRAW* pDraw) {
   JpegContext* ctx = reinterpret_cast<JpegContext*>(pDraw->pUser);
   if (!ctx || !ctx->config || !ctx->renderer) return 0;
+  if (ctx->config->cacheOnly && ImageToFramebufferDecoder::lookAheadShouldStop()) return 0;
 
   ImageToFramebufferDecoder::yieldDuringDecode(ctx->lastYieldMs);
 
@@ -180,6 +181,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
   // Pre-compute orientation and render-mode state once per callback invocation
   DirectPixelWriter pw;
   pw.init(renderer);
+  if (ctx->config->cacheOnly) pw.suppress();
 
   // The cache streams to disk one MCU-row band at a time. Flushing rows below
   // this block (raster order guarantees they are final) repositions the band;
@@ -515,6 +517,7 @@ bool JpegToFramebufferConverter::decodeToFramebuffer(const std::string& imagePat
       ctx.caching = false;
     }
   }
+  if (config.cacheOnly && !ctx.caching) return false;  // nothing to produce
 
   unsigned long decodeStart = millis();
   ctx.lastYieldMs = decodeStart;

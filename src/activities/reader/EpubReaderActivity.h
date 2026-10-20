@@ -53,6 +53,17 @@ class EpubReaderActivity final : public ReaderActivity {
   bool currentPageBookmarked = false;
   int idlePrewarmSpine = -1;
   int idlePrewarmPage = -1;
+  // Image look-ahead: decode upcoming pages' images into their pixel caches
+  // while the reader sits on a page, so turning to them is a cache read.
+  int imageLookAheadSpine = -1;
+  int imageLookAheadPage = -1;
+  int imageLookAheadOffset = 1;  // next page offset to scan (1..IMAGE_LOOKAHEAD_PAGES)
+  bool imageLookAheadDone = false;
+  static constexpr int IMAGE_LOOKAHEAD_PAGES = 2;
+  // A decoder plus its working buffers: ~20 KB for JPEG, ~44 KB for PNG.
+  // Below this the look-ahead waits and the page render decodes as before.
+  static constexpr size_t IMAGE_LOOKAHEAD_MIN_MAX_ALLOC = 48 * 1024;
+  void imageLookAheadTick();
   unsigned long lastRenderCompleteMs = 0;
   bool bookmarkRemoved = false;
   std::vector<BookmarkEntry> cachedBookmarks;

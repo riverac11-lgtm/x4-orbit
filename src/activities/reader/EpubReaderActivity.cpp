@@ -3,6 +3,7 @@
 #include <BlePageTurner.h>
 #include <Epub/Page.h>
 #include <Epub/blocks/TextBlock.h>
+#include <Epub/converters/ImageToFramebufferDecoder.h>
 #include <FontCacheManager.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
@@ -214,6 +215,7 @@ void moveFinishedBookToReadFolder(const std::string& srcPath, const std::string&
 
 EpubReaderActivity::~EpubReaderActivity() {
   ImageBlock::setExtractor(nullptr, nullptr);
+  ImageToFramebufferDecoder::setLookAheadAbortProbe(nullptr);
   // ActivityManager destroys activities with its RenderLock already held;
   // taking another here self-deadlocks (renderingMutex is non-recursive).
   settleOverlayRefresh();
@@ -268,6 +270,7 @@ bool EpubReaderActivity::loadBook() {
   ImageBlock::setExtractor(epub.get(), [](void* ctx, const char* src, const char* dest) {
     return static_cast<Epub*>(ctx)->extractItemToFile(src, dest);
   });
+  ImageToFramebufferDecoder::setLookAheadAbortProbe([] { return gpio.anyButtonDownNow(); });
 
   epub->setupCacheDir();
 
@@ -311,6 +314,43 @@ bool EpubReaderActivity::loadBook() {
   }
 #endif
   return true;
+}
+
+void EpubReaderActivity::imageLookAheadTick() {
+  constexpr unsigned long IMAGE_LOOKAHEAD_DEBOUNCE_MS = 600;  // after the idle prewarm's 400 ms
+  RenderLock lock(RenderLock::Mode::Try);
+  if (!lock.ownsLock() || !section || section->isBuilding() || overlay != Overlay::None) return;
+  if (lastRenderCompleteMs == 0 || millis() - lastRenderCompleteMs < IMAGE_LOOKAHEAD_DEBOUNCE_MS) return;
+
+  if (imageLookAheadSpine != currentSpineIndex || imageLookAheadPage != section->currentPage) {
+    imageLookAheadSpine = currentSpineIndex;
+    imageLookAheadPage = section->currentPage;
+    imageLookAheadOffset = 1;
+    imageLookAheadDone = false;
+  }
+  if (imageLookAheadDone) return;
+  if (ESP.getFreeHeap() < RENDER_MIN_FREE_HEAP + IMAGE_LOOKAHEAD_MIN_MAX_ALLOC ||
+      ESP.getMaxAllocHeap() < IMAGE_LOOKAHEAD_MIN_MAX_ALLOC) {
+    return;  // retry on a later tick; the page render decodes as before if it never fits
+  }
+
+  // Same offsets the page render uses (see render()), so the screen-anchored
+  // dither in the cached pixels matches a direct decode exactly.
+  int marginTop, marginRight, marginBottom, marginLeft;
+  renderer.getOrientedViewableTRBL(&marginTop, &marginRight, &marginBottom, &marginLeft);
+  marginTop += SETTINGS.screenMargin;
+  marginLeft += SETTINGS.screenMargin;
+
+  while (imageLookAheadOffset <= IMAGE_LOOKAHEAD_PAGES) {
+    const int page = section->currentPage + imageLookAheadOffset;
+    if (page >= static_cast<int>(section->pageCount)) break;
+    const auto p = section->loadPage(page);
+    if (p && p->hasImages() && p->precacheNextImage(renderer, marginLeft, marginTop)) {
+      return;  // one decode per tick; the same page is rescanned next tick for its other images
+    }
+    imageLookAheadOffset++;
+  }
+  imageLookAheadDone = true;
 }
 
 ChapterPosition EpubReaderActivity::chapterPosition() const {
@@ -670,6 +710,8 @@ void EpubReaderActivity::loop() {
       }
     }
   }
+
+  imageLookAheadTick();
 
   {
     RenderLock lock(RenderLock::Mode::Try);

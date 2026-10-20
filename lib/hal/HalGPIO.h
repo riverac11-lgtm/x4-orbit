@@ -75,6 +75,9 @@ class HalGPIO {
   // Button input methods
   void update();
   bool isPressed(uint8_t buttonIndex) const;
+  // Direct pin read, independent of update(): true while any button is held.
+  // For long background work that must give way to the user mid-task.
+  bool anyButtonDownNow();
   bool wasPressed(uint8_t buttonIndex) const;
   bool wasAnyPressed() const;
   bool wasReleased(uint8_t buttonIndex) const;

@@ -39,6 +39,13 @@ class ImageBlock final : public Block {
   bool isEmpty() override { return false; }
 
   void render(GfxRenderer& renderer, const int x, const int y);
+
+  // Look-ahead: decode this image into its pixel cache without drawing, so a
+  // later render() is a cache read. x/y must be the position render() will get
+  // (the dither pattern is screen-anchored). Returns true when a decode ran —
+  // whether or not it succeeded — so callers can bound work per idle tick;
+  // false when there was nothing to do (already cached or known-bad).
+  bool precache(GfxRenderer& renderer, int x, int y);
   bool serialize(HalFile& file);
   static std::unique_ptr<ImageBlock> deserialize(HalFile& file);
 

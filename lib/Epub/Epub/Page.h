@@ -60,6 +60,9 @@ class PageImage final : public PageElement {
   PageElementTag getTag() const override { return TAG_PageImage; }
   static std::unique_ptr<PageImage> deserialize(HalFile& file);
   const ImageBlock& getImageBlock() const { return *imageBlock; }
+  bool precacheImage(GfxRenderer& renderer, int xOffset, int yOffset) {
+    return imageBlock->precache(renderer, xPos + xOffset, yPos + yOffset);
+  }
 };
 
 class PageHorizontalRule final : public PageElement {
@@ -174,6 +177,19 @@ class Page {
   bool hasImages() const {
     return std::any_of(elements.begin(), elements.end(),
                        [](const std::unique_ptr<PageElement>& el) { return el->getTag() == TAG_PageImage; });
+  }
+
+  // Look-ahead decode of this page's images into their pixel caches (no
+  // drawing). Offsets are the ones the page will be rendered with. Stops after
+  // the first image that needed work so one idle tick stays short; returns
+  // whether any decode ran (call again next tick for the rest).
+  bool precacheNextImage(GfxRenderer& renderer, int xOffset, int yOffset) const {
+    for (const auto& element : elements) {
+      if (element->getTag() != TAG_PageImage) continue;
+      auto& image = static_cast<PageImage&>(*element);
+      if (image.precacheImage(renderer, xOffset, yOffset)) return true;
+    }
+    return false;
   }
 
   bool hasImagesNeedingDecode() const {

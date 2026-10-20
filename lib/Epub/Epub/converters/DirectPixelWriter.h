@@ -97,6 +97,10 @@ struct DirectPixelWriter {
     }
   }
 
+  // Drop every write (cache-only decode): with no rows in the clip window the
+  // unsigned band test in writePixel() rejects every pixel.
+  inline void suppress() { clipRows = 0; }
+
   // Call once per row before the column loop.
   // Pre-computes the Y-dependent portion so writePixel() only needs the X part.
   inline void beginRow(int logicalY) {

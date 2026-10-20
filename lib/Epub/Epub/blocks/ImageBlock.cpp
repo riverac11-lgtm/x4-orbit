@@ -415,6 +415,61 @@ void ImageBlock::render(GfxRenderer& renderer, const int x, const int y) {
   LOG_DBG("IMG", "Decode successful");
 }
 
+bool ImageBlock::precache(GfxRenderer& renderer, const int x, const int y) {
+  if (imageFailedThisRender(imagePath)) return false;
+  if (x < 0 || y < 0 || x + width > renderer.getScreenWidth() || y + height > renderer.getScreenHeight()) return false;
+  const std::string cachePath = getCachePath(imagePath);
+  {
+    HalFile cacheFile;
+    uint16_t cachedWidth, cachedHeight;
+    if (Storage.openFileForRead("IMG", cachePath, cacheFile) &&
+        readValidCacheHeader(cacheFile, width, height, cachedWidth, cachedHeight)) {
+      return false;  // already cached
+    }
+  }
+
+  const unsigned long t0 = millis();
+  if (!srcPath.empty() && extractFn && !Storage.exists(imagePath.c_str())) {
+    if (!extractFn(extractCtx, srcPath.c_str(), imagePath.c_str())) {
+      LOG_ERR("IMG", "Look-ahead extraction failed: %s", srcPath.c_str());
+      rememberImageFailure(imagePath);
+      return true;
+    }
+  }
+
+  ImageToFramebufferDecoder* decoder = ImageDecoderFactory::getDecoder(imagePath);
+  if (!decoder) {
+    rememberImageFailure(imagePath);
+    return true;
+  }
+
+  RenderConfig config;
+  config.x = x;
+  config.y = y;
+  config.maxWidth = width;
+  config.maxHeight = height;
+  config.useGrayscale = true;
+  config.useDithering = true;
+  config.performanceMode = false;
+  config.useExactDimensions = true;
+  config.cachePath = cachePath;
+  config.cacheOnly = true;
+
+  ImageToFramebufferDecoder::consumeLookAheadStopped();  // clear any stale latch
+  const bool ok = decoder->decodeToFramebuffer(imagePath, renderer, config);
+  if (ImageToFramebufferDecoder::consumeLookAheadStopped()) {
+    // The reader needs the CPU (a button went down): try again next idle tick.
+    LOG_DBG("IMG", "Look-ahead decode yielded to input after %lums: %s", millis() - t0, imagePath.c_str());
+    return true;
+  }
+  // Failures are remembered only until the next page render clears them, so a
+  // broken image is not retried every idle tick, while the visible render still
+  // tries it once with its own diagnostics and placeholder.
+  if (!ok) rememberImageFailure(imagePath);
+  LOG_DBG("IMG", "Look-ahead decode %s: %s in %lums", ok ? "cached" : "failed", imagePath.c_str(), millis() - t0);
+  return true;
+}
+
 bool ImageBlock::serialize(HalFile& file) {
   serialization::writeString(file, imagePath);
   serialization::writeString(file, srcPath);

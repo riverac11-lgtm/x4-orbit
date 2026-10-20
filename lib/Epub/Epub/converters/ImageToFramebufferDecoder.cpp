@@ -38,6 +38,30 @@ void ImageToFramebufferDecoder::yieldDuringDecode(uint32_t& lastYieldMs) {
   }
 }
 
+namespace {
+ImageToFramebufferDecoder::AbortProbe lookAheadProbe = nullptr;
+uint32_t lookAheadLastProbeMs = 0;
+bool lookAheadStopped = false;
+}  // namespace
+
+void ImageToFramebufferDecoder::setLookAheadAbortProbe(const AbortProbe probe) { lookAheadProbe = probe; }
+
+bool ImageToFramebufferDecoder::lookAheadShouldStop() {
+  if (lookAheadStopped) return true;
+  if (!lookAheadProbe) return false;
+  const uint32_t now = millis();
+  if (now - lookAheadLastProbeMs < 20) return false;
+  lookAheadLastProbeMs = now;
+  lookAheadStopped = lookAheadProbe();
+  return lookAheadStopped;
+}
+
+bool ImageToFramebufferDecoder::consumeLookAheadStopped() {
+  const bool stopped = lookAheadStopped;
+  lookAheadStopped = false;
+  return stopped;
+}
+
 void ImageToFramebufferDecoder::warnUnsupportedFeature(const std::string& feature, const std::string& imagePath) {
   LOG_ERR("IMG", "Warning: Unsupported feature '%s' in image '%s'. Image may not display correctly.", feature.c_str(),
           imagePath.c_str());

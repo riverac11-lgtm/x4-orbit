@@ -23,6 +23,9 @@ struct RenderConfig {
   float sourceCropY = 0.0f;         // Fraction cropped equally from the top and bottom edges
   bool preserveAlpha = false;       // Skip transparent pixels instead of compositing them against white
   std::string cachePath;            // If non-empty, decoder will write pixel cache to this path
+  // Look-ahead decode: write only the pixel cache, leave the framebuffer alone.
+  // Requires cachePath; a decode that cannot cache fails instead of drawing.
+  bool cacheOnly = false;
 };
 
 class ImageToFramebufferDecoder {
@@ -40,6 +43,16 @@ class ImageToFramebufferDecoder {
   // task (and its watchdog) fed. `lastYieldMs` is caller-held state,
   // initialized to the decode start time.
   static void yieldDuringDecode(uint32_t& lastYieldMs);
+
+  // Look-ahead decodes (RenderConfig::cacheOnly) give way to the reader: the
+  // app registers a cheap "user is pressing something" probe, and the decode
+  // callbacks stop early once it fires. Throttled to one probe per ~20 ms.
+  using AbortProbe = bool (*)();
+  static void setLookAheadAbortProbe(AbortProbe probe);
+  // Called from decode callbacks of cache-only decodes; latches once true.
+  static bool lookAheadShouldStop();
+  // True (once) when the last cache-only decode was stopped by the probe.
+  static bool consumeLookAheadStopped();
 
   // Validate decoder/header dimensions before narrowing them into the layout
   // representation. Shared by header probing and decoder fallbacks.

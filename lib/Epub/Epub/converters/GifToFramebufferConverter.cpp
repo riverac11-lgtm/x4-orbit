@@ -67,6 +67,7 @@ void renderCanvasRow(const uint8_t* grayRow, int srcY, GifContext& ctx) {
 
   DirectPixelWriter pw;
   pw.init(*ctx.renderer);
+  if (ctx.config->cacheOnly) pw.suppress();
 
   for (int dstY = firstDstY; dstY < endDstY; ++dstY) {
     ctx.lastDstY = dstY;
@@ -335,6 +336,7 @@ bool GifToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
       return false;
     }
   }
+  if (config.cacheOnly && !ctx.caching) return false;  // nothing to produce
 
   int delayMs = 0;
   ctx.lastYieldMs = millis();
