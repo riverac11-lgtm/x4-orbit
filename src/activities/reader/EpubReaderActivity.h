@@ -1133,6 +1133,16 @@ class EpubReaderActivity final : public Activity {
   // while they stay on that page, otherwise the page's start. The landed text sits somewhere on its page, so the
   // page's start would lie before it and every relayout would walk the reader back a little.
   [[nodiscard]] std::optional<uint32_t> readingOffset() const;
+
+  // Full-text search (reader menu > Search book). The last query pre-fills the next search;
+  // the hit's words are underlined on the page it lands on until the page is turned.
+  std::string lastSearchQuery;
+  struct SearchHighlight {
+    int spine = -1;  // -1: none
+    int page = -1;   // page it landed on, set at its first render
+  } searchHighlight;
+  void openSearch();
+  void drawSearchHighlight(const Page& page, int fontId, int marginLeft, int marginTop);
   bool stepPageState(bool isForwardTurn);
   bool stepPageStateLocked(bool isForwardTurn);
   void pageTurn(bool isForwardTurn);
