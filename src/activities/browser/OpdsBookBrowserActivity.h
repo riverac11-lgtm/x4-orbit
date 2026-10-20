@@ -36,6 +36,14 @@ class OpdsBookBrowserActivity final : public CatalogActivity {
   // so buildBrowsingScreen() reuses it on every repaint instead of rebuilding
   // a ListItem vector per render.
   std::vector<freeink::ui::ListItem> rowItems;
+  // Books already in the download folder, as sorted FNV-1a hashes of their
+  // lowercase file names (a few bytes each, so a large library stays cheap).
+  // Scanned once per session on the first feed that lists books.
+  std::vector<uint32_t> onDeviceHashes;
+  bool onDeviceScanned = false;
+  void scanOnDeviceBooks();
+  bool isOnDevice(const OpdsEntry& book) const;
+  void markOnDevice(const std::string& path);
   void rebuildRowItems();
   std::vector<std::string> navigationHistory;
   std::string currentPath;

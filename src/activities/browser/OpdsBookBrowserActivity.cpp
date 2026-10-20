@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <FontCacheManager.h>
 #include <FreeInkUIIcon.h>
+#include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
 #include <I18n.h>
@@ -17,11 +18,12 @@
 #include <Util.h>
 #include <WolfsslCrypto.h>
 
+#include <algorithm>
 #include <iterator>
 
 #include "BookKey.h"
-#include "CrossPointSettings.h"
 #include "BuildFeatures.h"
+#include "CrossPointSettings.h"
 #include "LcpPassphraseStore.h"
 #include "MappedInputManager.h"
 #include "OpdsTokenStore.h"
@@ -417,9 +419,60 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
 // Derives rowItems from entries. Called whenever entries changes
 // (fetchFeed()/releaseEntries()) so buildBrowsingScreen() reuses the cached
 // rows on every repaint instead of rebuilding them per render.
+namespace {
+uint32_t lowerNameHash(const char* name) {
+  uint32_t h = 2166136261u;
+  for (const char* p = name; *p; ++p) {
+    const char c = (*p >= 'A' && *p <= 'Z') ? static_cast<char>(*p + 32) : *p;
+    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+  }
+  return h;
+}
+
+const char* baseName(const std::string& path) {
+  const size_t slash = path.rfind('/');
+  return slash == std::string::npos ? path.c_str() : path.c_str() + slash + 1;
+}
+}  // namespace
+
+void OpdsBookBrowserActivity::scanOnDeviceBooks() {
+  onDeviceScanned = true;
+  onDeviceHashes.clear();
+  const char* folder = SETTINGS.opdsDownloadFolder[0] ? SETTINGS.opdsDownloadFolder : "/";
+  auto dir = Storage.open(folder);
+  if (!dir || !dir.isDirectory()) return;
+  dir.rewindDirectory();
+  char name[256];
+  for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+    if (file.isDirectory()) continue;
+    file.getName(name, sizeof(name));
+    if (FsHelpers::hasReflowableBookExtension(name)) onDeviceHashes.push_back(lowerNameHash(name));
+  }
+  dir.close();
+  std::sort(onDeviceHashes.begin(), onDeviceHashes.end());
+  LOG_DBG("OPDS", "On-device scan: %u books in %s", static_cast<unsigned>(onDeviceHashes.size()), folder);
+}
+
+bool OpdsBookBrowserActivity::isOnDevice(const OpdsEntry& book) const {
+  if (onDeviceHashes.empty()) return false;
+  const std::string name =
+      opdsBookFilename(book.author, book.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat));
+  return std::binary_search(onDeviceHashes.begin(), onDeviceHashes.end(), lowerNameHash(name.c_str()));
+}
+
+void OpdsBookBrowserActivity::markOnDevice(const std::string& path) {
+  const uint32_t h = lowerNameHash(baseName(path));
+  const auto it = std::lower_bound(onDeviceHashes.begin(), onDeviceHashes.end(), h);
+  if (it == onDeviceHashes.end() || *it != h) onDeviceHashes.insert(it, h);
+}
+
 void OpdsBookBrowserActivity::rebuildRowItems() {
   rowItems.clear();
   rowItems.reserve(entries.size());
+  if (!onDeviceScanned &&
+      std::any_of(entries.begin(), entries.end(), [](const OpdsEntry& e) { return e.type == OpdsEntryType::BOOK; })) {
+    scanOnDeviceBooks();
+  }
   for (const auto& entry : entries) {
     fui::ListItem item;
     // A group's "see all" self link carries no title of its own; the UI
@@ -430,6 +483,8 @@ void OpdsBookBrowserActivity::rebuildRowItems() {
     if (entry.type == OpdsEntryType::NAVIGATION) item.value = entry.detail.empty() ? ">" : entry.detail.c_str();
     // Purchases show their price in the value column.
     if (entry.type == OpdsEntryType::BOOK && entry.purchase && !entry.detail.empty()) item.value = entry.detail.c_str();
+    // Downloaded before: say so instead of letting the reader fetch it again.
+    if (entry.type == OpdsEntryType::BOOK && !entry.purchase && isOnDevice(entry)) item.value = tr(STR_OPDS_ON_DEVICE);
     item.actionValue = static_cast<int16_t>(rowItems.size());
     rowItems.push_back(item);
   }
@@ -515,6 +570,8 @@ bool OpdsBookBrowserActivity::verifyAndRegisterEpub(const std::string& filename)
   }
   clearBookCache(filename);
   library::markLibraryIndexDirty();
+  markOnDevice(filename);
+  rebuildRowItems();  // the list shows it as on-device when the reader returns to it
   return true;
 }
 
