@@ -37,6 +37,25 @@ class HttpDownloader {
   using Header = std::pair<std::string, std::string>;
 
   /**
+   * While a KeepAlive is alive, fetchUrl(url, onData, FetchOptions) reuses one
+   * kept-alive connection per scheme://host:port instead of a fresh TLS
+   * handshake per request (each costs seconds on the C3). Hold one for a
+   * browsing session; it closes the connection when the last one goes away.
+   * Downloads and POSTs close the pooled connection first, so two TLS
+   * sessions never compete for the heap.
+   */
+  class KeepAlive {
+   public:
+    KeepAlive();
+    ~KeepAlive();
+    KeepAlive(const KeepAlive&) = delete;
+    KeepAlive& operator=(const KeepAlive&) = delete;
+  };
+  // Closes the pooled connection now (it reconnects on the next fetch while a
+  // KeepAlive is held). Called before heap-hungry work.
+  static void closePooledConnection();
+
+  /**
    * HTTP status of the last request, or 0 when it never got a response (DNS,
    * connect, TLS, timeout). fetchUrl() returns only success or failure; this
    * lets a caller tell a dead server from a catalog that wants a password.
@@ -89,6 +108,13 @@ class HttpDownloader {
   };
 
   static bool fetchUrl(const std::string& url, const DataCallback& onData, const FetchOptions& options);
+
+  /**
+   * Small-file variant of the above (covers, thumbnails): the body goes to
+   * destPath, staged through "<dest>.part". Rides the pooled connection when a
+   * KeepAlive is held. No Range resume — use downloadToFile for books.
+   */
+  static bool fetchToFile(const std::string& url, const std::string& destPath, const FetchOptions& options);
 
   /**
    * POST an application/x-www-form-urlencoded body (e.g. an OAuth token

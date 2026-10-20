@@ -83,6 +83,7 @@ OpdsBookBrowserActivity::OpdsBookBrowserActivity(GfxRenderer& renderer, MappedIn
 
 void OpdsBookBrowserActivity::onEnter() {
   CatalogActivity::onEnter();
+  keepAlive = makeUniqueNoThrow<HttpDownloader::KeepAlive>();
   app.on(ACTION_PAGE, &OpdsBookBrowserActivity::onPageEvent, this);
 
   // Configure the OPDS client for this server, restore any persisted token, and
@@ -103,6 +104,7 @@ void OpdsBookBrowserActivity::onEnter() {
 }
 
 void OpdsBookBrowserActivity::onExit() {
+  keepAlive.reset();  // closes the pooled connection while WiFi is still up
   releaseEntries();
   navigationHistory.clear();
   if (!detailCoverPath.empty()) {
@@ -911,12 +913,14 @@ void OpdsBookBrowserActivity::loadDetailCover(const std::string& docUrl, const s
     return;
   }
   const freeink::opds::HttpAuth auth = opdsClient.downloadAuth();
-  std::vector<HttpDownloader::Header> headers = auth.headers;
-  if (!auth.bearer.empty()) headers.push_back({"Authorization", "Bearer " + auth.bearer});
-  const auto result = HttpDownloader::downloadToFile(url, tmp, nullptr, nullptr, auth.username, auth.password, headers);
-  if (result != HttpDownloader::OK) {
-    LOG_ERR("OPDS", "Cover download failed: %d", static_cast<int>(result));
-    if (Storage.exists(tmp.c_str())) Storage.remove(tmp.c_str());
+  HttpDownloader::FetchOptions options;
+  options.username = auth.username;
+  options.password = auth.password;
+  options.bearer = auth.bearer;
+  options.headers = auth.headers;
+  // Over the browsing session's kept-alive connection: no extra TLS handshake.
+  if (!HttpDownloader::fetchToFile(url, tmp, options)) {
+    LOG_ERR("OPDS", "Cover download failed: status %d", HttpDownloader::lastStatus());
     return;
   }
   detailCoverPath = std::move(tmp);

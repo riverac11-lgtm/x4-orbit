@@ -2,10 +2,12 @@
 
 #include <Arduino.h>
 #include <Logging.h>
+#include <Memory.h>
 #include <ResumableFetch.h>
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <string>
 
 #include "WifiPowerSaveGuard.h"
@@ -32,6 +34,11 @@ void applyCommonClientSetup(freeink::SecureHttpClient& http) {
   // answers 400 "Duplicate 'User-Agent' header found").
   http.setUserAgent("CrossPoint-ESP32-" CROSSPOINT_VERSION);
 }
+
+// Pooled client for KeepAlive scopes (see HttpDownloader.h). One fetch runs at
+// a time, so a single client suffices.
+int g_keepAliveDepth = 0;
+std::unique_ptr<freeink::SecureHttpClient> g_pooled;
 
 // Written after every request, and read by the UI right after a failure.
 int g_lastStatus = 0;
@@ -90,6 +97,19 @@ HttpDownloader::DownloadError runGetSecure(const std::string& url, const std::st
 
 }  // namespace
 
+HttpDownloader::KeepAlive::KeepAlive() { ++g_keepAliveDepth; }
+
+HttpDownloader::KeepAlive::~KeepAlive() {
+  if (--g_keepAliveDepth <= 0) {
+    g_keepAliveDepth = 0;
+    g_pooled.reset();  // destructor closes the connection
+  }
+}
+
+void HttpDownloader::closePooledConnection() {
+  if (g_pooled) g_pooled->end();
+}
+
 int HttpDownloader::lastStatus() { return g_lastStatus; }
 
 bool HttpDownloader::lastAnswerRedirected() { return g_lastRedirected; }
@@ -119,8 +139,23 @@ bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData
   const std::string startOrigin = freeink::fetchOrigin(url);
   int status = 0;
   bool sinkStopped = false;
+  std::unique_ptr<freeink::SecureHttpClient> local;
+  if (g_keepAliveDepth > 0 && !g_pooled) g_pooled = makeUniqueNoThrow<freeink::SecureHttpClient>();
   for (int hop = 0; hop <= MAX_REDIRECTS; ++hop) {
-    freeink::SecureHttpClient http;
+    // Pooled: same object across hops and requests, so a matching connection
+    // is reused. Otherwise a fresh client per hop, as before.
+    if (!g_pooled) {
+      local = makeUniqueNoThrow<freeink::SecureHttpClient>();
+      if (!local) {
+        status = 0;
+        break;
+      }
+    }
+    freeink::SecureHttpClient& http = g_pooled ? *g_pooled : *local;
+    // Per-request state a reused client would otherwise carry over: begin()
+    // resets headers/body/status; credentials are re-applied below only for
+    // the starting origin.
+    http.clearBasicAuth();
     if (!http.begin(current)) {
       LOG_ERR("HTTP", "bad URL: %s", current.c_str());
       status = 0;
@@ -164,8 +199,31 @@ bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData
   return status >= 200 && status < 300 && !sinkStopped;
 }
 
+bool HttpDownloader::fetchToFile(const std::string& url, const std::string& destPath, const FetchOptions& options) {
+  const std::string partPath = destPath + ".part";
+  Storage.remove(partPath.c_str());
+  HalFile file;
+  if (!Storage.openFileForWrite("HTTP", partPath.c_str(), file)) return false;
+  size_t written = 0;
+  const bool ok = fetchUrl(
+      url,
+      [&](const uint8_t* data, size_t len) {
+        if (file.write(data, len) != len) return false;
+        written += len;
+        return true;
+      },
+      options);
+  file.close();
+  if (!ok || written == 0 || !Storage.replaceFile(partPath.c_str(), destPath.c_str())) {
+    Storage.remove(partPath.c_str());
+    return false;
+  }
+  return true;
+}
+
 bool HttpDownloader::postForm(const std::string& url, const std::string& formBody, std::string& outResponse,
                               int* statusOut) {
+  closePooledConnection();
   WifiPowerSaveGuard psGuard;
   outResponse.clear();
   freeink::SecureHttpClient http;
@@ -192,6 +250,7 @@ HttpDownloader::DownloadError HttpDownloader::postToFile(const std::string& url,
                                                          const std::string& contentType, const std::string& destPath,
                                                          ProgressCallback progress, const bool* cancelFlag) {
   LOG_DBG("HTTP", "POST download: %s -> %s", url.c_str(), destPath.c_str());
+  closePooledConnection();
   WifiPowerSaveGuard psGuard;
 
   const std::string partPath = destPath + ".part";
@@ -264,6 +323,7 @@ HttpDownloader::DownloadError HttpDownloader::downloadToFile(const std::string& 
                                                              const std::vector<Header>& headers,
                                                              bool downgradeRedirectsToHttp) {
   LOG_DBG("HTTP", "Downloading: %s -> %s", url.c_str(), destPath.c_str());
+  closePooledConnection();
 
   // Stage in <dest>.part: a failed or cancelled download never replaces an
   // existing copy, and a partial file never sits under the real name.

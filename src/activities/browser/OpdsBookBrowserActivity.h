@@ -4,12 +4,14 @@
 #include <OpdsEntry.h>
 #include <OpdsPublicationDoc.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "OpdsServerStore.h"
 #include "activities/CatalogActivity.h"
+#include "network/HttpDownloader.h"
 #include "network/OpdsHttpTransport.h"
 
 struct DetailsSpec;
@@ -84,6 +86,9 @@ class OpdsBookBrowserActivity final : public CatalogActivity {
   // must outlive the client, so it is declared first.
   OpdsHttpTransport opdsTransport;
   freeink::opds::OpdsClient opdsClient{opdsTransport};
+  // One kept-alive connection for the whole browsing session (feeds, pages,
+  // search, covers): one TLS handshake instead of one per request.
+  std::unique_ptr<HttpDownloader::KeepAlive> keepAlive;
 
   // --- CatalogActivity / UiListActivity contract -----------------------------
   int listCount() const override { return state == State::BROWSING ? static_cast<int>(entries.size()) : 0; }

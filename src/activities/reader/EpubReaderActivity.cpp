@@ -10,6 +10,7 @@
 #include <HalDisplay.h>
 #include <HalFrontlight.h>
 #include <HalGPIO.h>
+#include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <I18n.h>
 #include <Logging.h>
@@ -345,8 +346,12 @@ void EpubReaderActivity::imageLookAheadTick() {
     const int page = section->currentPage + imageLookAheadOffset;
     if (page >= static_cast<int>(section->pageCount)) break;
     const auto p = section->loadPage(page);
-    if (p && p->hasImages() && p->precacheNextImage(renderer, marginLeft, marginTop)) {
-      return;  // one decode per tick; the same page is rescanned next tick for its other images
+    if (p && p->hasImagesNeedingDecode()) {
+      // Full clock for the decode: after 3 s idle the loop drops to low power.
+      HalPowerManager::Lock powerLock;
+      if (p->precacheNextImage(renderer, marginLeft, marginTop)) {
+        return;  // one decode per tick; the same page is rescanned next tick for its other images
+      }
     }
     imageLookAheadOffset++;
   }
