@@ -1,5 +1,9 @@
 #include "PluginEvents.h"
 
+#include "BuildFeatures.h"
+
+#if CP_FEATURE_PLUGINS
+
 #include <ArduinoJson.h>
 #include <HalStorage.h>
 #include <LibraryBuilder.h>
@@ -461,3 +465,16 @@ void drain(GfxRenderer* renderer, const size_t maxEvents) {
 }
 
 }  // namespace pluginevents
+
+#else  // !CP_FEATURE_PLUGINS: no plugins, so no subscribers and nothing queued.
+
+namespace pluginevents {
+void refreshSubscriptions() {}
+bool anySubscriber(Event) { return false; }
+uint8_t subscriptionMask(const char*) { return 0; }
+bool wantsConnectAny() { return false; }
+void emit(Event, const Var*, size_t) {}
+void drain(GfxRenderer*, size_t) {}
+}  // namespace pluginevents
+
+#endif  // CP_FEATURE_PLUGINS

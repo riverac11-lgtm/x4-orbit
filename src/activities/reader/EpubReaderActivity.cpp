@@ -25,6 +25,7 @@
 
 #include "../../util/BookmarkFile.h"
 #include "BookmarkEntry.h"
+#include "BuildFeatures.h"
 #include "ChapterBuildGate.h"
 #include "ClipSelectionActivity.h"
 #include "ClippingStore.h"
@@ -38,7 +39,9 @@
 #include "EpubReaderPercentSelectionActivity.h"
 #include "EpubReaderUtils.h"
 #include "KOReaderCredentialStore.h"
+#if CP_FEATURE_KOSYNC
 #include "KOReaderSyncActivity.h"
+#endif
 #include "MappedInputManager.h"
 #include "ProgressMapper.h"
 #include "QrDisplayActivity.h"
@@ -302,9 +305,11 @@ bool EpubReaderActivity::loadBook() {
 
   loadLinkStack();
   loadCachedBookmarks();
+#if CP_FEATURE_CLIPPINGS
   if (!CLIPPINGS.loadForBook(epub->getPath(), epub->getTitle(), epub->getAuthor(), "epub")) {
     LOG_ERR("CLIP", "Failed to load clippings for %s", epub->getPath().c_str());
   }
+#endif
   return true;
 }
 
@@ -403,6 +408,9 @@ void EpubReaderActivity::showBuildPopup(GfxRenderer& renderer, int& pagesUntilFu
 }
 
 void EpubReaderActivity::openDictionaryWordSelect() {
+#if !CP_FEATURE_DICTIONARY
+  return;
+#endif
   if (SETTINGS.dictionaryName[0] == '\0') {
     showDictionaryMessage = true;
     dictionaryMessageTime = millis();
@@ -414,6 +422,13 @@ void EpubReaderActivity::openDictionaryWordSelect() {
 
 void EpubReaderActivity::startClipSelection(const int initialX, const int initialY,
                                             const ClipSelectionActivity::Mode mode) {
+#if !CP_FEATURE_CLIPPINGS
+  // Word selection also serves dictionary lookup; only that path survives.
+  if (mode != ClipSelectionActivity::Mode::Lookup) return;
+#endif
+#if !CP_FEATURE_DICTIONARY
+  if (mode == ClipSelectionActivity::Mode::Lookup) return;
+#endif
   if (!section || !epub || section->currentPage < 0 || section->currentPage >= section->pageCount) return;
 
   const int pageNumber = section->currentPage;
@@ -571,6 +586,9 @@ void EpubReaderActivity::openFootnoteSelect(const bool reopenMenuOnCancel) {
 }
 
 void EpubReaderActivity::openClippings() {
+#if !CP_FEATURE_CLIPPINGS
+  return;
+#endif
   if (!CLIPPINGS.hasClippings()) {
     requestUpdate();
     return;
@@ -1283,6 +1301,9 @@ unsigned long EpubReaderActivity::confirmLongPressThreshold() const {
 }
 
 bool EpubReaderActivity::launchKOReaderSync() {
+#if !CP_FEATURE_KOSYNC
+  return false;
+#else
   if (!KOREADER_STORE.hasCredentials()) return false;
 
   RenderLock renderLock;
@@ -1329,6 +1350,7 @@ bool EpubReaderActivity::launchKOReaderSync() {
   activityManager.replaceActivity(std::make_unique<KOReaderSyncActivity>(
       renderer, mappedInput, savedEpubPath, localPos, std::move(localKoPos), std::move(localChapterName)));
   return true;
+#endif  // CP_FEATURE_KOSYNC
 }
 
 void EpubReaderActivity::applyInitialOrientation() {

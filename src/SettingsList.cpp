@@ -48,8 +48,13 @@ void forEachBaseSetting(SettingVisitor visit, void* context) {
                          {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15,
                           StrId::STR_PAGES_30, StrId::STR_NEVER},
                          "refreshFrequency", StrId::STR_CAT_DISPLAY));
+#if CP_FEATURE_EXTRA_THEMES
   emit(SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme, homeThemeValues(), "uiTheme",
                          StrId::STR_CAT_DISPLAY));
+#else
+  emit(SettingInfo::DynamicEnum(StrId::STR_UI_THEME, orbitThemeValues(), orbitThemeDisplayValue,
+                                setOrbitThemeFromDisplayValue, "uiTheme", StrId::STR_CAT_DISPLAY));
+#endif
   if (!BoardConfig::hasTouch())
     emit(SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                              StrId::STR_CAT_DISPLAY));

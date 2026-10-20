@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "HomeButtonSettings.h"
 #include "KOReaderCredentialStore.h"
@@ -181,32 +182,52 @@ inline SettingInfo buildDictionarySetting(const std::vector<DictionaryEntry>& di
   return s;
 }
 
+// Options in display order; persisted values stay the enum values, so
+// compiled-out features simply drop out of the list.
+struct LongPressMenuOption {
+  StrId label;
+  uint8_t value;
+};
+
+inline std::vector<LongPressMenuOption> longPressMenuOptions() {
+  std::vector<LongPressMenuOption> options;
+  options.reserve(CrossPointSettings::LONG_PRESS_MENU_FUNCTION_COUNT);
+#if CP_FEATURE_KOSYNC
+  options.push_back({StrId::STR_KOSYNC, CrossPointSettings::LP_MENU_KOSYNC});
+#endif
+  options.push_back({StrId::STR_DISABLED, CrossPointSettings::LP_MENU_DISABLED});
+  options.push_back({StrId::STR_BOOKMARK_OPTION, CrossPointSettings::LP_MENU_BOOKMARK});
+#if CP_FEATURE_DICTIONARY
+  options.push_back({StrId::STR_DICTIONARY, CrossPointSettings::LP_MENU_DICTIONARY});
+#endif
+  if (BoardConfig::hasHomeKey()) options.push_back({StrId::STR_READER_MENU, CrossPointSettings::LP_MENU_READER_MENU});
+#if CP_FEATURE_CLIPPINGS
+  options.push_back({StrId::STR_SAVE_CLIPPING, CrossPointSettings::LP_MENU_CREATE_CLIPPING});
+#endif
+  options.push_back({StrId::STR_FOOTNOTES, CrossPointSettings::LP_MENU_FOOTNOTES});
+  return options;
+}
+
 inline std::vector<StrId> buildLongPressMenuValues() {
-  std::vector<StrId> values = {StrId::STR_KOSYNC, StrId::STR_DISABLED, StrId::STR_BOOKMARK_OPTION,
-                               StrId::STR_DICTIONARY};
-  values.reserve(CrossPointSettings::LONG_PRESS_MENU_FUNCTION_COUNT);
-  if (BoardConfig::hasHomeKey()) values.push_back(StrId::STR_READER_MENU);
-  values.push_back(StrId::STR_SAVE_CLIPPING);
-  values.push_back(StrId::STR_FOOTNOTES);
+  std::vector<StrId> values;
+  for (const auto& option : longPressMenuOptions()) values.push_back(option.label);
   return values;
 }
 
 inline uint8_t longPressMenuDisplayValue() {
-  const uint8_t raw = SETTINGS.longPressMenuFunction;
-  if (raw <= CrossPointSettings::LP_MENU_DICTIONARY) return raw;
-  if (raw == CrossPointSettings::LP_MENU_READER_MENU) {
-    return BoardConfig::hasHomeKey() ? CrossPointSettings::LP_MENU_READER_MENU : CrossPointSettings::LP_MENU_DISABLED;
+  const auto options = longPressMenuOptions();
+  uint8_t disabledIndex = 0;
+  for (size_t i = 0; i < options.size(); i++) {
+    if (options[i].value == SETTINGS.longPressMenuFunction) return static_cast<uint8_t>(i);
+    if (options[i].value == CrossPointSettings::LP_MENU_DISABLED) disabledIndex = static_cast<uint8_t>(i);
   }
-  if (raw < CrossPointSettings::LONG_PRESS_MENU_FUNCTION_COUNT) return BoardConfig::hasHomeKey() ? raw : raw - 1;
-  return CrossPointSettings::LP_MENU_DISABLED;
+  return disabledIndex;  // saved value not offered on this build/board
 }
 
 inline void setLongPressMenuFromDisplayValue(const uint8_t displayValue) {
-  if (displayValue <= CrossPointSettings::LP_MENU_DICTIONARY) {
-    SETTINGS.longPressMenuFunction = displayValue;
-  } else {
-    SETTINGS.longPressMenuFunction = BoardConfig::hasHomeKey() ? displayValue : displayValue + 1;
-  }
+  const auto options = longPressMenuOptions();
+  SETTINGS.longPressMenuFunction =
+      displayValue < options.size() ? options[displayValue].value : CrossPointSettings::LP_MENU_DISABLED;
 }
 
 inline SettingInfo buildLongPressMenuSetting() {
@@ -230,12 +251,16 @@ inline std::vector<ShortPowerButtonOption> shortPowerButtonOptions() {
   if (BoardConfig::hasTouch()) {
     options.push_back({StrId::STR_CONFIRM, CrossPointSettings::PWR_CONFIRM});
   } else {
+#if CP_FEATURE_CLIPPINGS
     options.push_back({StrId::STR_SAVE_CLIPPING, CrossPointSettings::CREATE_CLIPPING});
+#endif
   }
   // Touch boards without a home key have no button for these shortcuts.
   if (BoardConfig::hasTouch() && !BoardConfig::hasHomeKey()) {
     options.push_back({StrId::STR_BOOKMARK_OPTION, CrossPointSettings::PWR_BOOKMARK});
+#if CP_FEATURE_KOSYNC
     options.push_back({StrId::STR_KOSYNC, CrossPointSettings::PWR_SYNC});
+#endif
     options.push_back({StrId::STR_READER_MENU, CrossPointSettings::PWR_READER_MENU});
   }
   return options;
@@ -271,6 +296,21 @@ inline std::vector<StrId> homeThemeValues() {
   const size_t count = UITheme::supportsCoverGrid() ? std::size(VALUES) : std::size(VALUES) - 1;
   return {VALUES, VALUES + count};
 }
+
+#if !CP_FEATURE_EXTRA_THEMES
+// Lyra only, with the cover-grid home where the board supports it. The saved
+// value keeps the enum numbering, so a settings file from a full build loads.
+inline std::vector<StrId> orbitThemeValues() {
+  if (UITheme::supportsCoverGrid()) return {StrId::STR_THEME_LYRA, StrId::STR_THEME_COVER_GRID};
+  return {StrId::STR_THEME_LYRA};
+}
+inline uint8_t orbitThemeDisplayValue() {
+  return (SETTINGS.uiTheme == CrossPointSettings::COVER_GRID && UITheme::supportsCoverGrid()) ? 1 : 0;
+}
+inline void setOrbitThemeFromDisplayValue(const uint8_t displayValue) {
+  SETTINGS.uiTheme = displayValue == 1 ? CrossPointSettings::COVER_GRID : CrossPointSettings::LYRA;
+}
+#endif
 
 using SettingVisitor = void (*)(void* context, SettingInfo& info);
 

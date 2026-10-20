@@ -14,7 +14,10 @@
 #include "NetworkModeSelectionActivity.h"
 #include "SilentRestart.h"
 #include "WifiSelectionActivity.h"
+#include "BuildFeatures.h"
+#if CP_FEATURE_CALIBRE
 #include "activities/network/CalibreConnectActivity.h"
+#endif
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/PluginEvents.h"
@@ -167,6 +170,7 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
   networkMode = mode;
   isApMode = (mode == NetworkMode::CREATE_HOTSPOT);
 
+#if CP_FEATURE_CALIBRE
   if (mode == NetworkMode::CONNECT_CALIBRE) {
     startActivityForResult(
         std::make_unique<CalibreConnectActivity>(renderer, mappedInput), [this](const ActivityResult& result) {
@@ -183,6 +187,7 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
         });
     return;
   }
+#endif
 
   if (mode == NetworkMode::JOIN_NETWORK) {
     // STA mode - launch WiFi selection

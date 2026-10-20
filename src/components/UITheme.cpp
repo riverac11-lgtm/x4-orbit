@@ -14,9 +14,12 @@
 #include "RecentBooksStore.h"
 #include "components/CoverGridHomeUi.h"
 #include "components/themes/BaseTheme.h"
-#include "components/themes/lyra/Lyra3CoversTheme.h"
+#include "BuildFeatures.h"
 #include "components/themes/lyra/LyraTheme.h"
+#if CP_FEATURE_EXTRA_THEMES
+#include "components/themes/lyra/Lyra3CoversTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
+#endif
 
 UITheme UITheme::instance;
 
@@ -38,13 +41,18 @@ void UITheme::drawCoverGridHome(CoverGridHomeUi& home) { home.renderUi(); }
 
 void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
   if (type == CrossPointSettings::COVER_GRID && !supportsCoverGrid()) type = CrossPointSettings::LYRA;
+#if !CP_FEATURE_EXTRA_THEMES
+  if (type != CrossPointSettings::COVER_GRID) type = CrossPointSettings::LYRA;
+#endif
 
   switch (type) {
+#if CP_FEATURE_EXTRA_THEMES
     case CrossPointSettings::UI_THEME::CLASSIC:
       LOG_DBG("UI", "Using Classic theme");
       currentTheme = std::make_unique<BaseTheme>();
       currentMetrics = &BaseMetrics::values;
       break;
+#endif
     case CrossPointSettings::UI_THEME::COVER_GRID:
     case CrossPointSettings::UI_THEME::LYRA: {
       // The cover home owns its screen-lifetime UI state; other screens retain Lyra styling.
@@ -58,6 +66,7 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Lyra theme");
       break;
     }
+#if CP_FEATURE_EXTRA_THEMES
     case CrossPointSettings::UI_THEME::ROUNDEDRAFF:
       LOG_DBG("UI", "Using RoundedRaff theme");
       currentTheme = std::make_unique<RoundedRaffTheme>();
@@ -67,6 +76,9 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Lyra 3 Covers theme");
       currentTheme = std::make_unique<Lyra3CoversTheme>();
       currentMetrics = &Lyra3CoversMetrics::values;
+      break;
+#endif
+    default:
       break;
   }
   metricsValid = false;

@@ -38,7 +38,10 @@
 #include "ProtectedPaths.h"
 #include "SdCardFontSystem.h"
 #include "SettingsList.h"
+#include "BuildFeatures.h"
+#if CP_FEATURE_WEBDAV
 #include "WebDAVHandler.h"
+#endif
 #include "WifiCredentialStore.h"
 #include "WifiPowerSaveGuard.h"
 #include "html/FilesPageHtml.generated.h"
@@ -276,8 +279,10 @@ void CrossPointWebServer::begin() {
   const char* collectedHeaders[] = {"Depth",      "Destination", "Overwrite",    "If",
                                     "Lock-Token", "Timeout",     "If-None-Match"};
   server->collectHeaders(collectedHeaders, 7);
+#if CP_FEATURE_WEBDAV
   server->addHandler(new WebDAVHandler());  // Note: WebDAVHandler will be deleted by WebServer when server is stopped
   LOG_DBG("WEB", "WebDAV handler initialized");
+#endif
 
   server->begin();
 

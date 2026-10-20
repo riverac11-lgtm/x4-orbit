@@ -17,7 +17,10 @@
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
+#include "BuildFeatures.h"
+#if CP_FEATURE_XTC
 #include "XtcReaderActivity.h"
+#endif
 #include "util/PluginEvents.h"
 
 ReaderActivity::ReaderActivity(const char* name, GfxRenderer& renderer, MappedInputManager& mappedInput,
@@ -33,9 +36,12 @@ std::unique_ptr<ReaderActivity> ReaderActivity::create(GfxRenderer& renderer, Ma
                                                        std::string path, const bool allowFastInitialRefresh) {
   // ActivityManager requires heap ownership; each branch allocates exactly one screen-lifetime object.
   std::unique_ptr<ReaderActivity> activity;
+#if CP_FEATURE_XTC
   if (FsHelpers::hasXtcExtension(path)) {
     activity = makeUniqueNoThrow<XtcReaderActivity>(renderer, mappedInput, std::move(path), allowFastInitialRefresh);
-  } else {
+  } else
+#endif
+  {
     activity = makeUniqueNoThrow<EpubReaderActivity>(renderer, mappedInput, std::move(path), allowFastInitialRefresh);
   }
 

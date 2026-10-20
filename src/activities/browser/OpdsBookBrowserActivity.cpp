@@ -21,6 +21,7 @@
 
 #include "BookKey.h"
 #include "CrossPointSettings.h"
+#include "BuildFeatures.h"
 #include "LcpPassphraseStore.h"
 #include "MappedInputManager.h"
 #include "OpdsTokenStore.h"
@@ -517,7 +518,11 @@ bool OpdsBookBrowserActivity::verifyAndRegisterEpub(const std::string& filename)
 
 void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book) {
   if (book.lcpLicense) {
+#if CP_FEATURE_LCP
     downloadLcpBook(book);
+#else
+    fail(StrId::STR_LCP_UNSUPPORTED);
+#endif
     return;
   }
   beginDownload(book.title);

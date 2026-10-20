@@ -36,6 +36,10 @@
 #define CP_FEATURE_WEBDAV 1  // WebDAV share on the file-transfer web server
 #endif
 
+#ifndef CP_FEATURE_EXTRA_THEMES
+#define CP_FEATURE_EXTRA_THEMES 1  // Classic, RoundedRaff, Lyra 3 Covers (Lyra always built)
+#endif
+
 #ifndef CP_FEATURE_LCP
 #define CP_FEATURE_LCP 1  // Readium LCP content protection
 #endif

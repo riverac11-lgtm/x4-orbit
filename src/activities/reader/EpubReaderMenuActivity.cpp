@@ -1,4 +1,5 @@
 #include "EpubReaderMenuActivity.h"
+#include "BuildFeatures.h"
 
 #include <BlePageTurner.h>
 #include <GfxRenderer.h>
@@ -52,10 +53,14 @@ void EpubReaderMenuActivity::buildMenuItems(std::vector<MenuItem>& items, const 
     items.push_back({MenuAction::BOOKMARKS, StrId::STR_BOOKMARKS});
   }
   items.push_back({MenuAction::TOGGLE_BOOKMARK, StrId::STR_TOGGLE_BOOKMARK});
+#if CP_FEATURE_CLIPPINGS
   items.push_back({MenuAction::SAVE_CLIPPING, StrId::STR_SAVE_CLIPPING});
   if (hasClippings) {
     items.push_back({MenuAction::VIEW_CLIPPINGS, StrId::STR_VIEW_CLIPPINGS});
   }
+#else
+  (void)hasClippings;
+#endif
   items.push_back({MenuAction::NIGHT_MODE, StrId::STR_NIGHT_MODE});
   if (Frontlight.present() && !slideSwitchOwnsLight()) {
     items.push_back({MenuAction::FRONTLIGHT, StrId::STR_FRONTLIGHT});
@@ -63,16 +68,20 @@ void EpubReaderMenuActivity::buildMenuItems(std::vector<MenuItem>& items, const 
   if (bleturner::status().compiledIn) {
     items.push_back({MenuAction::BLUETOOTH, StrId::STR_BT_PAGE_TURNER});
   }
+#if CP_FEATURE_DICTIONARY
   if (SETTINGS.dictionaryName[0] != '\0') {
     items.push_back({MenuAction::DICTIONARY, StrId::STR_LOOKUP});
   }
+#endif
   items.push_back({MenuAction::ROTATE_SCREEN, StrId::STR_ORIENTATION});
   items.push_back({MenuAction::AUTO_PAGE_TURN, StrId::STR_AUTO_TURN_PAGES_PER_MIN});
   items.push_back({MenuAction::GO_TO_PERCENT, StrId::STR_GO_TO_PERCENT});
   items.push_back({MenuAction::SCREENSHOT, StrId::STR_SCREENSHOT_BUTTON});
   items.push_back({MenuAction::DISPLAY_QR, StrId::STR_DISPLAY_QR});
   items.push_back({MenuAction::GO_HOME, StrId::STR_GO_HOME_BUTTON});
+#if CP_FEATURE_KOSYNC
   items.push_back({MenuAction::SYNC, StrId::STR_SYNC_PROGRESS});
+#endif
   items.push_back({MenuAction::DELETE_CACHE, StrId::STR_DELETE_CACHE});
   items.push_back({MenuAction::TEXT_SETTINGS, StrId::STR_TEXT_SETTINGS});
 }

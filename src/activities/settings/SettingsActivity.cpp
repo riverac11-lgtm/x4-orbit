@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "AboutActivity.h"
+#include "BuildFeatures.h"
 #include "BleSettingsActivity.h"
 #include "ButtonRemapActivity.h"
 #include "ClearCacheActivity.h"
@@ -21,12 +22,16 @@
 #include "CrossPointSettings.h"
 #include "FontDownloadActivity.h"
 #include "HomeButtonSettingsActivity.h"
+#if CP_FEATURE_KOSYNC
 #include "KOReaderSettingsActivity.h"
+#endif
 #include "KeyboardLayoutsActivity.h"
 #include "LanguageSelectActivity.h"
 #include "MappedInputManager.h"
 #include "OpdsServerListActivity.h"
+#if CP_FEATURE_OTA
 #include "OtaUpdateActivity.h"
+#endif
 #include "SdCardFontSystem.h"
 #include "SdFirmwareUpdateActivity.h"
 #include "SettingsList.h"
@@ -95,7 +100,9 @@ void SettingsActivity::rebuildSettings() {
   // Rescan /dictionaries on every rebuild: cheap (one directory listing) and
   // picks up dictionaries copied to the SD card since the last visit.
   std::vector<DictionaryEntry> dictionaries;
+#if CP_FEATURE_DICTIONARY
   DictionaryRegistry::discover(dictionaries);
+#endif
 
   auto all = getSettingsList(&sdFontSystem.registry(), &dictionaries);
 
@@ -137,16 +144,22 @@ void SettingsActivity::rebuildSettings() {
   if (bleturner::status().compiledIn) {
     addAction(SettingsSection::Network, StrId::STR_BT_PAGE_TURNER, SettingAction::Bluetooth);
   }
+#if CP_FEATURE_KOSYNC
   addAction(SettingsSection::Network, StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync);
+#endif
   addAction(SettingsSection::Network, StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser);
+#if CP_FEATURE_PLUGINS
   addAction(SettingsSection::Network, StrId::STR_PLUGINS, SettingAction::Plugins);
+#endif
 
   // OTA fetches this board's own release asset (see OtaUpdater); boards whose
   // asset isn't published yet just report no update available. The Picco's
   // stock layout has one app slot (partitions_picco.csv), so it cannot update
   // itself either way.
   if (!BoardConfig::isPicco()) {
+#if CP_FEATURE_OTA
     addAction(SettingsSection::General, StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates);
+#endif
     addAction(SettingsSection::General, StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate);
   }
   addAction(SettingsSection::General, StrId::STR_ABOUT, SettingAction::About);
@@ -310,7 +323,9 @@ void SettingsActivity::toggleSelectedSetting() {
         }
         break;
       case SettingAction::KOReaderSync:
+#if CP_FEATURE_KOSYNC
         startActivityForResult(std::make_unique<KOReaderSettingsActivity>(renderer, mappedInput), resultHandler);
+#endif
         break;
       case SettingAction::OPDSBrowser:
         startActivityForResult(std::make_unique<OpdsServerListActivity>(renderer, mappedInput), resultHandler);
@@ -350,7 +365,9 @@ void SettingsActivity::toggleSelectedSetting() {
         startActivityForResult(std::make_unique<ClearCacheActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::CheckForUpdates:
+#if CP_FEATURE_OTA
         startActivityForResult(std::make_unique<OtaUpdateActivity>(renderer, mappedInput), resultHandler);
+#endif
         break;
       case SettingAction::SdFirmwareUpdate:
         startActivityForResult(std::make_unique<SdFirmwareUpdateActivity>(renderer, mappedInput), resultHandler);

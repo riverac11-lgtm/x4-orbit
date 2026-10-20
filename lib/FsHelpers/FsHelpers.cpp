@@ -173,7 +173,12 @@ bool hasGifExtension(std::string_view fileName) { return checkFileExtension(file
 bool hasEpubExtension(std::string_view fileName) { return checkFileExtension(fileName, ".epub"); }
 
 bool hasXtcExtension(std::string_view fileName) {
+#if defined(CP_FEATURE_XTC) && !CP_FEATURE_XTC
+  (void)fileName;  // XTC compiled out: such files are neither listed nor opened
+  return false;
+#else
   return checkFileExtension(fileName, ".xtc") || checkFileExtension(fileName, ".xtch");
+#endif
 }
 
 bool hasTxtExtension(std::string_view fileName) { return checkFileExtension(fileName, ".txt"); }

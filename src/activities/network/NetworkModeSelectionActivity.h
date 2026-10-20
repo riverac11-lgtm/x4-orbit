@@ -1,6 +1,7 @@
 #pragma once
 
 #include <BoardConfig.h>
+#include "BuildFeatures.h"
 
 #include "activities/UiListActivity.h"
 
@@ -22,9 +23,9 @@ class NetworkModeSelectionActivity final : public UiListActivity {
   explicit NetworkModeSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput);
 
 #if FREEINK_CAP_USB_MSC
-  static constexpr int MENU_ITEM_COUNT = 4;
+  static constexpr int MENU_ITEM_COUNT = 4 - (CP_FEATURE_CALIBRE ? 0 : 1);
 #else
-  static constexpr int MENU_ITEM_COUNT = 3;
+  static constexpr int MENU_ITEM_COUNT = 3 - (CP_FEATURE_CALIBRE ? 0 : 1);
 #endif
 
   void onModeSelected(NetworkMode mode);

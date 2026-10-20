@@ -25,7 +25,10 @@
 #include "library/LibraryListActivity.h"
 #include "network/CrossPointWebServerActivity.h"
 #include "network/UsbDriveActivity.h"
+#include "BuildFeatures.h"
+#if CP_FEATURE_PLUGINS
 #include "plugins/PluginCatalogActivity.h"
+#endif
 #include "reader/ReaderActivity.h"
 #include "reader/RemoteTurnGate.h"
 #include "settings/OpdsServerListActivity.h"
@@ -320,7 +323,12 @@ void ActivityManager::goToBrowser() {
 }
 
 void ActivityManager::goToPlugins(bool showOpds) {
+#if CP_FEATURE_PLUGINS
   replaceActivity(std::make_unique<PluginCatalogActivity>(renderer, mappedInput, showOpds, /*rootMode=*/true));
+#else
+  (void)showOpds;
+  goToBrowser();
+#endif
 }
 
 void ActivityManager::goToReader(std::string path, const bool allowFastInitialRefresh) {

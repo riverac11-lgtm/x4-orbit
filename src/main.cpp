@@ -33,6 +33,7 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
+#include "BuildFeatures.h"
 #include "LcpPassphraseStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
@@ -661,7 +662,9 @@ void setup() {
   KOREADER_STORE.loadFromFile();
   OPDS_STORE.loadFromFile();
   OPDS_TOKENS.loadFromFile();
+#if CP_FEATURE_LCP
   LCP_PASSPHRASES.loadFromFile();
+#endif
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   pluginevents::refreshSubscriptions();

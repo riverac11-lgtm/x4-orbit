@@ -17,6 +17,7 @@
 #include "fontIds.h"
 #include "util/ParagraphIndentMigration.h"
 #include "util/PluginLocations.h"
+#include "BuildFeatures.h"
 
 namespace {
 
@@ -197,6 +198,9 @@ bool CrossPointSettings::fromJson(JsonVariantConst doc) {
     pluginsEnabled = PluginLocations::anyPluginInstalledOnDisk() ? 1 : 0;
     needsResave = true;
   }
+#if !CP_FEATURE_PLUGINS
+  pluginsEnabled = 0;  // compiled out of this build
+#endif
 
   const auto indentSpaces = doc["paragraphIndentSpaces"];
   const bool hasSavedWidth = indentSpaces.is<int>();

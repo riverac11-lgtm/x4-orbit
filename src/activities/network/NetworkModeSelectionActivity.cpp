@@ -12,7 +12,9 @@ namespace fui = freeink::ui;
 namespace {
 constexpr StrId menuItems[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
     StrId::STR_JOIN_NETWORK,
+#if CP_FEATURE_CALIBRE
     StrId::STR_CALIBRE_WIRELESS,
+#endif
     StrId::STR_CREATE_HOTSPOT,
 #if FREEINK_CAP_USB_MSC
     StrId::STR_USB_DRIVE,
@@ -20,7 +22,9 @@ constexpr StrId menuItems[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
 };
 constexpr StrId menuDescs[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
     StrId::STR_JOIN_DESC,
+#if CP_FEATURE_CALIBRE
     StrId::STR_CALIBRE_DESC,
+#endif
     StrId::STR_HOTSPOT_DESC,
 #if FREEINK_CAP_USB_MSC
     StrId::STR_USB_DRIVE_DESC,
@@ -28,10 +32,23 @@ constexpr StrId menuDescs[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
 };
 constexpr UIIcon menuIcons[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
     UIIcon::Wifi,
+#if CP_FEATURE_CALIBRE
     UIIcon::Library,
+#endif
     UIIcon::Hotspot,
 #if FREEINK_CAP_USB_MSC
     UIIcon::Usb,
+#endif
+};
+// Row index -> mode; rows can be compiled out, so indices aren't enum values.
+constexpr NetworkMode menuModes[NetworkModeSelectionActivity::MENU_ITEM_COUNT] = {
+    NetworkMode::JOIN_NETWORK,
+#if CP_FEATURE_CALIBRE
+    NetworkMode::CONNECT_CALIBRE,
+#endif
+    NetworkMode::CREATE_HOTSPOT,
+#if FREEINK_CAP_USB_MSC
+    NetworkMode::USB_DRIVE,
 #endif
 };
 }  // namespace
@@ -59,7 +76,8 @@ void NetworkModeSelectionActivity::activateIndex(const int index) {
   app.clearTapFlash();
   nav.selected = index;
 
-  onModeSelected(static_cast<NetworkMode>(index));
+  if (index < 0 || index >= MENU_ITEM_COUNT) return;
+  onModeSelected(menuModes[index]);
 }
 
 void NetworkModeSelectionActivity::buildScreen(UiScreen& screen) {
