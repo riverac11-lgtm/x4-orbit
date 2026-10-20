@@ -65,7 +65,13 @@ jobs:
       - name: Build x4-orbit firmware
         run: |
           set -euo pipefail
-          pio run -e x4-orbit 2>&1 | tee pio.log
+          # On failure the last error lines become job annotations, readable without the raw log.
+          if ! pio run -e x4-orbit > pio.log 2>&1; then
+            grep -iE "error|fatal|undefined|exception" pio.log | tail -25 | while IFS= read -r l; do echo "::error title=build::${l}"; done
+            tail -15 pio.log | while IFS= read -r l; do echo "::warning title=tail::${l}"; done
+            exit 1
+          fi
+          tail -40 pio.log
           {
             echo "## x4-orbit firmware"
             grep -E "RAM:\s" -m1 pio.log | sed 's/^/- /' || true
