@@ -181,11 +181,16 @@ ChapterSearcher::ChapterSearcher(const std::vector<uint32_t>& needleIn, const si
 ChapterSearcher::~ChapterSearcher() { destroyXmlParser(parser); }
 
 size_t ChapterSearcher::write(const uint8_t* buffer, const size_t size) {
-  if (!parser || !parseOk || stopped) return size;
+  if (!parser || !parseOk || stopped) return 0;
+  if (abortProbe && abortProbe()) {
+    wasAborted = true;
+    stopped = true;
+    return 0;
+  }
   if (XML_Parse(parser, reinterpret_cast<const char*>(buffer), static_cast<int>(size), XML_FALSE) != XML_STATUS_OK) {
     if (XML_GetErrorCode(parser) != XML_ERROR_ABORTED) parseOk = false;
   }
-  return size;
+  return (stopped || !parseOk) ? 0 : size;
 }
 
 bool ChapterSearcher::finish() {

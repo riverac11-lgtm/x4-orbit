@@ -51,6 +51,15 @@ class EpubReaderActivity final : public ReaderActivity {
   StrId clippingMessage = StrId::STR_CLIPPING_SAVED;
   unsigned long clippingMessageTime = 0UL;
   bool currentPageBookmarked = false;
+  // Full-text search: the hit to underline (chapter + visible-offset range,
+  // spine -1 = none) until the reader turns away from the page it landed on.
+  int searchHighlightSpine = -1;
+  uint32_t searchHighlightStart = 0;
+  uint32_t searchHighlightEnd = 0;
+  int searchHighlightPage = -1;
+  std::string lastSearchQuery;
+  void openSearch();
+  void drawSearchHighlight(const Page& page, int fontId, int orientedMarginTop, int orientedMarginLeft);
   int idlePrewarmSpine = -1;
   int idlePrewarmPage = -1;
   // Image look-ahead: decode upcoming pages' images into their pixel caches

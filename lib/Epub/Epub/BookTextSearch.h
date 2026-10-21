@@ -50,10 +50,18 @@ class ChapterSearcher final : public Print {
   ChapterSearcher& operator=(const ChapterSearcher&) = delete;
 
   bool ok() const { return parser != nullptr && parseOk; }
+
+  // Polled once per streamed chunk; returning true abandons the chapter
+  // (aborted() then reports it). Lets the UI cancel a long chapter mid-way.
+  using AbortProbe = bool (*)();
+  void setAbortProbe(AbortProbe probe) { abortProbe = probe; }
+  bool aborted() const { return wasAborted; }
   // Flushes the parser and completes any snippet still collecting context.
   bool finish();
 
   size_t write(uint8_t c) override { return write(&c, 1); }
+  // Returns 0 once nothing more is wanted (cap reached, aborted, or a parse
+  // error), so a reader streaming with allowEarlyStop stops inflating.
   size_t write(const uint8_t* buffer, size_t size) override;
 
   const std::vector<Hit>& hits() const { return found; }
@@ -77,6 +85,8 @@ class ChapterSearcher final : public Print {
   XML_Parser parser = nullptr;
   bool parseOk = true;
   bool stopped = false;
+  AbortProbe abortProbe = nullptr;
+  bool wasAborted = false;
 
   // Visible-offset counting, mirroring ChapterHtmlSlimParser.
   bool insideBody = false;

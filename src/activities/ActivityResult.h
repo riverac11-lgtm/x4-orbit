@@ -76,13 +76,20 @@ struct FootnoteResult {
   std::string href;
 };
 
+// A full-text search hit: chapter and visible-text offset range of the match.
+struct SearchResult {
+  int spineIndex = 0;
+  uint32_t visibleOffset = 0;
+  uint32_t visibleEnd = 0;
+};
+
 struct FilePathResult {
   std::string path;
 };
 
-using ResultVariant =
-    std::variant<std::monostate, WifiResult, KeyboardResult, MenuResult, ChapterResult, PercentResult, IntervalResult,
-                 PageResult, ClippingResult, ProgressChangeResult, NetworkModeResult, FootnoteResult, FilePathResult>;
+using ResultVariant = std::variant<std::monostate, WifiResult, KeyboardResult, MenuResult, ChapterResult, PercentResult,
+                                   IntervalResult, PageResult, ClippingResult, ProgressChangeResult, NetworkModeResult,
+                                   FootnoteResult, FilePathResult, SearchResult>;
 
 struct ActivityResult {
   bool isCancelled = false;

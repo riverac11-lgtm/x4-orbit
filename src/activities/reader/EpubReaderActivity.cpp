@@ -39,6 +39,7 @@
 #include "EpubReaderClippingListActivity.h"
 #include "EpubReaderFootnoteSelectActivity.h"
 #include "EpubReaderPercentSelectionActivity.h"
+#include "EpubReaderSearchActivity.h"
 #include "EpubReaderUtils.h"
 #include "KOReaderCredentialStore.h"
 #if CP_FEATURE_KOSYNC
@@ -315,6 +316,89 @@ bool EpubReaderActivity::loadBook() {
   }
 #endif
   return true;
+}
+
+void EpubReaderActivity::openSearch() {
+  int startSpine;
+  // Free the section while the search runs (as the chapter list does): the
+  // search streams chapters and keeps results, and a hit or Back rebuilds the
+  // page from the remembered position anyway.
+  {
+    RenderLock lock;
+    startSpine = currentSpineIndex;
+    if (section) {
+      rememberCurrentContentOffset();
+      cachedSpineIndex = currentSpineIndex;
+      cachedChapterTotalPageCount = section->pageCount;
+      nextPageNumber = section->currentPage;
+    }
+    discardOverlayPage();
+    section.reset();
+  }
+  auto search = makeUniqueNoThrow<EpubReaderSearchActivity>(renderer, mappedInput, epub, startSpine, &lastSearchQuery);
+  if (!search) {
+    LOG_ERR("ERS", "OOM: search activity");
+    requestUpdate();
+    return;
+  }
+  startActivityForResult(std::move(search), [this](const ActivityResult& result) {
+    if (result.isCancelled) {
+      requestUpdate();  // back on the page it was opened from
+      return;
+    }
+    const auto& hit = std::get<SearchResult>(result.data);
+    RenderLock lock;
+    clearDeferredReposition();
+    currentSpineIndex = hit.spineIndex;
+    pendingOffsetJump = hit.visibleOffset;
+    nextPageNumber = 0;
+    searchHighlightSpine = hit.spineIndex;
+    searchHighlightStart = hit.visibleOffset;
+    searchHighlightEnd = hit.visibleEnd;
+    searchHighlightPage = -1;
+    section.reset();
+    requestUpdate();
+  });
+}
+
+void EpubReaderActivity::drawSearchHighlight(const Page& page, const int fontId, const int orientedMarginTop,
+                                             const int orientedMarginLeft) {
+  if (searchHighlightSpine < 0 || !section) return;
+  if (searchHighlightSpine != currentSpineIndex) {
+    searchHighlightSpine = -1;
+    return;
+  }
+  if (searchHighlightPage < 0) {
+    searchHighlightPage = section->currentPage;
+  } else if (searchHighlightPage != section->currentPage) {
+    searchHighlightSpine = -1;  // the reader moved on
+    return;
+  }
+  if (renderer.getRenderMode() != GfxRenderer::BW) return;
+
+  // A two-pixel bar under each word the hit overlaps: crisp on e-ink and it
+  // leaves the text itself untouched.
+  const int barHeight = 2;
+  const int lineHeight = renderer.getLineHeight(fontId);
+  for (const auto& element : page.elements) {
+    if (element->getTag() != TAG_PageLine) continue;
+    const auto& line = static_cast<const PageLine&>(*element);
+    const auto& block = line.getBlock();
+    if (!block || !block->valid()) continue;
+    for (uint16_t i = 0; i < block->wordCount(); ++i) {
+      const auto range = block->wordSourceRange(i);
+      if (range.start >= searchHighlightEnd || range.end <= searchHighlightStart) continue;
+      const char* text = block->wordText(i);
+      if (!clippingText::hasVisibleText(text)) continue;
+      const auto style = static_cast<EpdFontFamily::Style>(block->wordStyle(i) & ~EpdFontFamily::UNDERLINE);
+      const int width = renderer.getTextAdvanceX(clippingWordFont(renderer, fontId, *block, i), text, style,
+                                                 block->getBlockStyle().characterSpacing);
+      if (width <= 0) continue;
+      const Rect rect = clippingWordRect(renderer, fontId, line, i, orientedMarginTop, orientedMarginLeft, width);
+      if (rect.width <= 0) continue;
+      renderer.fillRect(rect.x, rect.y + lineHeight - barHeight, rect.width, barHeight, true);
+    }
+  }
 }
 
 void EpubReaderActivity::imageLookAheadTick() {
@@ -1180,6 +1264,10 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
   };
 
   switch (action) {
+    case EpubReaderMenuActivity::MenuAction::SEARCH: {
+      openSearch();
+      break;
+    }
     case EpubReaderMenuActivity::MenuAction::SELECT_CHAPTER: {
       int tocIndex;
       // Release the section while the chapter list is up (mirrors the
@@ -2129,6 +2217,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   drawClippingHighlights(*page, fontId, orientedMarginTop, orientedMarginLeft);
   page->render(renderer, fontId, orientedMarginLeft, orientedMarginTop);
+  drawSearchHighlight(*page, fontId, orientedMarginTop, orientedMarginLeft);
   renderStatusBar();
   const auto tBwRender = millis();
 
