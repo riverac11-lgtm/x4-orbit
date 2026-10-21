@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write  # publishes the x4-orbit-latest release
 
 jobs:
   build:
@@ -73,3 +73,20 @@ jobs:
           name: firmware-x4-orbit.bin
           path: firmware-x4-orbit.bin
           if-no-files-found: error
+
+      # A rolling pre-release holding the newest build: a stable download link
+      # (releases/download/x4-orbit-latest/firmware-x4-orbit.bin) that does not
+      # expire like run artifacts.
+      - name: Publish x4-orbit-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          notes="Built from ${GITHUB_SHA::7} on $(date -u +%Y-%m-%d). Flash via Settings > SD Card Firmware Update."
+          if gh release view x4-orbit-latest >/dev/null 2>&1; then
+            gh release upload x4-orbit-latest firmware-x4-orbit.bin --clobber
+            gh release edit x4-orbit-latest --notes "$notes" --target "$GITHUB_SHA"
+          else
+            gh release create x4-orbit-latest firmware-x4-orbit.bin --prerelease \
+              --title "x4-orbit (latest build)" --notes "$notes" --target "$GITHUB_SHA"
+          fi
