@@ -1,4 +1,5 @@
 #include <Epub.h>
+#include <Epub/BookTextSearch.h>
 #include <Epub/Page.h>
 #include <Epub/converters/ImageDimsProbe.h>
 #include <GfxRenderer.h>
@@ -2045,4 +2046,62 @@ TEST(TextDecorationPosition, UnderlineStaysBelowBaseline) {
     line->render(renderer, 0, 0, 20);
     EXPECT_EQ(renderer.lastLineY, 34);
   });
+}
+
+// In-book search reports hits as visible-text offsets; the reader maps them to
+// pages and underlines the words whose SourceRange overlaps the hit. Both sides
+// must count offsets identically, on real layout output.
+TEST_F(ChapterHtmlSlimParserTest, SearchHitOffsetsLineUpWithLaidOutWords) {
+  const std::string html =
+      "<html><head><title>Chapter</title><style>p{}</style></head><body>\n"
+      "  <h2>One</h2>\n"
+      "  <p>The <i>quick</i> brown fox.</p>\n"
+      "  <p>It jumps over the <b>la</b>zy dog.</p>\n"
+      "</body></html>";
+  const auto tempDir = std::filesystem::temp_directory_path();
+  filepath = (tempDir / "crosspoint-search-offsets.xhtml").string();
+  {
+    HalFile file;
+    ASSERT_TRUE(file.open(filepath.c_str(), "wb"));
+    ASSERT_EQ(file.write(html.data(), html.size()), html.size());
+  }
+  struct Word {
+    std::string text;
+    uint32_t start;
+    uint32_t end;
+  };
+  std::vector<Word> words;
+  parser.completePageFn = [&](std::unique_ptr<Page> page, auto, auto, auto) {
+    for (const auto& element : page->elements) {
+      if (element->getTag() != TAG_PageLine) continue;
+      const auto& block = *static_cast<const PageLine&>(*element).getBlock();
+      for (uint16_t i = 0; i < block.wordCount(); ++i) {
+        if (!clippingText::hasVisibleText(block.wordText(i))) continue;
+        const auto range = block.wordSourceRange(i);
+        words.push_back({block.wordText(i), range.start, range.end});
+      }
+    }
+  };
+  parser.paragraphIndentSpaces = 0;
+  ASSERT_TRUE(parser.parseAndBuildPages());
+  std::filesystem::remove(filepath);
+  ASSERT_FALSE(words.empty());
+
+  const auto wordsHit = [&](const std::string& query) {
+    booksearch::ChapterSearcher searcher(booksearch::foldQuery(query), 4);
+    searcher.write(reinterpret_cast<const uint8_t*>(html.data()), html.size());
+    searcher.finish();
+    std::vector<std::string> hitWords;
+    if (searcher.hits().size() != 1) return hitWords;
+    const auto& hit = searcher.hits()[0];
+    for (const auto& w : words) {
+      if (w.start < hit.visibleEnd && w.end > hit.visibleOffset) hitWords.push_back(w.text);
+    }
+    return hitWords;
+  };
+  EXPECT_EQ(wordsHit("BROWN fox"), (std::vector<std::string>{"brown", "fox."}));
+  EXPECT_EQ(wordsHit("quick"), (std::vector<std::string>{"quick"}));
+  // "<b>la</b>zy" lays out as two styled pieces; the hit spans both.
+  EXPECT_EQ(wordsHit("lazy dog"), (std::vector<std::string>{"la", "zy", "dog."}));
+  EXPECT_EQ(wordsHit("one"), (std::vector<std::string>{"One"}));
 }

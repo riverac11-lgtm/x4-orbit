@@ -8,6 +8,7 @@ add_executable(ChapterHtmlSlimParserTest
   ${REPO_ROOT}/lib/MiniBidi/BidiUtils.cpp
   ${REPO_ROOT}/lib/MiniBidi/minibidi.c
   ${REPO_ROOT}/lib/Epub/Epub/parsers/ChapterHtmlSlimParser.cpp
+  ${REPO_ROOT}/lib/Epub/Epub/BookTextSearch.cpp
   ${REPO_ROOT}/lib/Epub/Epub/css/CssParser.cpp
   ${REPO_ROOT}/lib/Epub/Epub/ParsedText.cpp
   ${REPO_ROOT}/lib/Epub/Epub/WordStore.cpp
