@@ -5,6 +5,7 @@ name: x4-orbit firmware
 on:
   push:
     branches: [x4-orbit]
+    paths-ignore: ['README.md', 'docs/**']  # docs-only changes don't need a firmware build
   workflow_dispatch:
 
 permissions:

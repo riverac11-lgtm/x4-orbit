@@ -1,3 +1,58 @@
+# x4-orbit — a CrossPoint build for the Xteink X4
+
+> **This branch is a personal, unofficial build of [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader)
+> for the original Xteink X4 only.** It is not supported by the CrossPoint project. The upstream README follows
+> further down.
+
+**Download:** [`firmware-x4-orbit.bin` (latest build)](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
+
+## What this build is
+
+CrossPoint trimmed down to reading EPUBs and pulling books from an OPDS server (built around
+[BookOrbit](https://www.dsebastien.net/bookorbit/)), with the freed memory spent on speed:
+
+- **Faster image pages.** While a page is on screen, the images on the next two pages are decoded into the SD
+  card's image cache, so turning to them doesn't stall. Any button press interrupts the work.
+- **Faster OPDS browsing.** One secure connection is kept open for the whole browsing session instead of a new
+  TLS handshake per catalog page, search or cover.
+- **"On device" marker** on catalog books that are already in your download folder.
+- **Search in book** (reader menu > Search book): case- and accent-insensitive, shows chapter and snippet for
+  each hit, jumps to the page and underlines the match. Works for TXT books too.
+
+**Removed** to free RAM and flash: Bluetooth page turner, plugins, KOReader sync, dictionary, clippings,
+XTC books, internet firmware updates, Calibre wireless, WebDAV, LCP (DRM) downloads, themes other than Lyra
+(and its cover-grid home), X3 support, and UI languages other than English. The SD-card firmware update and
+recovery mode are kept. Saved settings, OPDS servers and logins from stock CrossPoint carry over.
+
+Measured against the stock X4 build: about 10 KB more free static RAM and 870 KB less flash.
+Details and build steps: [docs/x4-orbit.md](docs/x4-orbit.md).
+
+## Who should not install it
+
+**Only flash this on an original Xteink X4.** Do not install it on:
+
+| Device | Why |
+| --- | --- |
+| **Xteink X3** | X3 support is compiled out, so the display and buttons won't be set up correctly — expect a blank or garbled screen. **The X3's SD firmware updater will not stop you** (X3 and X4 share a board tag), so check your model first. |
+| Xteink X4 Pro, X4 Classic | Different chip (ESP32-S3) and hardware. The SD updater refuses this file; don't force it through a USB flasher. |
+| Seeed reTerminal Sticky, M5PaperMono, Metalio E-Ink 4, EEGOREAD A4, Boox Picco, any other CrossPoint device | Not built for them; the SD updater refuses this file. |
+| **A USB-locked X4** (some third-party-store units) | If anything goes wrong there is no USB recovery path. Check that the [web installer](https://crosspointreader.com/#flash-tools) can see your device first, or unlock it with the [unlock tool](https://crosspointreader.com/#unlock-tool). |
+
+Also skip it if you rely on any of the removed features above — use the official CrossPoint release instead.
+
+## Installing and going back
+
+1. Put `firmware-x4-orbit.bin` **and a stock CrossPoint `.bin`** (e.g. from the
+   [official releases](https://github.com/daveallie/crosspoint-reader/releases)) on the SD card.
+2. Flash with **Settings > SD Card Firmware Update**.
+3. To go back: flash the stock file the same way. If menus misbehave, hold **Up + Power** while powering on to go
+   straight to the SD firmware picker. If the reader won't boot at all, use the
+   [web installer](https://crosspointreader.com/#flash-tools) over USB-C.
+
+This build has not been through the CrossPoint project's testing. Use it at your own risk.
+
+---
+
 # CrossPoint Reader
 
 [![Fund contributors](https://img.shields.io/badge/%F0%9F%91%91_Fund_contributors-royalty.dev-BB953A?style=for-the-badge&labelColor=1a1a1a)](https://app.royalty.dev/crosspoint-reader/crosspoint-reader)
