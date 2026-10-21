@@ -360,7 +360,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
       *it = buildFontSizeSetting(registry);
     }
   }
-  if (dictionaries && !dictionaries->empty()) {
+  if (CP_FEATURE_DICTIONARY && dictionaries && !dictionaries->empty()) {
     // Insert at the end of the Reader category (just before the first Controls entry).
     auto it =
         std::find_if(v.begin(), v.end(), [](const SettingInfo& s) { return s.category == StrId::STR_CAT_CONTROLS; });

@@ -232,6 +232,7 @@ void forEachBaseSetting(SettingVisitor visit, void* context) {
 #endif
   emit(SettingInfo::Toggle(StrId::STR_FRONTLIGHT, &CrossPointSettings::frontlightOn, "frontlightOn"));
 
+#if CP_FEATURE_KOSYNC
   // --- KOReader Sync (web-only, uses KOReaderCredentialStore) ---
   emit(SettingInfo::DynamicString(
       StrId::STR_KOREADER_USERNAME, [] { return KOREADER_STORE.getUsername(); },
@@ -326,6 +327,8 @@ void forEachBaseSetting(SettingVisitor visit, void* context) {
         KOREADER_STORE.saveToFile();
       },
       "koSyncClippings", StrId::STR_KOREADER_SYNC));
+#endif
+
   // --- Status Bar Settings (web-only, uses StatusBarSettingsActivity) ---
   emit(SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
                            "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR));
