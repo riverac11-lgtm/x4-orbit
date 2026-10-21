@@ -42,36 +42,36 @@ static_assert(sizeof(LATIN_EXT_A) - 1 == 0x80, "Latin Extended-A table must cove
 
 // Latin-1 Supplement letters U+00C0..U+00FF; 0 = keep as is (lowercased).
 constexpr char LATIN_1[] =
-    "aaaaaa"    // C0-C5 À-Å
-    "\0"        // C6 Æ
-    "c"         // C7 Ç
-    "eeee"      // C8-CB
-    "iiii"      // CC-CF
-    "dn"        // D0 Ð, D1 Ñ
-    "ooooo"     // D2-D6
-    "\0"        // D7 ×
-    "o"         // D8 Ø
-    "uuuu"      // D9-DC
-    "y"         // DD Ý
-    "\0\0"      // DE Þ, DF ß
-    "aaaaaa"    // E0-E5
-    "\0"        // E6 æ
-    "c"         // E7
-    "eeee"      // E8-EB
-    "iiii"      // EC-EF
-    "dn"        // F0 ð, F1 ñ
-    "ooooo"     // F2-F6
-    "\0"        // F7 ÷
-    "o"         // F8 ø
-    "uuuu"      // F9-FC
-    "y\0y";     // FD ý, FE þ, FF ÿ
+    "aaaaaa"  // C0-C5 À-Å
+    "\0"      // C6 Æ
+    "c"       // C7 Ç
+    "eeee"    // C8-CB
+    "iiii"    // CC-CF
+    "dn"      // D0 Ð, D1 Ñ
+    "ooooo"   // D2-D6
+    "\0"      // D7 ×
+    "o"       // D8 Ø
+    "uuuu"    // D9-DC
+    "y"       // DD Ý
+    "\0\0"    // DE Þ, DF ß
+    "aaaaaa"  // E0-E5
+    "\0"      // E6 æ
+    "c"       // E7
+    "eeee"    // E8-EB
+    "iiii"    // EC-EF
+    "dn"      // F0 ð, F1 ñ
+    "ooooo"   // F2-F6
+    "\0"      // F7 ÷
+    "o"       // F8 ø
+    "uuuu"    // F9-FC
+    "y\0y";   // FD ý, FE þ, FF ÿ
 static_assert(sizeof(LATIN_1) - 1 == 0x40, "Latin-1 table must cover U+00C0..U+00FF");
 
 bool isBlockElement(const std::string_view name) {
   static constexpr const char* BLOCKS[] = {
-      "p",          "div",     "br",    "li",     "h1",   "h2",  "h3",     "h4",    "h5",  "h6",
-      "tr",         "td",      "th",    "dt",     "dd",   "pre", "hr",     "table", "ul",  "ol",
-      "blockquote", "section", "aside", "figure", "figcaption", "header", "footer", "nav", "article"};
+      "p",          "div",     "br",    "li",     "h1",         "h2",     "h3",     "h4",    "h5",     "h6",
+      "tr",         "td",      "th",    "dt",     "dd",         "pre",    "hr",     "table", "ul",     "ol",
+      "blockquote", "section", "aside", "figure", "figcaption", "header", "footer", "nav",   "article"};
   for (const char* tag : BLOCKS) {
     if (VisibleTextUtils::equalsTag(name, tag)) return true;
   }

@@ -1,11 +1,11 @@
 #include "EpubReaderMenuActivity.h"
-#include "BuildFeatures.h"
 
 #include <BlePageTurner.h>
 #include <GfxRenderer.h>
 #include <HalFrontlight.h>
 #include <I18n.h>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "ReaderUtils.h"

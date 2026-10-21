@@ -30,10 +30,10 @@
 #include <cstdarg>
 #include <cstring>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
-#include "BuildFeatures.h"
 #include "LcpPassphraseStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"

@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "Activity.h"
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "HapticFeedback.h"
 #include "OpdsServerStore.h"
@@ -25,7 +26,6 @@
 #include "library/LibraryListActivity.h"
 #include "network/CrossPointWebServerActivity.h"
 #include "network/UsbDriveActivity.h"
-#include "BuildFeatures.h"
 #if CP_FEATURE_PLUGINS
 #include "plugins/PluginCatalogActivity.h"
 #endif

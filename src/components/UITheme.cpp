@@ -10,11 +10,11 @@
 #include <algorithm>
 #include <memory>
 
+#include "BuildFeatures.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "components/CoverGridHomeUi.h"
 #include "components/themes/BaseTheme.h"
-#include "BuildFeatures.h"
 #include "components/themes/lyra/LyraTheme.h"
 #if CP_FEATURE_EXTRA_THEMES
 #include "components/themes/lyra/Lyra3CoversTheme.h"

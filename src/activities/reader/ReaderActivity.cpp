@@ -11,13 +11,13 @@
 #include <cctype>
 #include <cstdio>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "EpubReaderActivity.h"
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
 #include "SdCardFontSystem.h"
-#include "BuildFeatures.h"
 #if CP_FEATURE_XTC
 #include "XtcReaderActivity.h"
 #endif

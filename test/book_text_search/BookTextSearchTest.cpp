@@ -23,7 +23,9 @@ std::vector<Hit> search(const std::string& xhtml, const std::string& query, size
   return searcher.hits();
 }
 
-std::string doc(const std::string& body) { return "<html><head><title>T</title></head><body>" + body + "</body></html>"; }
+std::string doc(const std::string& body) {
+  return "<html><head><title>T</title></head><body>" + body + "</body></html>";
+}
 
 std::vector<uint32_t> cps(const char32_t* s) {
   std::vector<uint32_t> out;

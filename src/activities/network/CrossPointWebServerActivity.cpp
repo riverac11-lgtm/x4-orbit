@@ -10,11 +10,11 @@
 
 #include <cstddef>
 
+#include "BuildFeatures.h"
 #include "MappedInputManager.h"
 #include "NetworkModeSelectionActivity.h"
 #include "SilentRestart.h"
 #include "WifiSelectionActivity.h"
-#include "BuildFeatures.h"
 #if CP_FEATURE_CALIBRE
 #include "activities/network/CalibreConnectActivity.h"
 #endif

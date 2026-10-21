@@ -14,8 +14,8 @@
 #include <cstring>
 
 #include "AboutActivity.h"
-#include "BuildFeatures.h"
 #include "BleSettingsActivity.h"
+#include "BuildFeatures.h"
 #include "ButtonRemapActivity.h"
 #include "ClearCacheActivity.h"
 #include "ClockSettingsActivity.h"

@@ -11,13 +11,13 @@
 #include <limits>
 #include <string>
 
+#include "BuildFeatures.h"
 #include "I18nKeys.h"
 #include "ReaderFontSizes.h"
 #include "SettingsList.h"
 #include "fontIds.h"
 #include "util/ParagraphIndentMigration.h"
 #include "util/PluginLocations.h"
-#include "BuildFeatures.h"
 
 namespace {
 

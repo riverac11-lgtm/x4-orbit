@@ -1,8 +1,8 @@
 #pragma once
 
 #include <BoardConfig.h>
-#include "BuildFeatures.h"
 
+#include "BuildFeatures.h"
 #include "activities/UiListActivity.h"
 
 enum class NetworkMode { JOIN_NETWORK, CONNECT_CALIBRE, CREATE_HOTSPOT, USB_DRIVE };

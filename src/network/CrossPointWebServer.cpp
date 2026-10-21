@@ -31,6 +31,7 @@
 #include <cstring>
 #include <string_view>
 
+#include "BuildFeatures.h"
 #include "ClippingStore.h"
 #include "CrossPointSettings.h"
 #include "FontInstaller.h"
@@ -38,7 +39,6 @@
 #include "ProtectedPaths.h"
 #include "SdCardFontSystem.h"
 #include "SettingsList.h"
-#include "BuildFeatures.h"
 #if CP_FEATURE_WEBDAV
 #include "WebDAVHandler.h"
 #endif
