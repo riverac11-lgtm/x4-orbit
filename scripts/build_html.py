@@ -392,7 +392,7 @@ def get_release_tag(pioenv: str, base_version: str) -> str:
     """
     if pioenv == "x4-orbit":
         # Published by .github/workflows/x4-orbit.yml as a rolling release on the fork.
-        return "x4-orbit-latest"
+        return "x4-orbit-2.40"
     if pioenv.endswith("gh_release_rc"):
         return os.environ.get("CROSSPOINT_RC_VERSION", "")
     if pioenv.endswith("gh_release"):

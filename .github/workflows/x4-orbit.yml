@@ -1,16 +1,16 @@
-name: x4-orbit firmware
+name: x4-orbit 2.40 firmware
 
 # Builds the personal profile (env:x4-orbit) and publishes it, with the matching web
-# interface bundle, as the rolling pre-release x4-orbit-latest. The firmware fetches its
+# interface bundle, as the rolling pre-release x4-orbit-2.40. The firmware fetches its
 # web bundle from that release, so both files are attached to it.
 on:
   push:
-    branches: [x4-orbit]
+    branches: [x4-orbit-2.40]
     paths-ignore: ['README.md', 'docs/**']
   workflow_dispatch:
 
 permissions:
-  contents: write  # publishes the x4-orbit-latest release
+  contents: write  # publishes the x4-orbit-2.40 release
 
 jobs:
   build:
@@ -92,9 +92,9 @@ jobs:
           if-no-files-found: error
 
       # A rolling pre-release holding the newest build: a stable download link
-      # (releases/download/x4-orbit-latest/firmware-x4-orbit.bin) that does not expire like
+      # (releases/download/x4-orbit-2.40/firmware-x4-orbit.bin) that does not expire like
       # run artifacts. Web bundles of earlier builds are removed; only this firmware's is kept.
-      - name: Publish x4-orbit-latest release
+      - name: Publish x4-orbit-2.40 release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}  # a fork's gh would otherwise target the parent repo
@@ -103,13 +103,13 @@ jobs:
           web=$(ls web-*.bin)
           notes="Built from ${GITHUB_SHA::7} on $(date -u +%Y-%m-%d). Flash firmware-x4-orbit.bin via Settings > System > SD Card Firmware Update; the reader fetches ${web} from here by itself the first time its web page is opened."
           run() { out=$("$@" 2>&1) || { echo "::error title=release::$* -> ${out//$'\n'/ | }"; exit 1; }; echo "$out"; }
-          if gh release view x4-orbit-latest >/dev/null 2>&1; then
-            run gh release upload x4-orbit-latest firmware-x4-orbit.bin "$web" --clobber
-            for old in $(gh release view x4-orbit-latest --json assets -q '.assets[].name' | grep '^web-.*\.bin$'); do
-              [ "$old" = "$web" ] || run gh release delete-asset x4-orbit-latest "$old" -y
+          if gh release view x4-orbit-2.40 >/dev/null 2>&1; then
+            run gh release upload x4-orbit-2.40 firmware-x4-orbit.bin "$web" --clobber
+            for old in $(gh release view x4-orbit-2.40 --json assets -q '.assets[].name' | grep '^web-.*\.bin$'); do
+              [ "$old" = "$web" ] || run gh release delete-asset x4-orbit-2.40 "$old" -y
             done
-            run gh release edit x4-orbit-latest --notes "$notes" --target "$GITHUB_SHA"
+            run gh release edit x4-orbit-2.40 --notes "$notes" --target "$GITHUB_SHA"
           else
-            run gh release create x4-orbit-latest firmware-x4-orbit.bin "$web" --prerelease \
-              --title "x4-orbit (latest build)" --notes "$notes" --target "$GITHUB_SHA"
+            run gh release create x4-orbit-2.40 firmware-x4-orbit.bin "$web" --prerelease \
+              --title "x4-orbit 2.40 (previous version)" --notes "$notes" --target "$GITHUB_SHA"
           fi
