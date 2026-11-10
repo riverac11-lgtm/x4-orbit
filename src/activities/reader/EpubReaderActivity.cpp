@@ -15,12 +15,11 @@
 #define DEBUG_BACKGROUND_WORK 0
 #endif
 
-#include "BuildFeatures.h"
 #include "EpubReaderActivity.h"
 
 #include <CooperativeAbort.h>
-#include <Epub/FlowContext.h>
 #include <Epub/BookTextSearch.h>
+#include <Epub/FlowContext.h>
 #include <Epub/FootnotePreviews.h>
 #include <Epub/FootnoteShape.h>
 #include <Epub/Page.h>
@@ -52,6 +51,7 @@
 #include <optional>
 
 #include "BookRelocation.h"
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "DictionaryWordSelectActivity.h"
@@ -2815,6 +2815,8 @@ void EpubReaderActivity::openSearch() {
                               : std::nullopt;
         if (page) {
           section->currentPage = *page;
+          // Remember the hit itself, not just its page: a relayout then lands back on the match.
+          noteLandedText(NavigationTarget::makeVisibleOffset(hit.visibleOffset));
           anchorNavTargetToCurrentPage();
         } else {
           navTarget = NavigationTarget::makeVisibleOffset(hit.visibleOffset);

@@ -11,12 +11,12 @@
 #include <OpenSearchDescription.h>
 #include <WiFi.h>
 #include <Xtc.h>
+#include <strings.h>
 
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
-#include <strings.h>
 #include <memory>
 
 #include "CrossPointSettings.h"

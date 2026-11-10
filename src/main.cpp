@@ -38,8 +38,8 @@
 #include <cstring>
 #include <vector>
 
-#include "BuildFeatures.h"
 #include "BootDiagnostics.h"
+#include "BuildFeatures.h"
 #include "ButtonEventManager.h"
 #include "CjkUiFonts.h"
 #include "CrossPointSettings.h"

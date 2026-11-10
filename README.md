@@ -16,6 +16,8 @@ trimmed to reading and pulling books from an OPDS server (built around BookOrbit
   catalog page, search, cover or download.
 - **"On device" marker** on catalog books that are already in your download folder.
 - **Hold Back to leave the OPDS browser** from any depth, straight to Home.
+- **Built for speed where it counts.** Unzipping, parsing, text layout, glyph drawing and image conversion are
+  compiled for speed rather than size, on top of Witch(hunt)'s own latest speed work (2.41-dev).
 - **Its own boot splash.**
 
 **Removed** from the menus and build: screenshots, show page as QR, weather, KOReader sync, Calibre wireless, WebDAV,

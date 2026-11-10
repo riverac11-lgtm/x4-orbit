@@ -1,10 +1,10 @@
-#include "BuildFeatures.h"
 #include "EpubReaderMenuActivity.h"
 
 #include <GfxRenderer.h>
 #include <HalCapabilities.h>
 #include <I18n.h>
 
+#include "BuildFeatures.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OnOffOverride.h"

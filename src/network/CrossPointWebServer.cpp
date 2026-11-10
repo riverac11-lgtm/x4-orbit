@@ -1,4 +1,3 @@
-#include "BuildFeatures.h"
 #include "CrossPointWebServer.h"
 
 #include <ArduinoJson.h>
@@ -29,6 +28,7 @@
 
 #include "BookRelocation.h"
 #include "BootDiagnostics.h"
+#include "BuildFeatures.h"
 #include "ChunkedResponse.h"
 #include "CrossPointSettings.h"
 #include "FontInstaller.h"
