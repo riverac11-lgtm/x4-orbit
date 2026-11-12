@@ -4,6 +4,8 @@
 #include <Logging.h>
 #include <stdio.h>
 
+#include "SpeedCheck.h"
+
 namespace WakeTrace {
 namespace {
 
@@ -49,6 +51,7 @@ void begin() {
   sectionCacheHit = false;
   sectionCacheHitKnown = false;
   summaryEmitted = false;
+  SpeedCheck::log().beginOpen();
   mark(Phase::ReaderEnter);
 }
 
@@ -114,6 +117,24 @@ void logSummary() {
   }
   LOG_INF("WAKE", "%s phase cost ms: %s | open=%u page=%u section=%s", traceFromWake ? "resume" : "open", line, open,
           hasPage ? static_cast<unsigned>(phaseMs[pageIndex]) : 0u, sectionState);
+
+  // The same stamps, kept for the Speed check screen and its report: the log line above is only
+  // readable over a serial cable. A phase that was not reached takes the stamp before it, so its
+  // share reads 0 and the next one carries the time.
+  if (hasPage) {
+    const auto at = [](const Phase phase, const uint32_t otherwise) {
+      const uint8_t i = static_cast<uint8_t>(phase);
+      return (phaseReached & (1u << i)) != 0 ? phaseMs[i] : otherwise;
+    };
+    const uint32_t entered = phaseMs[readerIndex];
+    const uint32_t loaded = at(Phase::BookLoaded, entered);
+    const uint32_t renderStart = at(Phase::RenderStart, loaded);
+    // Not reached when the first page was drawn out of a build still running: the build's share
+    // up to that page is then the chapter's, and the draw is inside it.
+    const uint32_t sectionReady = at(Phase::SectionReady, phaseMs[pageIndex]);
+    SpeedCheck::bookOpened(traceFromWake, loaded - entered, renderStart - loaded, sectionReady - renderStart,
+                           phaseMs[pageIndex] - sectionReady, open, phaseMs[pageIndex]);
+  }
 }
 
 }  // namespace WakeTrace

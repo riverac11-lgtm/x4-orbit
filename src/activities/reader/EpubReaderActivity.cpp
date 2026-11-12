@@ -35,6 +35,7 @@
 #include <GlyphProvider.h>
 #include <HalCapabilities.h>
 #include <HalClock.h>
+#include <HalGPIO.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <I18n.h>
@@ -52,6 +53,7 @@
 
 #include "BookRelocation.h"
 #include "BuildFeatures.h"
+#include "LookaheadBudget.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "DictionaryWordSelectActivity.h"
@@ -92,6 +94,7 @@
 #include "fontIds.h"
 #include "util/ScreenshotUtil.h"
 #include "util/SerialCommandGrammar.h"
+#include "util/SpeedCheck.h"
 #include "util/WakeTrace.h"
 
 // Defined further down (near the other font helpers); declared here because
@@ -1035,6 +1038,7 @@ void EpubReaderActivity::loop() {
   bool buttonNextTurn = false;
   using BA = CrossPointSettings::BUTTON_ACTION;
 
+  turnEventMs_ = 0;  // only a button turn found in this pass has a release time
   ButtonEventManager::ButtonEvent ev;
   while (buttonEvents.consumeEvent(ev)) {
     if (ev.button == MappedInputManager::Button::Confirm) {
@@ -1109,12 +1113,14 @@ void EpubReaderActivity::loop() {
           (ev.button == MappedInputManager::Button::Right && SETTINGS.btnShortRight == BA::BTN_DEFAULT &&
            !leftIsPrev)) {
         buttonPrevTurn = true;
+        turnEventMs_ = ev.releaseMs;
         continue;
       }
       if ((ev.button == MappedInputManager::Button::PageForward && SETTINGS.btnShortPageForward == BA::BTN_DEFAULT) ||
           (ev.button == MappedInputManager::Button::Right && SETTINGS.btnShortRight == BA::BTN_DEFAULT && leftIsPrev) ||
           (ev.button == MappedInputManager::Button::Left && SETTINGS.btnShortLeft == BA::BTN_DEFAULT && !leftIsPrev)) {
         buttonNextTurn = true;
+        turnEventMs_ = ev.releaseMs;
         continue;
       }
     }
@@ -1787,7 +1793,11 @@ void EpubReaderActivity::stepBackgroundSectionBuild() {
     // A later file of the chapter on screen is built whatever the runway: the chapter counter is an
     // estimate ("~") until it is. A long text file followed by a one-page illustration kept the
     // illustration outside the budget, and the "~" with it, until the chapter's last pages (#580).
-    if (currentTailPages + backgroundWindowPagesBuilt_ >= BG_BUILD_LOOKAHEAD_PAGES &&
+    // A longer runway while a cable is in (LookaheadBudget.h); read here, at a section boundary,
+    // so pulling the cable never drops a build in flight: it only stops B asking for the next one.
+    const int lookaheadPages =
+        LookaheadBudget::pages(BG_BUILD_LOOKAHEAD_PAGES, CP_FEATURE_DEEP_LOOKAHEAD != 0, gpio.isUsbConnectedCached());
+    if (currentTailPages + backgroundWindowPagesBuilt_ >= lookaheadPages &&
         !chapterCounterAwaits(backgroundBuildSpineIndex_)) {
       return;
     }
@@ -2641,6 +2651,7 @@ void EpubReaderActivity::stepCurrentSectionBuild() {
 #endif
   LOG_INF("ERS", "Background-C spine=%d complete: %u pages", currentSpineIndex, section->pageCount);
   SerialTestApi::noteBuildDone(currentSpineIndex, section->pageCount);
+  SpeedCheck::sectionBuilt(currentSpineIndex, section->pageCount);
   readerPhase_ = ReaderPhase::READING;
 
   // Resolve the display position. For a Page target, section->currentPage already tracked the
@@ -3866,6 +3877,12 @@ void EpubReaderActivity::pageTurn(bool isForwardTurn) {
   //
   // The lock can be a whole AA pass away, and by now the press has been drained and the button
   // released, so nothing else says a turn is on its way (see aaPreemptedByNavigation()).
+  // Speed check: the turn is timed from the button's release where there was one, and from here
+  // otherwise. Taken before the lock, which can be a whole AA pass away, and recorded under it, so
+  // the render that is still drawing the page being left cannot take this turn for its own.
+  const unsigned long turnDispatchMs = millis();
+  const unsigned long turnEventMs = turnEventMs_;
+  turnEventMs_ = 0;
   pageTurnWaitingForLock_.store(true, std::memory_order_release);
   RenderLock lock(*this);
   pageTurnWaitingForLock_.store(false, std::memory_order_release);
@@ -3950,6 +3967,7 @@ void EpubReaderActivity::pageTurn(bool isForwardTurn) {
     // buffer, and there the planes must go with it.
     preRenderedPage.ready = false;
     usePreRenderedBuffer = true;
+    SpeedCheck::noteInput(turnEventMs, turnDispatchMs, /*preDrawn=*/true);
     sessionPagesAdvanced++;
     globalReadingSessionTracker().onPageTurn();
     lastPageTurnTime = millis();
@@ -3960,6 +3978,7 @@ void EpubReaderActivity::pageTurn(bool isForwardTurn) {
   if (!stepPageStateLocked(isForwardTurn)) {
     return;
   }
+  SpeedCheck::noteInput(turnEventMs, turnDispatchMs, /*preDrawn=*/false);
 
   LOG_DBG("ERS", "PageTurn stats: prerendered=0 candidate=%d expectedNext=%d cachedNext=%d pendingPreRender=%d",
           hadPreRenderedCandidate ? 1 : 0, expectedNextPage, preRenderedPage.pageIndex, pendingPreRender ? 1 : 0);
@@ -4956,6 +4975,7 @@ bool EpubReaderActivity::buildSection(const RenderLayout& layout) {
   chapterSpanSpine_ = -1;  // new spine or new settings: the siblings' caches must be looked up again
   resetBackgroundBuild();
   const unsigned long sectionStart = millis();
+  SpeedCheck::sectionEntry(currentSpineIndex);
 
   // The gather is NOT run here any more. It is a whole-book two-pass scan (measured 2822 ms on
   // X3 for alice-illustrated, which has no footnotes at all) and running it before every first
@@ -5033,6 +5053,7 @@ bool EpubReaderActivity::buildSection(const RenderLayout& layout) {
   // LUT read, a miss means a full rebuild sits between the wake and the page. Recorded as
   // "was a build needed", not the raw probe result, so a CSS-fallback rebuild counts as a miss.
   WakeTrace::setSectionCacheHit(!needBuild);
+  SpeedCheck::log().sectionProbed(needBuild);
 
   // One grep-able line per section entry tying the cache decision to the effective
   // preview inputs — discriminates "stale variant loaded" from "effective value not
@@ -5336,7 +5357,10 @@ bool EpubReaderActivity::buildSection(const RenderLayout& layout) {
 
   // Section is ready (cache hit, blocking build, or a tiny C build that finished in one slice):
   // the Background-C fallback latches for this spine have served their purpose.
-  if (needBuild) SerialTestApi::noteBuildDone(currentSpineIndex, section->pageCount);
+  if (needBuild) {
+    SerialTestApi::noteBuildDone(currentSpineIndex, section->pageCount);
+    SpeedCheck::sectionBuilt(currentSpineIndex, section->pageCount);
+  }
   forceBlockingBuildSpine_ = -1;
   forceReleasedBuildSpine_ = -1;
 
@@ -6210,6 +6234,8 @@ void EpubReaderActivity::renderContents(RenderLock& lock, std::unique_ptr<Page> 
   fcm->logStats("bw_render");
   const auto tBwRender = millis();
   logReaderMemSnapshot("after_bw_render");
+  // The page is drawn; from here on the time is the panel's (and the grey pass's, where one runs).
+  SpeedCheck::refreshStart();
   // Resolve this page's refresh mode (consuming any force flags), then fire it.
   // With AA enabled on X4 the refresh goes out async so the grayscale planes
   // can render during the waveform (inline AA below); everywhere else the
@@ -6494,6 +6520,7 @@ void EpubReaderActivity::renderContents(RenderLock& lock, std::unique_ptr<Page> 
   // whose three waveform passes run after it returns. Stamping at the trigger understated the
   // measured wake by ~2.1 s (trace said 858 ms while the page landed at ~2.4 s), which is
   // exactly the number this trace exists to get right.
+  SpeedCheck::pageVisible();
   WakeTrace::mark(WakeTrace::Phase::PageVisible);
   WakeTrace::logSummary();
 }
@@ -6543,6 +6570,7 @@ void EpubReaderActivity::displayBuildPage(RenderLock& lock, const Page& page, co
     }
     publishPageLinkTargets(page, layout.marginLeft, contentTop);
     renderStatusBar();
+    SpeedCheck::refreshStart();
     if (forceHalfRefreshAfterPopup_) {
       // First real page after the indexing popup: establish a clean baseline (see
       // forceHalfRefreshAfterPopup_) instead of compounding onto the popup's FAST refresh.
@@ -6595,6 +6623,7 @@ void EpubReaderActivity::displayBuildPage(RenderLock& lock, const Page& page, co
   // build completes and renderNormalPass() runs — so the trace has to close here or a miss
   // would report a wake latency that includes the whole rest of the build. After
   // completeDisplay() for the same reason as renderContents(): the pixels are settled here.
+  SpeedCheck::pageVisible();
   WakeTrace::mark(WakeTrace::Phase::PageVisible);
   WakeTrace::logSummary();
 }
@@ -6713,6 +6742,7 @@ void EpubReaderActivity::displayPreRenderedPage(const Page& page, const int orie
   // describe what is going on screen NOW — the pre-render measured the page AFTER this one.
   publishPageLinkTargets(page, orientedMarginLeft, contentTop);
   renderStatusBar();
+  SpeedCheck::refreshStart();
 
   // The image-page follow-up half-refresh can carry over if the previous page had images; honour
   // and clear it here so the pre-render path doesn't skip it.
@@ -6763,6 +6793,7 @@ void EpubReaderActivity::displayPreRenderedPage(const Page& page, const int orie
   // won the race), so this path closes the trace too. Correct to stamp here without a
   // completeDisplay(): unlike renderContents()'s trigger/complete split, displayBuffer() is
   // the blocking variant and has already waited out the waveform by this line.
+  SpeedCheck::pageVisible();
   WakeTrace::mark(WakeTrace::Phase::PageVisible);
   WakeTrace::logSummary();
   // Capture before the AA replay below overwrites the renderer's last-mode (see renderContents).

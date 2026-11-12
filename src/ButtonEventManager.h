@@ -51,6 +51,11 @@ class ButtonEventManager {
     // A screen that polls leaves its events in the queue, so main.cpp meets this one again every
     // frame. Set once it has passed the press on to those screens.
     bool offeredToPolling = false;
+    // When the key came up for a Short, on the sampler's clock; 0 for the other types and for an
+    // event that was not made from a release. The reader times a page turn from it (SpeedCheck):
+    // the turn is only acted on later, after the double-click window when the key has a double
+    // action, and that wait is part of what a turn costs. Last, so positional initialisers stand.
+    unsigned long releaseMs = 0;
   };
 
   // Timing constants (milliseconds)
@@ -164,7 +169,7 @@ class ButtonEventManager {
 
   MappedInputManager& input;
 
-  void pushEvent(Button button, PressType type, unsigned long pressMs);
+  void pushEvent(Button button, PressType type, unsigned long pressMs, unsigned long releaseMs = 0);
   // The other logical name for the same physical button (Up<->PageBack,
   // Down<->PageForward); the button itself when it has no alias.
   static Button pairedAlias(Button button);

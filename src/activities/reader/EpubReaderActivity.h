@@ -535,6 +535,9 @@ class EpubReaderActivity final : public Activity {
   };
   static constexpr uint16_t PAGE_TURN_STATS_WINDOW_SIZE = 10;
   PageTurnStatsWindow pageTurnStatsWindow;
+  // When the button behind the page turn being dispatched was released (ButtonEvent::releaseMs),
+  // for the Speed check; 0 for a turn that came from anything else. Loop task only.
+  unsigned long turnEventMs_ = 0;
   // Set by render() after a normal page render to request a pre-render of the next page.
   bool pendingPreRender = false;
   // Deferred grayscale (Phase 8): after the BW display pass, defer the AA render until the
