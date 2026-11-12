@@ -1,3 +1,4 @@
+#include "BuildFeatures.h"
 #include "HomeMoreActivity.h"
 
 #include <GfxRenderer.h>
@@ -10,7 +11,8 @@
 
 HomeMoreActivity::HomeMoreActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
     : MenuListActivity("HomeMore", renderer, mappedInput) {
-  const HomeMenuAvailability availability{.hasBookmarks = GLOBAL_BOOKMARKS.hasAny()};
+  const HomeMenuAvailability availability{.hasBookmarks = GLOBAL_BOOKMARKS.hasAny(),
+                                          .hasOnlineLibrary = CP_FEATURE_HOME_OPDS != 0};
   std::vector<HomeMenuEntry> entries;
   entries.reserve(5);
   collectHomeMenuEntries(HomeMenuPlacement::More, availability, entries);

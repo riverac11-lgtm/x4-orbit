@@ -30,6 +30,8 @@
 #include "CrossPointState.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "BuildFeatures.h"
+#include "components/OrbitArt.h"
 #include "images/Logo120.h"
 #include "images/MoonIcon.h"
 
@@ -615,9 +617,17 @@ void SleepActivity::renderDefaultSleepScreen() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   renderer.clearScreen();
+#if CP_ORBIT_PROFILE
+  // The boot splash's picture, so the reader looks the same asleep as it does starting up. Dark
+  // (the default) inverts it below into white stars on a black sky.
+  (void)pageWidth;
+  OrbitArt::draw(renderer);
+  renderer.drawCenteredText(SMALL_FONT_ID, pageHeight - 40, tr(STR_SLEEPING));
+#else
   renderer.drawImage(Logo120, (pageWidth - 120) / 2, (pageHeight - 120) / 2, 120, 120);
   renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 70, tr(STR_CROSSPOINT), true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, tr(STR_SLEEPING));
+#endif
 
   // Make sleep screen dark unless light is selected in settings
   if (SETTINGS.sleepScreen != CrossPointSettings::SLEEP_SCREEN_MODE::LIGHT) {

@@ -1,3 +1,4 @@
+#include "BuildFeatures.h"
 #include "HomeActivity.h"
 
 #include <Bitmap.h>
@@ -126,7 +127,8 @@ int getHomeCoverRenderHeight(const HomeScreenLayout& layout) {
 void HomeActivity::rebuildMenuEntries() {
   menuEntries.clear();
   menuEntries.reserve(6);  // all six shown, or five plus More
-  const HomeMenuAvailability availability{.hasBookmarks = GLOBAL_BOOKMARKS.hasAny()};
+  const HomeMenuAvailability availability{.hasBookmarks = GLOBAL_BOOKMARKS.hasAny(),
+                                          .hasOnlineLibrary = CP_FEATURE_HOME_OPDS != 0};
   collectHomeMenuEntries(HomeMenuPlacement::Home, availability, menuEntries);
 }
 

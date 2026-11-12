@@ -240,6 +240,11 @@ inline void buildSettings(const RowSink& emit) {
   emit(SettingInfo::Toggle(StrId::STR_LIBRARY, &CrossPointSettings::showLibraryOnHome, "showLibraryOnHome",
                            StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));
+#if CP_FEATURE_HOME_OPDS
+  emit(SettingInfo::Toggle(StrId::STR_ONLINE_LIBRARY, &CrossPointSettings::showOnlineLibraryOnHome,
+                           "showOnlineLibraryOnHome", StrId::STR_CAT_DISPLAY)
+           .withSubmenu(StrId::STR_MENU_DISP_HOME));
+#endif
   emit(SettingInfo::Toggle(StrId::STR_READING_STATS, &CrossPointSettings::showReadingStatsOnHome,
                            "showReadingStatsOnHome", StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));

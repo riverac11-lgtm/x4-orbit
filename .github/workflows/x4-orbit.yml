@@ -77,7 +77,10 @@ jobs:
             grep -E "RAM:\s" -m1 pio.log | sed 's/^/- /' || true
             grep -E "Flash:\s" -m1 pio.log | sed 's/^/- /' || true
           } >> "$GITHUB_STEP_SUMMARY"
-          cp .pio/build/x4-orbit/firmware.bin firmware-x4-orbit.bin
+          # Versioned file name: v<upstream version>-orbit.<our revision>.bin (platformio.ini).
+          ver=$(python3 -c "import configparser; c = configparser.ConfigParser(interpolation=None, strict=False); c.read('platformio.ini'); print('v%s-orbit.%s' % (c['crosspoint']['version'].strip(), c['orbit']['revision'].strip()))")
+          echo "ORBIT_VERSION=$ver" >> "$GITHUB_ENV"
+          cp .pio/build/x4-orbit/firmware.bin "$ver.bin"
           count=$(ls .pio/build/x4-orbit/web-*.bin 2>/dev/null | wc -l)
           [ "$count" = "1" ] || { echo "::error::expected one web-*.bin, found $count"; exit 1; }
           cp .pio/build/x4-orbit/web-*.bin .
@@ -87,13 +90,13 @@ jobs:
         with:
           name: firmware-x4-orbit
           path: |
-            firmware-x4-orbit.bin
+            v*-orbit.*.bin
             web-*.bin
           if-no-files-found: error
 
-      # A rolling pre-release holding the newest build: a stable download link
-      # (releases/download/x4-orbit-latest/firmware-x4-orbit.bin) that does not expire like
-      # run artifacts. Web bundles of earlier builds are removed; only this firmware's is kept.
+      # A rolling pre-release holding the newest build, so its link never changes and the firmware
+      # always finds its web bundle there. The firmware file carries the version in its name;
+      # files of earlier builds are removed. The body is docs/x4-orbit-release-notes.md.
       - name: Publish x4-orbit-latest release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,15 +104,21 @@ jobs:
         run: |
           set -uo pipefail
           web=$(ls web-*.bin)
-          notes="Built from ${GITHUB_SHA::7} on $(date -u +%Y-%m-%d). Flash firmware-x4-orbit.bin via Settings > System > SD Card Firmware Update; the reader fetches ${web} from here by itself the first time its web page is opened."
+          fw="$ORBIT_VERSION.bin"
+          {
+            cat docs/x4-orbit-release-notes.md
+            echo
+            echo "---"
+            echo "Built from ${GITHUB_SHA::7} on $(date -u +%Y-%m-%d). Files: \`$fw\` (firmware), \`$web\` (web interface, fetched by the reader itself)."
+          } > notes.md
           run() { out=$("$@" 2>&1) || { echo "::error title=release::$* -> ${out//$'\n'/ | }"; exit 1; }; echo "$out"; }
           if gh release view x4-orbit-latest >/dev/null 2>&1; then
-            run gh release upload x4-orbit-latest firmware-x4-orbit.bin "$web" --clobber
-            for old in $(gh release view x4-orbit-latest --json assets -q '.assets[].name' | grep '^web-.*\.bin$'); do
-              [ "$old" = "$web" ] || run gh release delete-asset x4-orbit-latest "$old" -y
+            run gh release upload x4-orbit-latest "$fw" "$web" --clobber
+            for old in $(gh release view x4-orbit-latest --json assets -q '.assets[].name' | grep -E '\.bin$'); do
+              [ "$old" = "$web" ] || [ "$old" = "$fw" ] || run gh release delete-asset x4-orbit-latest "$old" -y
             done
-            run gh release edit x4-orbit-latest --notes "$notes" --target "$GITHUB_SHA"
+            run gh release edit x4-orbit-latest --title "x4-orbit $ORBIT_VERSION (latest)" --notes-file notes.md --target "$GITHUB_SHA"
           else
-            run gh release create x4-orbit-latest firmware-x4-orbit.bin "$web" --prerelease \
-              --title "x4-orbit (latest build)" --notes "$notes" --target "$GITHUB_SHA"
+            run gh release create x4-orbit-latest "$fw" "$web" --prerelease \
+              --title "x4-orbit $ORBIT_VERSION (latest)" --notes-file notes.md --target "$GITHUB_SHA"
           fi

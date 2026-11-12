@@ -13,6 +13,7 @@
 
 enum class HomeMenuAction : uint8_t {
   Library,
+  OnlineLibrary,  // the OPDS catalog, straight from the home screen
   ReadingStats,
   GlobalBookmarks,
   FileTransfer,
@@ -31,6 +32,8 @@ struct HomeMenuEntry {
 // lists: the per-item settings choose where an entry goes, not whether it exists.
 struct HomeMenuAvailability {
   bool hasBookmarks = false;
+  // Whether this build offers the OPDS catalog from the home screen (CP_FEATURE_HOME_OPDS).
+  bool hasOnlineLibrary = false;
 };
 
 enum class HomeMenuPlacement : uint8_t { Home, More };

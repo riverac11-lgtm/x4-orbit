@@ -1,3 +1,5 @@
+#include "BuildFeatures.h"
+#include "OrbitProfile.h"
 #include "CrossPointSettings.h"
 
 #include <BoardConfig.h>
@@ -216,6 +218,10 @@ bool CrossPointSettings::loadFromFile() {
   // Board-specific keymap defaults must be applied after hardware profile
   // selection and before JSON is read, so missing/legacy values inherit them.
   applyDeviceButtonDefaults();
+#if CP_ORBIT_PROFILE
+  // A card with no settings file yet starts on the profile; a file read below overrides it.
+  OrbitProfile::apply(*this);
+#endif
 
   // Try JSON first
   if (Storage.exists(SETTINGS_FILE_JSON)) {

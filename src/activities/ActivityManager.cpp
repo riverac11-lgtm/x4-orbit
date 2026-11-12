@@ -567,6 +567,21 @@ void ActivityManager::goToBrowser() {
   }
 }
 
+// The home screen's way into the catalog: Back from its top returns Home, not to File Transfer.
+// With no server set up yet it opens the server settings instead, where "Add Server" is, so the
+// entry is never a dead end.
+void ActivityManager::goToOnlineLibrary() {
+  const auto& servers = OPDS_STORE.getServers();
+  if (servers.empty()) {
+    // Pushed, not replaced: the settings-mode list finishes on Back, and Home is what it returns to.
+    pushActivity(std::make_unique<OpdsServerListActivity>(renderer, mappedInput));
+  } else if (servers.size() == 1) {
+    replaceActivity(std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, servers[0], OpdsBackTo::Home));
+  } else {
+    replaceActivity(std::make_unique<OpdsServerListActivity>(renderer, mappedInput, true, OpdsBackTo::Home));
+  }
+}
+
 void ActivityManager::goToBrowserWithSearch(std::string query) {
   const auto& servers = OPDS_STORE.getServers();
   if (servers.size() == 1) {
@@ -694,6 +709,9 @@ void ActivityManager::goToHomeMenuAction(const HomeMenuAction action) {
   switch (action) {
     case HomeMenuAction::Library:
       goToLibrary(libraryTabFrom(APP_STATE.libraryTab));
+      break;
+    case HomeMenuAction::OnlineLibrary:
+      goToOnlineLibrary();
       break;
     case HomeMenuAction::ReadingStats:
       goToReadingStats();

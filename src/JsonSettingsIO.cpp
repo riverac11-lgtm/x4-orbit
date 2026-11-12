@@ -1,3 +1,5 @@
+#include "BuildFeatures.h"
+#include "OrbitProfile.h"
 #include "JsonSettingsIO.h"
 
 #include <ArduinoJson.h>
@@ -271,6 +273,10 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   // Stamps which generation of gesture defaults this file was written against.
   // See CrossPointSettings::GESTURE_DEFAULTS_VERSION.
   doc["gestureDefaultsV"] = s.gestureDefaultsVersion;
+#if CP_ORBIT_PROFILE
+  // See OrbitProfile.h.
+  doc["orbitProfileV"] = OrbitProfile::VERSION;
+#endif
   // See CrossPointSettings::BUTTON_ACTIONS_VERSION.
   doc["buttonActionsV"] = CrossPointSettings::BUTTON_ACTIONS_VERSION;
   // Which meaning the fontSize / txtFontSize values below carry (point sizes since version 2).
@@ -523,6 +529,14 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   }
 
   if (s.quickResumeSleepScreen != quickResumeBeforeNormalize && needsResave) *needsResave = true;
+
+#if CP_ORBIT_PROFILE
+  // A file from before this profile version (or from stock firmware) gets the profile once.
+  if (doc["orbitProfileV"].as<int>() < static_cast<int>(OrbitProfile::VERSION)) {
+    OrbitProfile::apply(s);
+    if (needsResave) *needsResave = true;
+  }
+#endif
 
   LOG_DBG("CPS", "Settings loaded from file");
 

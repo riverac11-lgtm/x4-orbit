@@ -784,6 +784,7 @@ class CrossPointSettings {
   // with nothing behind it (no bookmarks, weather off) shows in neither place.
   // Settings has no switch: it is where these are turned back on. See HomeMenu.cpp.
   uint8_t showLibraryOnHome = 1;
+  uint8_t showOnlineLibraryOnHome = 1;
   // On by default, because a screen nobody can find is a screen nobody reads.
   uint8_t showReadingStatsOnHome = 1;
   uint8_t showBookmarksOnHome = 1;

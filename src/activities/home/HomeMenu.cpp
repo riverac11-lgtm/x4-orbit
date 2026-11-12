@@ -6,7 +6,7 @@
 namespace {
 
 // What an entry needs before it appears anywhere.
-enum class Requires : uint8_t { Nothing, Bookmarks, WeatherEnabled };
+enum class Requires : uint8_t { Nothing, Bookmarks, WeatherEnabled, OnlineLibrary };
 
 struct HomeMenuRow {
   HomeMenuEntry entry;
@@ -24,6 +24,11 @@ struct HomeMenuRow {
 // screen already says so plainly when there is nothing to show.
 constexpr HomeMenuRow kRows[] = {
     {{HomeMenuAction::Library, StrId::STR_LIBRARY, Folder}, Requires::Nothing, &CrossPointSettings::showLibraryOnHome},
+    // Second, because fetching a book is the other thing a reader comes to the home screen for. It
+    // used to be three screens away (File Transfer > OPDS Browser); it still is there as well.
+    {{HomeMenuAction::OnlineLibrary, StrId::STR_ONLINE_LIBRARY, Library},
+     Requires::OnlineLibrary,
+     &CrossPointSettings::showOnlineLibraryOnHome},
     {{HomeMenuAction::ReadingStats, StrId::STR_READING_STATS, Stats},
      Requires::Nothing,
      &CrossPointSettings::showReadingStatsOnHome},
@@ -47,6 +52,8 @@ bool isAvailable(const Requires requirement, const HomeMenuAvailability& availab
       return true;
     case Requires::Bookmarks:
       return availability.hasBookmarks;
+    case Requires::OnlineLibrary:
+      return availability.hasOnlineLibrary;
     case Requires::WeatherEnabled:
 #if CP_FEATURE_WEATHER
       return SETTINGS.useWeather != 0;
