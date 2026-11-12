@@ -1,4 +1,4 @@
-# x4-orbit handoff (paused 2026-11-12). Read this INSTEAD of re-exploring.
+# x4-orbit handoff (paused again 2026-11-12 18:43; agents restarted once, each saved WIP on its branch). Read this INSTEAD of re-exploring.
 
 Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = e438b0cd9 (Witch 2.41-dev
 + ours, release `x4-orbit-latest`). Work branch: `orbit-next` (pushed). Fallbacks: `x4-orbit-2.40`,
@@ -23,8 +23,7 @@ Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = 
 - Workflow: versioned asset v<ver>-orbit.<rev>.bin, notes from docs/x4-orbit-release-notes.md.
 
 ## Next steps, in order
-1. platformio.ini: add `revision = 2` under [orbit]; set x4-orbit CROSSPOINT_VERSION to
-   `${crosspoint.version}-orbit.${orbit.revision}`. Write docs/x4-orbit-release-notes.md.
+1. (revision = 2 DONE.) Write docs/x4-orbit-release-notes.md.
 2. Compile orbit-next; fix errors (likely: unused pageWidth in SleepActivity, includes).
 3. Add HomeMenuTest cases for OnlineLibrary; build target for test/home_menu and run.
 4. Agents (briefs: docs/orbit-dev/AGENT_SETUP.md + the three task descriptions below). Worktrees
