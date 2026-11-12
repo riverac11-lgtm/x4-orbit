@@ -39,9 +39,3 @@
 #ifndef CP_FEATURE_OTA
 #define CP_FEATURE_OTA 1  // Internet firmware update (the SD-card update stays)
 #endif
-
-// Unlike the switches above this one is OFF unless a profile asks for it: it changes how much
-// background work the reader does, and x4-orbit is the profile that wants it.
-#ifndef CP_FEATURE_DEEP_LOOKAHEAD
-#define CP_FEATURE_DEEP_LOOKAHEAD 0  // On USB power, lay out ~400 pages ahead instead of 50 (LookaheadBudget.h)
-#endif

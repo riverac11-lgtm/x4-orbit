@@ -1,5 +1,4 @@
-// Tests for the pure half of the Speed check (src/util/SpeedCheckLog.h) and for the look-ahead
-// budget (src/activities/reader/LookaheadBudget.h).
+// Tests for the pure half of the Speed check (src/util/SpeedCheckLog.h).
 //
 // The Speed check's figures are read by someone who cannot check them against a serial log, so
 // what a figure is paired with has to be right: a page turn with the refresh that showed it and
@@ -11,7 +10,6 @@
 #include <cstring>
 #include <string>
 
-#include "activities/reader/LookaheadBudget.h"
 #include "util/SpeedCheckLog.h"
 
 namespace {
@@ -422,18 +420,6 @@ TEST(SpeedCheckReport, DescribesEachWayAChapterWasHad) {
   s.pages = 31;
   describeSection(s, out, sizeof(out));
   EXPECT_STREQ(out, "shown while building, build 5200 ms, 31 pages");
-}
-
-TEST(LookaheadBudgetTest, OnlyAPoweredDeviceWithTheFeatureLooksFurtherAhead) {
-  EXPECT_EQ(LookaheadBudget::pages(50, /*deepLookahead=*/false, /*onExternalPower=*/false), 50);
-  EXPECT_EQ(LookaheadBudget::pages(50, false, true), 50);  // the upstream profiles
-  EXPECT_EQ(LookaheadBudget::pages(50, true, false), 50);  // on battery the budget is upstream's
-  EXPECT_EQ(LookaheadBudget::pages(50, true, true), LookaheadBudget::kPoweredPages);
-  EXPECT_GT(LookaheadBudget::kPoweredPages, 50);
-}
-
-TEST(LookaheadBudgetTest, ALargerConfiguredBudgetIsNeverShortened) {
-  EXPECT_EQ(LookaheadBudget::pages(1000, true, true), 1000);
 }
 
 }  // namespace

@@ -2,8 +2,8 @@ add_executable(SpeedCheckTest
   SpeedCheckTest.cpp
 )
 
-# Pure C++: SpeedCheckLog.h depends on nothing but <cstdint>/<cstdio>, and LookaheadBudget.h on
-# nothing at all, so no Arduino shim, no HAL, no SD card.
+# Pure C++: SpeedCheckLog.h depends on nothing but <cstdint>/<cstdio>, so no Arduino shim, no HAL,
+# no SD card.
 target_include_directories(SpeedCheckTest PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../src
 )

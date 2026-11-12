@@ -35,7 +35,6 @@
 #include <GlyphProvider.h>
 #include <HalCapabilities.h>
 #include <HalClock.h>
-#include <HalGPIO.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <I18n.h>
@@ -53,7 +52,6 @@
 
 #include "BookRelocation.h"
 #include "BuildFeatures.h"
-#include "LookaheadBudget.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "DictionaryWordSelectActivity.h"
@@ -1793,11 +1791,7 @@ void EpubReaderActivity::stepBackgroundSectionBuild() {
     // A later file of the chapter on screen is built whatever the runway: the chapter counter is an
     // estimate ("~") until it is. A long text file followed by a one-page illustration kept the
     // illustration outside the budget, and the "~" with it, until the chapter's last pages (#580).
-    // A longer runway while a cable is in (LookaheadBudget.h); read here, at a section boundary,
-    // so pulling the cable never drops a build in flight: it only stops B asking for the next one.
-    const int lookaheadPages =
-        LookaheadBudget::pages(BG_BUILD_LOOKAHEAD_PAGES, CP_FEATURE_DEEP_LOOKAHEAD != 0, gpio.isUsbConnectedCached());
-    if (currentTailPages + backgroundWindowPagesBuilt_ >= lookaheadPages &&
+    if (currentTailPages + backgroundWindowPagesBuilt_ >= BG_BUILD_LOOKAHEAD_PAGES &&
         !chapterCounterAwaits(backgroundBuildSpineIndex_)) {
       return;
     }
