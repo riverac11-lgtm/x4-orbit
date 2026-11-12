@@ -13,6 +13,7 @@
 #include "OpdsBackTo.h"
 #include "OpdsServerStore.h"
 #include "network/HttpDownloader.h"
+#include "util/OpdsDownloadQueue.h"
 
 /**
  * Activity for browsing and downloading books from an OPDS server.
@@ -82,6 +83,43 @@ class OpdsBookBrowserActivity final : public Activity {
   // "Format not supported" over the list or the book detail, after Confirm on a book the catalog
   // offers only in formats the reader cannot open. The next press, tap or swipe only takes it down.
   bool formatNotice = false;
+  // What the notice says when it is not "Format not supported": the queue's summary, a full list.
+  std::string noticeText;
+  void showNotice(const char* text);
+
+  // Remember where you were: the feed, the way back and the row of the last visit to this server,
+  // kept in /.crosspoint and reopened by onEnter(). Not for a visit opened on a search of its own
+  // (a finished book's "more by this author"), which neither reads nor replaces it.
+  bool rememberPosition = false;
+  // The feed being loaded is the remembered one: a failure opens the root instead of the error.
+  bool restoring = false;
+  int restoreRow = 0;
+  // The remembered feed could not be reached this time. Leave the file alone on the way out, unless
+  // the user browses on or backs out of the root.
+  bool keepSavedPosition = false;
+  bool loadSavedPosition();
+  void savePosition() const;
+  // The root from the per-server discovery cache, without the network. False when there is none.
+  bool showRootFromDiscovery();
+  // fetchFeed() without the remembered-position fallback. False with the error screen set up;
+  // `unreachable` then says the feed could not be fetched at all (as opposed to read).
+  bool loadFeed(const std::string& path, bool& unreachable);
+
+  // Download queue: books marked in the lists (hold Confirm), fetched one after another by Confirm
+  // on a marked one. Kept across pages and feeds for the visit; each mark's download details are a
+  // small file on the card (see OpdsDownloadQueue.h), so RAM holds 4 bytes per mark.
+  OpdsMarks marks;
+  bool stopRequested = false;  // Back was pressed during a transfer
+  uint32_t lastProgressMs = 0;
+  bool isMarked(const OpdsEntry& book) const;
+  void toggleMark(const OpdsEntry& book);
+  void unmark(uint32_t key);
+  void runQueue();
+  // One book to the download folder, with its cover and cache clean-up. Draws the progress under
+  // statusMessage; the caller sets the state before and after.
+  HttpDownloader::DownloadError fetchBook(const OpdsQueueItem& item, bool keepSession);
+  bool onTransferProgress(unsigned int downloaded, unsigned int total);
+  std::string resolveUrl(const std::string& href) const;
 
   OpdsServer server;  // Copied at construction — safe even if the store changes during browsing
   OpdsBackTo backTo;
@@ -125,7 +163,8 @@ class OpdsBookBrowserActivity final : public Activity {
   // Short Left/Right on the catalog: Search where the feed offers one, Info on a book, and never a
   // step (an action that does not apply leaves its side doing nothing). The format picker keeps
   // the default pair.
-  static constexpr ListDeclaration kCatalogDeclaration{{true, StrId::STR_SEARCH}, {true, StrId::STR_INFO}};
+  // A long Confirm marks a book for the download queue (on any other row it opens, as a short one).
+  static constexpr ListDeclaration kCatalogDeclaration{{true, StrId::STR_SEARCH}, {true, StrId::STR_INFO}, true};
   static constexpr ListDeclaration kFormatDeclaration{};
 
   struct CatalogHost final : ListHost {
