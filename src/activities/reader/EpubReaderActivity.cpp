@@ -69,6 +69,7 @@
 #include "KOReaderDocumentId.h"
 #include "MappedInputManager.h"
 #include "PreRenderGate.h"
+#include "SearchList.h"
 #if CP_FEATURE_QR_PAGE
 #include "QrDisplayActivity.h"
 #endif
@@ -2800,30 +2801,83 @@ void EpubReaderActivity::openSearch() {
     RenderLock lock(*this);
     spineIdx = currentSpineIndex;
   }
-  startActivityForResult(
-      std::make_unique<EpubReaderSearchActivity>(renderer, mappedInput, epub, spineIdx, &lastSearchQuery),
-      [this](const ActivityResult& result) {
-        // A clean refresh for the page that comes back (see SELECT_CHAPTER).
-        ReaderUtils::enforceExitFullRefresh(renderer);
-        if (result.isCancelled) return;
-        const auto& hit = std::get<SearchResult>(result.data);
-        RenderLock lock(*this);
-        searchHighlight.spine = hit.spineIndex;
-        searchHighlight.page = -1;
-        const auto page = (hit.spineIndex == currentSpineIndex && section)
-                              ? section->getPageForVisibleTextOffset(hit.visibleOffset)
-                              : std::nullopt;
-        if (page) {
-          section->currentPage = *page;
-          // Remember the hit itself, not just its page: a relayout then lands back on the match.
-          noteLandedText(NavigationTarget::makeVisibleOffset(hit.visibleOffset));
-          anchorNavTargetToCurrentPage();
-        } else {
-          navTarget = NavigationTarget::makeVisibleOffset(hit.visibleOffset);
-          currentSpineIndex = hit.spineIndex;
-          section.reset();
-        }
-      });
+  startActivityForResult(std::make_unique<EpubReaderSearchActivity>(renderer, mappedInput, epub, spineIdx,
+                                                                    &lastSearchQuery, &lastSearchWholeWord),
+                         [this](const ActivityResult& result) {
+                           // A clean refresh for the page that comes back (see SELECT_CHAPTER).
+                           ReaderUtils::enforceExitFullRefresh(renderer);
+                           if (result.isCancelled) return;
+                           goToSearchHit(std::get<SearchResult>(result.data));
+                         });
+}
+
+void EpubReaderActivity::goToSearchHit(const SearchResult& hit) {
+  RenderLock lock(*this);
+  searchHighlight.spine = hit.spineIndex;
+  searchHighlight.page = -1;
+  searchHighlight.offset = hit.visibleOffset;
+  const auto page = (hit.spineIndex == currentSpineIndex && section)
+                        ? section->getPageForVisibleTextOffset(hit.visibleOffset)
+                        : std::nullopt;
+  if (page) {
+    section->currentPage = *page;
+    // Remember the hit itself, not just its page: a relayout then lands back on the match.
+    noteLandedText(NavigationTarget::makeVisibleOffset(hit.visibleOffset));
+    anchorNavTargetToCurrentPage();
+  } else {
+    navTarget = NavigationTarget::makeVisibleOffset(hit.visibleOffset);
+    currentSpineIndex = hit.spineIndex;
+    section.reset();
+  }
+}
+
+// The kept list's file says which hit was opened last; the one beside it becomes that. Nothing
+// happens when the list cannot be read (the menu offers this only while the file exists).
+void EpubReaderActivity::stepSearchHit(const bool forward) {
+  if (!epub) return;
+  HalFile file;
+  if (!Storage.openFileForUpdate("ERS", searchlist::pathFor(epub->getCachePath()), file)) return;
+  searchlist::Header header;
+  std::vector<searchlist::Pos> hits;
+  const bool ok = searchlist::readPositions(file, header, hits) && !hits.empty();
+  int index = -1;
+  if (ok) {
+    index = searchlist::step(header.current, static_cast<int>(hits.size()), forward);
+    searchlist::writeCurrent(file, static_cast<int16_t>(index));
+  }
+  file.close();
+  if (!ok) return;
+  // After a restart the reader no longer has the query the list was made with.
+  lastSearchQuery = header.query;
+  lastSearchWholeWord = (header.flags & searchlist::FLAG_WHOLE_WORD) != 0;
+  const auto& hit = hits[static_cast<size_t>(index)];
+  goToSearchHit(SearchResult{hit.spine, hit.offset, hit.end});
+  requestUpdate();
+}
+
+// How many of the list's hits sit before the opened one on its page: the page shows the query
+// that many times before the match that was asked for. 0 when there is no list to ask.
+uint16_t EpubReaderActivity::searchHitOrdinalOnPage() const {
+  HalFile file;
+  const std::string path = searchlist::pathFor(epub->getCachePath());
+  if (!Storage.exists(path.c_str()) || !Storage.openFileForRead("ERS", path, file)) return 0;
+  searchlist::Header header;
+  std::vector<searchlist::Pos> hits;
+  const bool ok = searchlist::readPositions(file, header, hits);
+  file.close();
+  if (!ok) return 0;
+  uint16_t before = 0;
+  for (size_t i = 0; i < hits.size(); ++i) {
+    if (hits[i].spine != searchHighlight.spine || hits[i].offset != searchHighlight.offset) continue;
+    // Hits of one chapter are in reading order, so the ones on this page are the nearest before.
+    for (size_t j = i; j-- > 0 && hits[j].spine == hits[i].spine;) {
+      const auto page = section->getPageForVisibleTextOffset(hits[j].offset);
+      if (!page || *page != section->currentPage) break;
+      before++;
+    }
+    break;
+  }
+  return before;
 }
 
 // Underlines the search hit on the page it landed on. The section keeps no per-word source
@@ -2839,6 +2893,7 @@ void EpubReaderActivity::drawSearchHighlight(const Page& page, const int fontId,
   }
   if (searchHighlight.page < 0) {
     searchHighlight.page = section->currentPage;
+    searchHighlight.nth = searchHitOrdinalOnPage();
   } else if (searchHighlight.page != section->currentPage) {
     searchHighlight.spine = -1;  // the reader moved on
     return;
@@ -2869,9 +2924,9 @@ void EpubReaderActivity::drawSearchHighlight(const Page& page, const int fontId,
       words.push_back(WordRef{&line, i, begin, text.size()});
     }
   }
-  const auto match = std::search(text.begin(), text.end(), needle.begin(), needle.end());
-  if (match == text.end()) return;
-  const size_t from = static_cast<size_t>(match - text.begin());
+  // The match that was opened, not just the page's first: Next match on one page moves the line.
+  const size_t from = booksearch::findInFolded(text, needle, lastSearchWholeWord, searchHighlight.nth);
+  if (from == SIZE_MAX) return;
   const size_t to = from + needle.size();
 
   const int barHeight = 2;
@@ -2891,6 +2946,10 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
   switch (action) {
     case EpubReaderMenuActivity::MenuAction::SEARCH:
       openSearch();
+      break;
+    case EpubReaderMenuActivity::MenuAction::SEARCH_NEXT:
+    case EpubReaderMenuActivity::MenuAction::SEARCH_PREV:
+      stepSearchHit(action == EpubReaderMenuActivity::MenuAction::SEARCH_NEXT);
       break;
     case EpubReaderMenuActivity::MenuAction::SELECT_CHAPTER: {
       int spineIdx;
@@ -7799,7 +7858,7 @@ void EpubReaderActivity::openReaderMenu() {
           bookTextAntiAliasingOverride, bookHyphenationOverride, bookFontSizeNormalizationOverride,
           bookInlineFootnotePreviewsOverride, bookLineSpacingOverride, bookVerticalTextOverride,
           bookPublisherFontsOverride, bookVerticalAllowed_, !bookmarkStore.isEmpty(), isCurrentPageStarred,
-          hasPrintedPages),
+          hasPrintedPages, Storage.exists(searchlist::pathFor(epub->getCachePath()).c_str())),
       [this](const ActivityResult& result) {
         const auto& menu = std::get<MenuResult>(result.data);
         applyOrientation(menu.orientation);

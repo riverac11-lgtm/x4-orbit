@@ -252,6 +252,23 @@ TEST(BookTextSearchTest, WordCharClasses) {
   EXPECT_TRUE(isWordChar('b' | booksearch::CASE_BIT));
 }
 
+TEST(BookTextSearchTest, FindInFoldedPicksTheNthMatchByTheSameRules) {
+  using booksearch::findInFolded;
+  const auto text = cps(U"concatenate cat, cats cat");
+  const auto needle = foldQuery("Cat");
+  EXPECT_EQ(findInFolded(text, needle, false), 3u);
+  EXPECT_EQ(findInFolded(text, needle, false, 1), 12u);
+  EXPECT_EQ(findInFolded(text, needle, true), 12u);
+  EXPECT_EQ(findInFolded(text, needle, true, 1), 22u);
+  // Fewer matches than asked for: the last one. None: SIZE_MAX.
+  EXPECT_EQ(findInFolded(text, needle, true, 7), 22u);
+  EXPECT_EQ(findInFolded(text, foldQuery("dog"), false), SIZE_MAX);
+  EXPECT_EQ(findInFolded(text, {}, false), SIZE_MAX);
+  EXPECT_EQ(findInFolded(cps(U"ca"), needle, false), SIZE_MAX);
+  // Matches do not overlap, as in the chapter search.
+  EXPECT_EQ(findInFolded(cps(U"aaaa"), cps(U"aa"), false, 1), 2u);
+}
+
 // --- Corpus cross-checks -----------------------------------------------------------------
 
 namespace {

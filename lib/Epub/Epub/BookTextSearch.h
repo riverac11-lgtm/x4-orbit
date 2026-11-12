@@ -59,6 +59,13 @@ uint32_t matchKey(uint32_t cp, bool matchCase);
 // space. Empty when the query has no searchable characters.
 std::vector<uint32_t> foldQuery(const std::string& utf8, bool matchCase = false);
 
+// Finds the query in text that is already folded (the reader's page: its words' foldCodepoint()
+// units, one ' ' between words), by the search's own rules: matches do not overlap, wholeWord as
+// in Options. Returns where match number `ordinal` (0 is the first) starts, or the last match
+// when there are fewer; SIZE_MAX when there is none.
+size_t findInFolded(const std::vector<uint32_t>& text, const std::vector<uint32_t>& needle, bool wholeWord,
+                    size_t ordinal = 0);
+
 struct Hit {
   uint32_t visibleOffset = 0;  // visible offset of the first matched character
   uint32_t visibleEnd = 0;     // one past the last matched byte
@@ -70,8 +77,7 @@ class ChapterSearcher final : public Print {
   // `needle` comes from foldQuery() -- called with the same matchCase as `options` -- and must
   // be non-empty. Collection stops after `maxHits`; contextChars codepoints of context are
   // kept each side.
-  ChapterSearcher(const std::vector<uint32_t>& needle, size_t maxHits, size_t contextChars = 28,
-                  Options options = {});
+  ChapterSearcher(const std::vector<uint32_t>& needle, size_t maxHits, size_t contextChars = 28, Options options = {});
   ~ChapterSearcher() override;
   ChapterSearcher(const ChapterSearcher&) = delete;
   ChapterSearcher& operator=(const ChapterSearcher&) = delete;

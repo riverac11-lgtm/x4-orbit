@@ -3,6 +3,7 @@
 #include <Utf8.h>
 #include <strings.h>
 
+#include <algorithm>
 #include <cstring>
 
 #include "Epub/VisibleText.h"
@@ -182,6 +183,26 @@ std::vector<uint32_t> foldQuery(const std::string& utf8, const bool matchCase) {
   }
   while (!out.empty() && out.back() == ' ') out.pop_back();
   return out;
+}
+
+size_t findInFolded(const std::vector<uint32_t>& text, const std::vector<uint32_t>& needle, const bool wholeWord,
+                    size_t ordinal) {
+  size_t found = SIZE_MAX;
+  const size_t n = needle.size();
+  if (n == 0) return found;
+  for (size_t i = 0; i + n <= text.size();) {
+    const bool inLongerWord =
+        wholeWord && ((i > 0 && isWordChar(needle.front()) && isWordChar(text[i - 1])) ||
+                      (i + n < text.size() && isWordChar(needle.back()) && isWordChar(text[i + n])));
+    if (inLongerWord || !std::equal(needle.begin(), needle.end(), text.begin() + static_cast<long>(i))) {
+      ++i;
+      continue;
+    }
+    found = i;
+    if (ordinal-- == 0) break;
+    i += n;
+  }
+  return found;
 }
 
 ChapterSearcher::ChapterSearcher(const std::vector<uint32_t>& needleIn, const size_t maxHitsIn,
