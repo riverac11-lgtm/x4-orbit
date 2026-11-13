@@ -3,7 +3,7 @@
 > **This branch is a personal, unofficial build of [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader)**
 > (itself based on CrossPoint). It is not supported by either project. The Witch(hunt) README follows further down.
 
-**Download:** [`firmware-x4-orbit.bin` (latest build)](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
+**Download:** [latest build (`v…-orbit.….bin`)](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
 
 ## What this build is
 
@@ -18,6 +18,9 @@ trimmed to reading and pulling books from an OPDS server (built around BookOrbit
 - **Hold Back to leave the OPDS browser** from any depth, straight to Home.
 - **Built for speed where it counts.** Unzipping, parsing, text layout, glyph drawing and image conversion are
   compiled for speed rather than size, on top of Witch(hunt)'s own latest speed work (2.41-dev).
+- **Simple home screen** with the Online Library one press away, a download queue, a catalog that remembers where
+  you were, whole-word search with next/previous match, and a **Speed check** screen. See the
+  [release notes](docs/x4-orbit-release-notes.md).
 - **Its own boot splash.**
 
 **Removed** from the menus and build: screenshots, show page as QR, weather, KOReader sync, Calibre wireless, WebDAV,
@@ -39,7 +42,7 @@ Also skip it if you rely on any of the removed features above — use Witch(hunt
 
 ## Installing and going back
 
-1. Put `firmware-x4-orbit.bin` **and a fallback `.bin`** (stock [CrossPoint](https://github.com/daveallie/crosspoint-reader/releases)
+1. Put the firmware `.bin` from the release **and a fallback `.bin`** (stock [CrossPoint](https://github.com/daveallie/crosspoint-reader/releases)
    or [Witch(hunt)](https://github.com/jpirnay/witchhunt-reader/releases)) on the SD card.
 2. Flash with **Settings > System > SD Card Firmware Update**.
 3. Open the reader's web page once while on Wi-Fi: it downloads its matching web interface from the same release.

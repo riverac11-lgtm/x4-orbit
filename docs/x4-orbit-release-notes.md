@@ -12,6 +12,16 @@ not supported by the Witch(hunt) or CrossPoint projects. Use at your own risk.
 - **Sleep screen** shows the cover of the book you're reading with its title and progress (if you hadn't already
   picked a different sleep screen). With no book open it shows the x4-orbit picture.
 - **Version in the file name**, so you can tell builds apart on the SD card.
+- **Faster page turns on the front buttons**: Left/Right no longer wait 300 ms to check for a double press. (Double
+  press to jump 10 pages can be turned back on under Settings > Controls.)
+- **Online Library remembers where you were**: it reopens on the shelf and book you left.
+- **Download several books at once**: hold **Confirm** on a book to mark it (a check mark appears), then a short
+  Confirm on any marked book downloads them all, with progress and a summary at the end. Up to 20 at a time.
+- **Better search**: **Left** on the results switches *Whole word* / *Any match*; your last result list is kept
+  (reopen Search book to get back to it, **Right** for a new search); **Next match** / **Previous match** in the
+  reader menu; your last 8 searches are offered before the keyboard.
+- **Speed check** (Settings > System > Speed check): how long book opening, chapter changes, page turns and waking
+  take on your reader. **Confirm** saves `speed-report.txt` to the SD card so it can be shared for tuning.
 
 ## Still included
 
