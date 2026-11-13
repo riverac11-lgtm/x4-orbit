@@ -11,6 +11,8 @@ class CrossPointSettings;
 // behind "More". Nothing is removed -- every choice here is an ordinary setting the owner can
 // change back under Settings.
 //
+// Front-button page turns are also made immediate (no double-press wait).
+//
 // Applied once per profile version: to a new settings file, and to an existing one written
 // before this version (the file is stamped "orbitProfileV" on save). Only the home-screen layout
 // is changed outright; anything else is touched only while it still has its upstream default,

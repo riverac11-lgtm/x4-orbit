@@ -6,8 +6,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "OrbitProfile.h"
 #include "CrossPointSettings.h"
+#include "OrbitProfile.h"
 #include "activities/home/HomeMenu.h"
 #include "activities/home/LibraryTab.h"
 
@@ -187,4 +187,12 @@ TEST_F(HomeMenuTest, OrbitProfileMovesTheDefaultSleepScreenToTheBookCoverButKeep
   SETTINGS.sleepScreen = CrossPointSettings::LIGHT;
   OrbitProfile::apply(SETTINGS);
   EXPECT_EQ(SETTINGS.sleepScreen, CrossPointSettings::LIGHT);
+}
+
+TEST_F(HomeMenuTest, OrbitProfileDropsTheDoublePressWaitOnlyWhereItIsStillTheDefault) {
+  SETTINGS.btnDoubleLeft = CrossPointSettings::BTN_PAGE_BACK_10;
+  SETTINGS.btnDoubleRight = CrossPointSettings::BTN_PAGE_BACK_10;  // the owner's own choice
+  OrbitProfile::apply(SETTINGS);
+  EXPECT_EQ(SETTINGS.btnDoubleLeft, CrossPointSettings::BTN_DEFAULT);
+  EXPECT_EQ(SETTINGS.btnDoubleRight, CrossPointSettings::BTN_PAGE_BACK_10);
 }
