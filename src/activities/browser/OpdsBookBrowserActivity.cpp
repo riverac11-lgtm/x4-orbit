@@ -32,6 +32,7 @@
 #include "fontIds.h"
 #include "network/HttpDownloader.h"
 #include "util/OpdsFilename.h"
+#include "util/OpdsSavedPosition.h"
 #include "util/StringUtils.h"
 #include "util/UrlUtils.h"
 
@@ -177,16 +178,47 @@ OpdsEntry readEntryFromCache(HalFile& f) {
 // a version 1 cache may hold the description's suggestions or HTML one, which no search can follow.
 constexpr int OPDS_DISCOVERY_VERSION = 2;
 
-std::string opdsDiscoveryPath(const std::string& serverUrl) {
+// A per-server file in /.crosspoint: opds_<FNV-1a of the server URL><suffix>.
+std::string opdsServerFilePath(const std::string& serverUrl, const char* suffix) {
   uint32_t h = 2166136261u;
   for (unsigned char c : serverUrl) {
     h ^= c;
     h *= 16777619u;
   }
   char buf[48];
-  snprintf(buf, sizeof(buf), "/.crosspoint/opds_%08lx_disc.json", static_cast<unsigned long>(h));
+  snprintf(buf, sizeof(buf), "/.crosspoint/opds_%08lx%s", static_cast<unsigned long>(h), suffix);
   return buf;
 }
+
+std::string opdsDiscoveryPath(const std::string& serverUrl) { return opdsServerFilePath(serverUrl, "_disc.json"); }
+
+// Where the last visit to a server was (OpdsSavedPosition.h): written on the way out.
+std::string opdsPositionPath(const std::string& serverUrl) { return opdsServerFilePath(serverUrl, "_pos.txt"); }
+
+// The download queue's records, one small file per marked book, named by its mark key. Only this
+// visit's: removed when the browser opens and closes, so a crash leaves at most one visit's worth.
+constexpr char OPDS_QUEUE_DIR[] = "/.crosspoint/opds_queue";
+
+std::string queueRecordPath(const uint32_t key) {
+  char buf[48];
+  snprintf(buf, sizeof(buf), "%s/%08lx.q", OPDS_QUEUE_DIR, static_cast<unsigned long>(key));
+  return buf;
+}
+
+void removeQueueDir() {
+  if (Storage.exists(OPDS_QUEUE_DIR)) Storage.removeDir(OPDS_QUEUE_DIR);
+}
+
+// The download a mark queues: EPUB where the catalog offers it, the catalog's first otherwise (the
+// format picker is for one book at a time).
+const OpdsAcquisitionLink& queuedLink(const OpdsEntry& book) {
+  for (const auto& link : book.acquisitionLinks) {
+    if (link.formatKey == "epub") return link;
+  }
+  return book.acquisitionLinks.front();
+}
+
+uint32_t markKeyOf(const OpdsEntry& book) { return OpdsQueue::markKey(book.id, book.href); }
 
 // Reads the discovery cache for serverUrl. On success, writes the cached nav
 // entries into an already-open cacheFile and appends their offsets to entryOffsets.
@@ -277,33 +309,114 @@ void OpdsBookBrowserActivity::onEnter() {
   memoryTrimmed = false;
   errorMessage.clear();
   statusMessage = tr(STR_CHECKING_WIFI);
+  feedHasBooks = false;
+  // The queue of an earlier visit that ended without onExit() (a crash, a power cut).
+  clearMarks();
+  restoring = false;
+  keepSavedPosition = false;
+  forgetPosition = false;
+  rememberPosition = initialQuery_.empty();
   requestUpdate();
+
+  // The feed the last visit to this server ended on: straight there, over the network.
+  if (rememberPosition && loadSavedPosition()) {
+    checkAndConnectWifi();
+    return;
+  }
 
   // Try the per-server discovery cache so the browser opens instantly without
   // a network round-trip. Nav entries and search template from the last
   // successful root-feed fetch are written into the tmp cache file so the
   // existing BROWSING render path works unchanged.
-  {
-    HalFile cacheFile;
-    if (Storage.openFileForWrite("OPDS", "/.tmp_opds_cache.dat", cacheFile)) {
-      if (loadOpdsDiscovery(server.url, searchTemplate, cacheFile, entryOffsets)) {
-        LOG_DBG("OPDS", "Discovery cache hit: %zu nav entries", entryOffsets.size());
-        cacheFile.flush();
-        cacheFile.close();
-        state = BrowserState::BROWSING;
-        requestUpdate();
-        if (!initialQuery_.empty() && !searchTemplate.empty()) {
-          performSearch(std::move(initialQuery_));
-          initialQuery_.clear();
-        }
-        return;  // WiFi connects lazily on first navigation
-      }
-      cacheFile.close();
-      Storage.remove("/.tmp_opds_cache.dat");
+  if (showRootFromDiscovery()) {
+    if (!initialQuery_.empty() && !searchTemplate.empty()) {
+      performSearch(std::move(initialQuery_));
+      initialQuery_.clear();
     }
+    return;  // WiFi connects lazily on first navigation
   }
 
   checkAndConnectWifi();
+}
+
+bool OpdsBookBrowserActivity::showRootFromDiscovery() {
+  entryOffsets.clear();
+  HalFile cacheFile;
+  if (!Storage.openFileForWrite("OPDS", "/.tmp_opds_cache.dat", cacheFile)) return false;
+  if (!loadOpdsDiscovery(server.url, searchTemplate, cacheFile, entryOffsets)) {
+    cacheFile.close();
+    entryOffsets.clear();
+    Storage.remove("/.tmp_opds_cache.dat");
+    return false;
+  }
+  LOG_DBG("OPDS", "Discovery cache hit: %zu nav entries", entryOffsets.size());
+  cacheFile.flush();
+  cacheFile.close();
+  selectorIndex = 0;
+  feedHasBooks = false;
+  state = BrowserState::BROWSING;
+  requestUpdate();
+  return true;
+}
+
+bool OpdsBookBrowserActivity::loadSavedPosition() {
+  const std::string path = opdsPositionPath(server.url);
+  if (!Storage.exists(path.c_str())) return false;
+  std::string text;
+  OpdsSavedPosition saved;
+  if (!Storage.readFileToString("OPDS", path, OpdsPosition::kMaxFileBytes, text) ||
+      !OpdsPosition::decode(text, saved)) {
+    LOG_ERR("OPDS", "Saved position unreadable, opening the root: %s", path.c_str());
+    Storage.remove(path.c_str());
+    return false;
+  }
+  currentPath = std::move(saved.feed);
+  navigationHistory = std::move(saved.history);
+  restoreRow = saved.row;
+  restoring = true;
+  LOG_DBG("OPDS", "Reopening %s (row %d, %zu back)", currentPath.c_str(), restoreRow, navigationHistory.size());
+  return true;
+}
+
+void OpdsBookBrowserActivity::writeSavedPosition() const {
+  if (!rememberPosition) return;
+  const std::string path = opdsPositionPath(server.url);
+  // Left from the root by Back: start there next time. Otherwise only a feed on screen is a place
+  // (an error, a load or a Wi-Fi prompt keeps what the file holds), and not after the remembered
+  // feed failed to load this visit and nothing else has loaded since.
+  const bool feedShown =
+      state == BrowserState::BROWSING || state == BrowserState::BOOK_DETAIL || state == BrowserState::FORMAT_SELECTION;
+  if (!forgetPosition && (!feedShown || keepSavedPosition)) return;
+  std::string text;
+  if (forgetPosition || !OpdsPosition::encode(currentPath, navigationHistory, selectorIndex, text)) {
+    if (Storage.exists(path.c_str())) Storage.remove(path.c_str());
+    return;
+  }
+  Storage.mkdir("/.crosspoint");
+  HalFile f;
+  bool ok = Storage.openFileForWrite("OPDS", path, f);
+  if (ok) {
+    ok = f.write(text.data(), text.size()) == text.size();
+    f.close();
+  }
+  if (!ok) {
+    LOG_ERR("OPDS", "Could not save the position: %s", path.c_str());
+    Storage.remove(path.c_str());  // never half a file
+  }
+}
+
+void OpdsBookBrowserActivity::restoreFailed(const bool unreachable) {
+  restoring = false;
+  // Not reached: try again next time. Reached but not readable (gone, empty): forget it.
+  keepSavedPosition = unreachable;
+  navigationHistory.clear();
+  currentPath.clear();
+  selectorIndex = 0;
+  LOG_INF("OPDS", "Saved feed did not load, opening the root");
+  if (showRootFromDiscovery()) return;
+  if (WiFi.status() != WL_CONNECTED) return;  // the Wi-Fi error stays on screen
+  bool rootUnreachable = false;
+  loadFeed("", rootUnreachable);
 }
 
 namespace {
@@ -369,6 +482,9 @@ HttpDownloader::Session& OpdsBookBrowserActivity::session() {
 void OpdsBookBrowserActivity::onExit() {
   Activity::onExit();
   netSession.reset();  // close the TLS connection while Wi-Fi is still up
+  // Before the lists below are cleared, and before the restart below, which does not return.
+  writeSavedPosition();
+  clearMarks();
 
   entryOffsets.clear();
   navigationHistory.clear();
@@ -492,9 +608,18 @@ bool OpdsBookBrowserActivity::preventAutoSleep() {
   return false;
 }
 
-int OpdsBookBrowserActivity::catalogRowsPerPage() const {
-  const int rows = UITheme::getBodyRect(renderer, true, true).height / CATALOG_ROW_HEIGHT;
+int OpdsBookBrowserActivity::catalogRowsPerPage(const char* subtitle) const {
+  const int rows = UITheme::getBodyRect(renderer, true, true, subtitle).height / CATALOG_ROW_HEIGHT;
   return std::max(1, std::min(rows, ListTouchBand::kMaxRows));
+}
+
+const char* OpdsBookBrowserActivity::catalogSubtitle(char* buf, const size_t size) const {
+  if (state != BrowserState::BROWSING || entryOffsets.empty()) return "";
+  if (!marks.empty()) {
+    snprintf(buf, size, tr(STR_OPDS_MARKED_COUNT), static_cast<int>(marks.size()));
+    return buf;
+  }
+  return feedHasBooks ? tr(STR_OPDS_HOLD_TO_MARK) : "";
 }
 
 void OpdsBookBrowserActivity::showBookDetail(const OpdsEntry& entry) {
@@ -535,10 +660,18 @@ bool OpdsBookBrowserActivity::CatalogHost::listActionAvailable(const ListGrammar
   return row >= 0 && row < listCount() && browser.getEntry(row).type == OpdsEntryType::BOOK;
 }
 
-void OpdsBookBrowserActivity::CatalogHost::onListActivate(const int row, bool /*longPress*/) {
+void OpdsBookBrowserActivity::CatalogHost::onListActivate(const int row, const bool longPress) {
   if (row < 0 || row >= listCount()) return;
   const auto entry = browser.getEntry(row);
-  entry.type == OpdsEntryType::BOOK ? browser.chooseBookFormat(entry) : browser.navigateToEntry(entry);
+  if (entry.type != OpdsEntryType::BOOK) {
+    browser.navigateToEntry(entry);  // a long press opens too
+  } else if (longPress) {
+    browser.toggleMark(entry);
+  } else if (browser.isMarked(entry)) {
+    browser.runQueue();
+  } else {
+    browser.chooseBookFormat(entry);
+  }
 }
 
 void OpdsBookBrowserActivity::CatalogHost::onListBack() { browser.navigateBack(); }
@@ -587,14 +720,17 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
   // The two lists, the catalog and the format picker, label their side buttons; every other state
   // uses Back and Confirm alone, so it keeps the full width.
   const bool showsList = state == BrowserState::BROWSING || state == BrowserState::FORMAT_SELECTION;
+  // The catalog's line about marking books for the download queue, under the header.
+  char subtitleBuf[64];
+  const char* subtitle = catalogSubtitle(subtitleBuf, sizeof(subtitleBuf));
   // Every state draws below the theme header, so nothing here sits at a y of its own: a constant
   // one ends up inside the header once the header outgrows it (Lyra, a larger UI font).
-  const Rect body = UITheme::getBodyRect(renderer, true, showsList);
+  const Rect body = UITheme::getBodyRect(renderer, true, showsList, subtitle);
   const int midY = body.y + body.height / 2;
 
   // Show server name in header if available, otherwise generic title
   const char* headerTitle = server.name.empty() ? tr(STR_OPDS_BROWSER) : server.name.c_str();
-  GUI.drawHeader(renderer, UITheme::getHeaderRect(renderer, true, showsList), headerTitle);
+  GUI.drawHeader(renderer, UITheme::getHeaderRect(renderer, true, showsList), headerTitle, subtitle);
 
   if (state == BrowserState::CHECK_WIFI) {
     renderer.drawCenteredText(UI_10_FONT_ID, midY, statusMessage.c_str());
@@ -752,8 +888,15 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
 
   // Browsing state. The selected entry's type decides the Confirm label; the Left/Right labels
   // come from the catalog's declaration (Search / Info, or the page glyph alone).
-  const bool selectedIsBook = !entryOffsets.empty() && getEntry(selectorIndex).type == OpdsEntryType::BOOK;
-  catalogList.drawHints(renderer, tr(STR_BACK), selectedIsBook ? tr(STR_DOWNLOAD) : tr(STR_OPEN));
+  // A marked book's Confirm fetches every marked book.
+  const char* confirmLabel = tr(STR_OPEN);
+  if (!entryOffsets.empty()) {
+    const auto selected = getEntry(selectorIndex);
+    if (selected.type == OpdsEntryType::BOOK) {
+      confirmLabel = isMarked(selected) ? tr(STR_OPDS_GET_MARKED) : tr(STR_DOWNLOAD);
+    }
+  }
+  catalogList.drawHints(renderer, tr(STR_BACK), confirmLabel);
 
   if (entryOffsets.empty()) {
     renderer.drawCenteredText(UI_10_FONT_ID, midY, tr(STR_NO_ENTRIES));
@@ -761,7 +904,7 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
     return;
   }
 
-  const int rowsPerPage = catalogRowsPerPage();
+  const int rowsPerPage = catalogRowsPerPage(subtitle);
   catalogPageRows.store(rowsPerPage);
   const auto pageStartIndex = selectorIndex / rowsPerPage * rowsPerPage;
   catalogTop.store(pageStartIndex);
@@ -806,6 +949,14 @@ void OpdsBookBrowserActivity::render(RenderLock&&) {
     }
     auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), body.width - 40 - markerWidth);
     renderer.drawText(UI_10_FONT_ID, body.x + 20, rowY, item.c_str(), black);
+    // Marked for the download queue: a check mark in the margin before the title, drawn as lines
+    // (the UI fonts need not carry the glyph).
+    if (entry.type == OpdsEntryType::BOOK && isMarked(entry)) {
+      const int x = body.x + 4;
+      const int y = rowY + CATALOG_ROW_HEIGHT / 2 - 2;
+      renderer.drawLine(x, y, x + 4, y + 5, 2, black);
+      renderer.drawLine(x + 4, y + 5, x + 12, y - 6, 2, black);
+    }
   }
 
   drawFormatNotice();
@@ -824,22 +975,44 @@ crosspoint::TlsPolicy OpdsBookBrowserActivity::catalogTlsPolicy() const {
 void OpdsBookBrowserActivity::drawFormatNotice() const {
   // On top of the frame this render composed, which its own displayBuffer() then ships: neither
   // ship here nor re-seed from the displayed frame (see PopupShip::Caller).
-  if (formatNotice)
-    GUI.drawPopup(renderer, tr(STR_FORMAT_NOT_SUPPORTED), /*overlayDisplayedFrame=*/false, PopupShip::Caller);
+  if (formatNotice) {
+    GUI.drawPopup(renderer, noticeText.empty() ? tr(STR_FORMAT_NOT_SUPPORTED) : noticeText.c_str(),
+                  /*overlayDisplayedFrame=*/false, PopupShip::Caller);
+  }
+}
+
+void OpdsBookBrowserActivity::showNotice(const char* text) {
+  noticeText = text ? text : "";
+  formatNotice = true;
+  requestUpdate();
 }
 
 void OpdsBookBrowserActivity::dismissFormatNotice() {
   formatNotice = false;
+  noticeText.clear();
   buttonEvents.drain();  // the rest of that press (a list hears Up/Down under two names)
   requestUpdate();
 }
 
 void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
+  const bool wasRestoring = restoring;
+  restoring = false;
+  bool unreachable = false;
+  if (!loadFeed(path, unreachable, wasRestoring ? restoreRow : 0)) {
+    if (wasRestoring) restoreFailed(unreachable);
+    return;
+  }
+  keepSavedPosition = false;  // a feed loaded: the place is this one now
+}
+
+bool OpdsBookBrowserActivity::loadFeed(const std::string& path, bool& unreachable, const int row) {
+  unreachable = false;
+  feedHasBooks = false;
   if (server.url.empty()) {
     state = BrowserState::ERROR;
     errorMessage = tr(STR_NO_SERVER_URL);
     requestUpdate();
-    return;
+    return false;
   }
 
   // Trim memory once per session before the first TLS connection, regardless of
@@ -871,7 +1044,7 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
     state = BrowserState::ERROR;
     errorMessage = "Cache Error";
     requestUpdate();
-    return;
+    return false;
   }
 
   parser.onEntryParsed = [&](const OpdsEntry& entry) {
@@ -885,6 +1058,7 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
     uint32_t offset = cacheFile.position();
     entryOffsets.push_back(offset);
     writeEntryToCache(cacheFile, entry);
+    if (entry.type == OpdsEntryType::BOOK) feedHasBooks = true;
     if (isRootFeed && entry.type == OpdsEntryType::NAVIGATION) {
       capturedNavEntries.push_back({entry.title, entry.href});
     }
@@ -897,8 +1071,11 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
     if (fetched != HttpDownloader::OK) {
       state = BrowserState::ERROR;
       errorMessage = fetched == HttpDownloader::AUTH_ERROR ? tr(STR_AUTH_FAILED) : tr(STR_FETCH_FEED_FAILED);
+      // Not an answer about the feed: the network, the tunnel or the server is down. An HTTP error
+      // (a feed that is gone) is one, but cannot be told apart here; the root fallback is the same.
+      unreachable = fetched != HttpDownloader::AUTH_ERROR;
       requestUpdate();
-      return;
+      return false;
     }
   }
 
@@ -906,7 +1083,7 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
     state = BrowserState::ERROR;
     errorMessage = tr(STR_PARSE_FEED_FAILED);
     requestUpdate();
-    return;
+    return false;
   }
 
   // yxml has fixed-capacity buffers; a non-zero mask means a field (commonly a
@@ -944,10 +1121,11 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
     writeEntryToCache(cacheFile, nextEntry);
   }
 
-  selectorIndex = 0;
+  selectorIndex = std::max(0, std::min(row, static_cast<int>(entryOffsets.size()) - 1));
   state = entryOffsets.empty() ? BrowserState::ERROR : BrowserState::BROWSING;
   if (entryOffsets.empty()) errorMessage = tr(STR_NO_ENTRIES);
   requestUpdate();
+  return !entryOffsets.empty();
 }
 
 void OpdsBookBrowserActivity::navigateToEntry(const OpdsEntry& entry) {
@@ -971,6 +1149,9 @@ void OpdsBookBrowserActivity::navigateBack() {
 }
 
 void OpdsBookBrowserActivity::leave() {
+  // Back out of the root (or out of a load before the root was reached): the next visit starts
+  // there. Not while the remembered feed is merely unreachable this time.
+  if (navigationHistory.empty() && !keepSavedPosition) forgetPosition = true;
   switch (backTo) {
     case OpdsBackTo::FileTransfer:
       leavingToFileTransfer = true;
@@ -989,8 +1170,7 @@ void OpdsBookBrowserActivity::chooseBookFormat(const OpdsEntry& book) {
   if (book.acquisitionLinks.empty()) {
     // The catalog offers this book only in formats the reader cannot open (PDF, MOBI, ...). Said
     // over the screen it was chosen from, not on the error screen, whose Back leaves the feed.
-    formatNotice = true;
-    requestUpdate();
+    showNotice(nullptr);
     return;
   }
 
@@ -1006,16 +1186,29 @@ void OpdsBookBrowserActivity::chooseBookFormat(const OpdsEntry& book) {
   requestUpdate();
 }
 
-// Downloads the selected book's acquisition link and saves it to the SD card.
-void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcquisitionLink& acquisition) {
-  state = BrowserState::DOWNLOADING;
-  statusMessage = book.title;
+std::string OpdsBookBrowserActivity::resolveUrl(const std::string& href) const {
+  return href.rfind("http", 0) == 0 ? href : UrlUtils::buildUrl(server.url, href);
+}
+
+bool OpdsBookBrowserActivity::onTransferProgress(const unsigned int downloaded, const unsigned int total) {
+  mappedInput.update();
+  downloadProgress = downloaded;
+  downloadTotal = total;
+  const uint32_t now = millis();
+  if (now - lastProgressMs >= 3000) {
+    lastProgressMs = now;
+    requestUpdate(true);
+  }
+  if (mappedInput.wasPressed(MappedInputManager::Button::Back)) stopRequested = true;
+  return !stopRequested;
+}
+
+// Downloads one book and saves it to the SD card, with its cover beside an EPUB.
+HttpDownloader::DownloadError OpdsBookBrowserActivity::fetchBook(const OpdsQueueItem& item, const bool keepSession) {
   downloadProgress = 0;
   downloadTotal = 0;
   requestUpdate(true);
 
-  std::string downloadUrl =
-      (acquisition.href.rfind("http", 0) == 0) ? acquisition.href : UrlUtils::buildUrl(server.url, acquisition.href);
   const char* folder = SETTINGS.opdsDownloadFolder;  // "" => SD root
   bool haveFolder = folder[0] != '\0';
   if (haveFolder && !Storage.exists(folder) && !Storage.mkdir(folder)) {
@@ -1033,120 +1226,224 @@ void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcqu
   filename.reserve(96);
   if (haveFolder) filename += folder;
   filename += '/';
-  filename += opdsBookFilename(book.author, book.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat),
-                               acquisition.fileExtension);
-  LOG_DBG("OPDS", "Downloading: %s -> %s", downloadUrl.c_str(), filename.c_str());
+  filename += opdsBookFilename(item.author, item.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat),
+                               item.extension);
+  LOG_DBG("OPDS", "Downloading: %s -> %s", item.url.c_str(), filename.c_str());
 
-  uint32_t lastProgressUpdateMs = 0;
-  const auto result = HttpDownloader::downloadToFile(
-      session(), downloadUrl, filename,
-      [this, &lastProgressUpdateMs](const unsigned int downloaded, const unsigned int total) {
-        mappedInput.update();
-        downloadProgress = downloaded;
-        downloadTotal = total;
-        const uint32_t now = millis();
-        if (now - lastProgressUpdateMs >= 3000) {
-          lastProgressUpdateMs = now;
-          requestUpdate(true);
-        }
-        return !mappedInput.wasPressed(MappedInputManager::Button::Back);
-      },
-      server.username, server.password, catalogTlsPolicy());
+  const auto progress = [this](const unsigned int downloaded, const unsigned int total) {
+    return onTransferProgress(downloaded, total);
+  };
+  lastProgressMs = 0;
+  const auto result = HttpDownloader::downloadToFile(session(), item.url, filename, progress, server.username,
+                                                     server.password, catalogTlsPolicy());
   // The download read Back by level to abort. Drop the events it left behind, or that same press
   // would reach the catalog afterwards as an event and leave the feed.
   buttonEvents.drain();
+  if (result != HttpDownloader::OK) return result;
 
-  if (result == HttpDownloader::OK) {
-    markOnDevice(filename);
-    FsFile downloadedFile;
-    if (!Storage.openFileForRead("OPDS", filename, downloadedFile) || downloadedFile.size() == 0) {
-      LOG_ERR("OPDS", "Downloaded file is empty or unreadable: %s", filename.c_str());
-      if (downloadedFile) {
-        downloadedFile.close();
-      }
-      Storage.remove(filename.c_str());
-      state = BrowserState::ERROR;
-      errorMessage = tr(STR_DOWNLOAD_FAILED);
-      requestUpdate();
-      return;
+  FsFile downloadedFile;
+  if (!Storage.openFileForRead("OPDS", filename, downloadedFile) || downloadedFile.size() == 0) {
+    LOG_ERR("OPDS", "Downloaded file is empty or unreadable: %s", filename.c_str());
+    if (downloadedFile) {
+      downloadedFile.close();
     }
-    downloadedFile.close();
+    Storage.remove(filename.c_str());
+    return HttpDownloader::FILE_ERROR;
+  }
+  downloadedFile.close();
+  markOnDevice(filename);
+  LOG_DBG("OPDS", "Download complete: %s", filename.c_str());
 
-    LOG_DBG("OPDS", "Download complete: %s", filename.c_str());
-
-    // Clear any existing cache for this book just in case it's a redownload of
-    // a previously opened book.
-    if (acquisition.mimeType == "application/epub+zip") {
-      if (!book.imageHref.empty()) {
-        const std::string coverUrl =
-            (book.imageHref.rfind("http", 0) == 0) ? book.imageHref : UrlUtils::buildUrl(server.url, book.imageHref);
-
-        std::string baseFilename = filename;
-        size_t dotPos = baseFilename.find_last_of('.');
-        if (dotPos != std::string::npos) {
-          baseFilename.resize(dotPos);
-        }
-
-        std::string ext = ".jpg";
-        if (book.imageHref.length() >= 4) {
-          std::string lowerHref = book.imageHref.substr(book.imageHref.length() - 4);
-          std::transform(lowerHref.begin(), lowerHref.end(), lowerHref.begin(), ::tolower);
-          if (lowerHref == ".png") {
-            ext = ".png";
-          }
-        }
-        std::string sidecarPath = baseFilename + ext;
-
-        // Reset progress so the bar tracks the cover, not the just-finished book
-        // (otherwise it shows the book's total frozen at 100%).
-        downloadProgress = 0;
-        downloadTotal = 0;
-        requestUpdate(true);
-
-        uint32_t lastCoverProgressMs = 0;
-        const auto coverDlResult = HttpDownloader::downloadToFile(
-            session(), coverUrl, sidecarPath,
-            [this, &lastCoverProgressMs](const unsigned int downloaded, const unsigned int total) {
-              mappedInput.update();
-              downloadProgress = downloaded;
-              downloadTotal = total;
-              const uint32_t now = millis();
-              if (now - lastCoverProgressMs >= 3000) {  // throttle redraws like the book download
-                lastCoverProgressMs = now;
-                requestUpdate(true);
-              }
-              return !mappedInput.wasPressed(MappedInputManager::Button::Back);
-            },
-            server.username, server.password, catalogTlsPolicy());
-        buttonEvents.drain();
-        if (coverDlResult != HttpDownloader::OK) {
-          LOG_ERR("OPDS", "Failed to download cover from %s (err %d)", coverUrl.c_str(), (int)coverDlResult);
-          Storage.remove(sidecarPath.c_str());
-        }
+  // Clear any existing cache for this book just in case it's a redownload of
+  // a previously opened book.
+  if (item.mimeType == "application/epub+zip") {
+    if (!item.coverUrl.empty() && !stopRequested) {
+      std::string sidecarPath = filename;
+      const size_t dotPos = sidecarPath.find_last_of('.');
+      if (dotPos != std::string::npos) sidecarPath.resize(dotPos);
+      std::string ext = ".jpg";
+      if (item.coverUrl.length() >= 4) {
+        std::string lowerHref = item.coverUrl.substr(item.coverUrl.length() - 4);
+        std::transform(lowerHref.begin(), lowerHref.end(), lowerHref.begin(), ::tolower);
+        if (lowerHref == ".png") ext = ".png";
       }
+      sidecarPath += ext;
 
-      netSession.reset();  // the book's first index pass wants the TLS buffers' heap
-      Epub epub(filename, "/.crosspoint");
-      epub.clearCache();
-    } else if (acquisition.formatKey == "xtc" || acquisition.formatKey == "xtch") {
-      Xtc(filename, "/.crosspoint").clearCache();
+      // Reset progress so the bar tracks the cover, not the just-finished book
+      // (otherwise it shows the book's total frozen at 100%).
+      downloadProgress = 0;
+      downloadTotal = 0;
+      requestUpdate(true);
+      lastProgressMs = 0;
+      const auto coverDlResult = HttpDownloader::downloadToFile(session(), item.coverUrl, sidecarPath, progress,
+                                                                server.username, server.password, catalogTlsPolicy());
+      buttonEvents.drain();
+      if (coverDlResult != HttpDownloader::OK) {
+        LOG_ERR("OPDS", "Failed to download cover from %s (err %d)", item.coverUrl.c_str(), (int)coverDlResult);
+        Storage.remove(sidecarPath.c_str());
+      }
     }
-    selectedBookIndex = -1;
-    formatSelectionLabels.clear();
+
+    if (!keepSession) netSession.reset();  // the book's first index pass wants the TLS buffers' heap
+    Epub epub(filename, "/.crosspoint");
+    epub.clearCache();
+  } else if (item.formatKey == "xtc" || item.formatKey == "xtch") {
+    Xtc(filename, "/.crosspoint").clearCache();
+  }
+  return HttpDownloader::OK;
+}
+
+// Downloads the selected book's acquisition link and saves it to the SD card.
+void OpdsBookBrowserActivity::downloadBook(const OpdsEntry& book, const OpdsAcquisitionLink& acquisition) {
+  state = BrowserState::DOWNLOADING;
+  statusMessage = book.title;
+  stopRequested = false;
+  const OpdsQueueItem item{book.title,
+                           book.author,
+                           resolveUrl(acquisition.href),
+                           acquisition.fileExtension,
+                           acquisition.mimeType,
+                           acquisition.formatKey,
+                           book.imageHref.empty() ? std::string{} : resolveUrl(book.imageHref)};
+  const auto result = fetchBook(item, false);
+
+  selectedBookIndex = -1;
+  formatSelectionLabels.clear();
+  if (result == HttpDownloader::OK || result == HttpDownloader::ABORTED) {
+    if (result == HttpDownloader::OK) unmark(markKeyOf(book));  // fetched from its detail screen
     state = BrowserState::BROWSING;
-    requestUpdate();
-  } else if (result == HttpDownloader::ABORTED) {
-    selectedBookIndex = -1;
-    formatSelectionLabels.clear();
-    state = BrowserState::BROWSING;
-    requestUpdate();
   } else {
-    selectedBookIndex = -1;
-    formatSelectionLabels.clear();
     state = BrowserState::ERROR;
     errorMessage = result == HttpDownloader::AUTH_ERROR ? tr(STR_AUTH_FAILED) : tr(STR_DOWNLOAD_FAILED);
-    requestUpdate();
   }
+  requestUpdate();
+}
+
+bool OpdsBookBrowserActivity::isMarked(const OpdsEntry& book) const {
+  return !marks.empty() && marks.contains(markKeyOf(book));
+}
+
+void OpdsBookBrowserActivity::toggleMark(const OpdsEntry& book) {
+  if (book.acquisitionLinks.empty()) {
+    showNotice(nullptr);  // nothing the reader can open, so nothing to queue
+    return;
+  }
+  const uint32_t key = markKeyOf(book);
+  if (marks.contains(key)) {
+    unmark(key);
+    requestUpdate();
+    return;
+  }
+  if (marks.full()) {
+    char text[64];
+    snprintf(text, sizeof(text), tr(STR_OPDS_MARKS_FULL), static_cast<int>(OpdsQueue::kMaxMarks));
+    showNotice(text);
+    return;
+  }
+
+  // What the download needs, on the card: the feed it came from is gone by the time the queue runs.
+  const auto& link = queuedLink(book);
+  const OpdsQueueItem item{book.title,
+                           book.author,
+                           resolveUrl(link.href),
+                           link.fileExtension,
+                           link.mimeType,
+                           link.formatKey,
+                           book.imageHref.empty() ? std::string{} : resolveUrl(book.imageHref)};
+  std::string record;
+  const std::string path = queueRecordPath(key);
+  bool ok = OpdsQueue::encodeItem(item, record);
+  if (ok) {
+    if (!Storage.exists(OPDS_QUEUE_DIR)) Storage.mkdir(OPDS_QUEUE_DIR);
+    HalFile f;
+    ok = Storage.openFileForWrite("OPDS", path, f);
+    if (ok) {
+      ok = f.write(record.data(), record.size()) == record.size();
+      f.close();
+    }
+  }
+  if (!ok || !marks.add(key)) {
+    LOG_ERR("OPDS", "Could not mark %s", book.title.c_str());
+    Storage.remove(path.c_str());
+    showNotice(tr(STR_OPDS_MARK_FAILED));
+    return;
+  }
+  requestUpdate();
+}
+
+void OpdsBookBrowserActivity::unmark(const uint32_t key) {
+  if (marks.remove(key)) Storage.remove(queueRecordPath(key).c_str());
+}
+
+void OpdsBookBrowserActivity::clearMarks() {
+  marks.clear();
+  removeQueueDir();
+}
+
+// Every marked book, one after another, over the one TLS connection. A book that fails stays
+// marked and the rest go on; Back stops after the transfer in progress is dropped.
+void OpdsBookBrowserActivity::runQueue() {
+  const int total = static_cast<int>(marks.size());
+  if (total == 0) return;
+  // A copy: the loop unmarks what has arrived.
+  uint32_t keys[OpdsQueue::kMaxMarks];
+  for (int i = 0; i < total; ++i) keys[i] = marks.at(i);
+
+  state = BrowserState::DOWNLOADING;
+  stopRequested = false;
+  int done = 0;
+  int failed = 0;
+  std::string record;
+  OpdsQueueItem item;
+  for (int i = 0; i < total && !stopRequested; ++i) {
+    mappedInput.update();
+    if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
+      stopRequested = true;
+      break;
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+      // Every book left would wait out its own timeout: count them failed (still marked) instead.
+      LOG_ERR("OPDS", "Wi-Fi lost, %d books not fetched", total - i);
+      failed += total - i;
+      break;
+    }
+    if (!Storage.readFileToString("OPDS", queueRecordPath(keys[i]), OpdsQueue::kMaxRecordBytes, record) ||
+        !OpdsQueue::decodeItem(record, item)) {
+      LOG_ERR("OPDS", "Queue record %08lx unreadable", static_cast<unsigned long>(keys[i]));
+      unmark(keys[i]);  // it can never be fetched
+      ++failed;
+      continue;
+    }
+    record.clear();
+    record.shrink_to_fit();
+
+    char count[32];
+    snprintf(count, sizeof(count), tr(STR_OPDS_QUEUE_PROGRESS), i + 1, total);
+    statusMessage = count;
+    statusMessage += " - ";
+    statusMessage += item.title;
+    const auto result = fetchBook(item, true);
+    if (result == HttpDownloader::OK) {
+      ++done;
+      unmark(keys[i]);
+    } else if (result != HttpDownloader::ABORTED) {
+      LOG_ERR("OPDS", "Queue: %s failed (err %d)", item.title.c_str(), static_cast<int>(result));
+      ++failed;
+      netSession.reset();  // a connection a transfer broke off is not carried into the next one
+    }
+  }
+  buttonEvents.drain();
+
+  char summary[96];
+  if (stopRequested) {
+    snprintf(summary, sizeof(summary), tr(STR_OPDS_QUEUE_STOPPED), done, total);
+  } else if (failed > 0) {
+    snprintf(summary, sizeof(summary), tr(STR_OPDS_QUEUE_FAILED), done, total, failed);
+  } else {
+    snprintf(summary, sizeof(summary), tr(STR_OPDS_QUEUE_DONE), done, total);
+  }
+  state = BrowserState::BROWSING;
+  showNotice(summary);
 }
 
 void OpdsBookBrowserActivity::fetchOsdTemplate(const std::string& osdUrl) {
@@ -1293,6 +1590,8 @@ void OpdsBookBrowserActivity::onWifiSelectionComplete(const bool connected) {
     state = BrowserState::ERROR;
     errorMessage = tr(STR_WIFI_CONN_FAILED);
     requestUpdate();
+    // The remembered feed needs the network: the root from the discovery cache, where there is one.
+    if (restoring) restoreFailed(true);
   }
 }
 
