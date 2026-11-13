@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "OrbitProfile.h"
 #include "CrossPointSettings.h"
 #include "activities/home/HomeMenu.h"
 #include "activities/home/LibraryTab.h"
@@ -28,6 +29,7 @@ class HomeMenuTest : public ::testing::Test {
  protected:
   void SetUp() override {
     SETTINGS.showLibraryOnHome = 1;
+    SETTINGS.showOnlineLibraryOnHome = 1;
     SETTINGS.showReadingStatsOnHome = 1;
     SETTINGS.showBookmarksOnHome = 1;
     SETTINGS.showFileTransferOnHome = 1;
@@ -141,3 +143,48 @@ TEST(LibraryTabs, StepWrapsAtBothEnds) {
 }
 
 }  // namespace
+
+// x4-orbit: the Online Library entry and the simple home screen of the orbit profile.
+
+TEST_F(HomeMenuTest, OnlineLibrarySitsRightAfterTheLibraryWhenOffered) {
+  HomeMenuAvailability withCatalog{.hasBookmarks = true, .hasOnlineLibrary = true};
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, withCatalog),
+            (std::vector<A>{A::Library, A::OnlineLibrary, A::ReadingStats, A::GlobalBookmarks, A::FileTransfer,
+                            A::Weather, A::Settings}));
+}
+
+TEST_F(HomeMenuTest, OnlineLibraryAppearsNowhereWhenTheBuildDoesNotOfferIt) {
+  for (const auto placement : {HomeMenuPlacement::Home, HomeMenuPlacement::More}) {
+    for (const A action : actionsAt(placement, everything)) EXPECT_NE(action, A::OnlineLibrary);
+  }
+}
+
+TEST_F(HomeMenuTest, HidingOnlineLibraryMovesItBehindMore) {
+  SETTINGS.showOnlineLibraryOnHome = 0;
+  HomeMenuAvailability withCatalog{.hasBookmarks = true, .hasOnlineLibrary = true};
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::More, withCatalog), (std::vector<A>{A::OnlineLibrary}));
+  SETTINGS.showOnlineLibraryOnHome = 1;
+}
+
+TEST_F(HomeMenuTest, OrbitProfileLeavesTheEssentialsOnHomeAndTheRestOneStepAway) {
+  SETTINGS.useWeather = 0;  // the orbit build has no weather
+  OrbitProfile::apply(SETTINGS);
+  HomeMenuAvailability withCatalog{.hasBookmarks = true, .hasOnlineLibrary = true};
+
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, withCatalog),
+            (std::vector<A>{A::Library, A::OnlineLibrary, A::More, A::Settings}));
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::More, withCatalog),
+            (std::vector<A>{A::ReadingStats, A::GlobalBookmarks, A::FileTransfer}));
+}
+
+TEST_F(HomeMenuTest, OrbitProfileMovesTheDefaultSleepScreenToTheBookCoverButKeepsAnOwnChoice) {
+  SETTINGS.sleepScreen = CrossPointSettings::DARK;
+  SETTINGS.sleepCoverOverlay = 0;
+  OrbitProfile::apply(SETTINGS);
+  EXPECT_EQ(SETTINGS.sleepScreen, CrossPointSettings::COVER);
+  EXPECT_NE(SETTINGS.sleepCoverOverlay, 0);
+
+  SETTINGS.sleepScreen = CrossPointSettings::LIGHT;
+  OrbitProfile::apply(SETTINGS);
+  EXPECT_EQ(SETTINGS.sleepScreen, CrossPointSettings::LIGHT);
+}

@@ -14,7 +14,12 @@ The PlatformIO registry is blocked in this sandbox; the copied libdeps (incl. a 
 Never change lib_deps in platformio.ini.
 
 ## Build check (required before you finish)
-    cd ~/wt-<name> && pio run -e check_orbit 2>&1 | grep -E " error|RAM:|Flash:|SUCCESS|FAILED"
+The machine has only 2 cores and other agents build too. ALWAYS build through the shared lock, never
+call `pio run` directly:
+    /tmp/claude-0/-home-claude/84f0ce67-e2ce-5e33-9619-ff1995e8944f/scratchpad/pbuild.sh ~/wt-<name> ~/wt-<name>/build.log
+    grep -E " error|RAM:|Flash:|SUCCESS|FAILED" ~/wt-<name>/build.log
+Run it with run_in_background and wait for the completion notification (it may queue behind another
+build). Use `cmake --build ... -j1` for host tests for the same reason.
 First build takes ~10 min (run it in the background / with a long timeout, do not poll with sleep).
 Flash must stay under 98.0% (report the before/after numbers; baseline is 97.1%, 6365283 bytes).
 Keep new code small: no new libraries, no large tables, avoid std::function/iostream/heavy templates.

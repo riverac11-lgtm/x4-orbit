@@ -1,6 +1,7 @@
 add_executable(HomeMenuTest
   HomeMenuTest.cpp
   ${REPO_ROOT}/src/activities/home/HomeMenu.cpp
+  ${REPO_ROOT}/src/OrbitProfile.cpp
 )
 
 # HomeMenu.h names StrIds, so it needs the generated I18nKeys.h; nothing here translates.
