@@ -12,7 +12,7 @@ Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = 
 - CI: push to `x4-orbit` may not trigger; dispatch: `gh api -X POST repos/riverac11-lgtm/x4-orbit/actions/workflows/390901521/dispatches -f ref=x4-orbit`.
 - Flash baseline 97.1% (6365283 / 6553600). Keep under 98%.
 
-## Done on orbit-next (commit d7fa0b257, NOT yet compiled)
+## Done on orbit-next (COMPILES, 97.1%; HomeMenuTest 17 pass)
 - Home entry "Online Library": HomeMenuAction::OnlineLibrary, HomeMenuAvailability.hasOnlineLibrary,
   setting showOnlineLibraryOnHome, ActivityManager::goToOnlineLibrary(), STR_ONLINE_LIBRARY,
   CP_FEATURE_HOME_OPDS.
@@ -23,9 +23,9 @@ Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = 
 - Workflow: versioned asset v<ver>-orbit.<rev>.bin, notes from docs/x4-orbit-release-notes.md.
 
 ## Next steps, in order
-1. (revision = 2 DONE.) Write docs/x4-orbit-release-notes.md.
-2. Compile orbit-next; fix errors (likely: unused pageWidth in SleepActivity, includes).
-3. Add HomeMenuTest cases for OnlineLibrary; build target for test/home_menu and run.
+1. DONE (revision 2, release notes, home tests).
+2. DONE.
+3. DONE.
 4. Agents (briefs: docs/orbit-dev/AGENT_SETUP.md + the three task descriptions below). Worktrees
    ~/wt-opds, ~/wt-search, ~/wt-perf may be gone; recreate from branches orbit-search / orbit-perf
    (WIP commits, unfinished, uncompiled) and orbit-next for OPDS (agent wrote nothing yet).
