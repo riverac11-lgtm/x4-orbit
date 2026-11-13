@@ -325,8 +325,7 @@ class LineWriter {
 #if defined(__GNUC__)
   __attribute__((format(printf, 2, 3)))
 #endif
-  void
-  line(const char* fmt, ...) {
+  void line(const char* fmt, ...) {
     if (used_ + 1 >= cap_) {
       truncated_ = true;
       return;
@@ -443,8 +442,8 @@ inline size_t formatReport(const Log& log, const ReportEnv& env, char* out, cons
       TurnField field;
       const char* label;
     } kRows[] = {
-        {TurnField::Total, "  button to page settled"},     {TurnField::ToRefresh, "  button to refresh start"},
-        {TurnField::Wait, "    waiting to be noticed"},     {TurnField::Render, "    drawing the page"},
+        {TurnField::Total, "  button to page settled"}, {TurnField::ToRefresh, "  button to refresh start"},
+        {TurnField::Wait, "    waiting to be noticed"}, {TurnField::Render, "    drawing the page"},
         {TurnField::Refresh, "  screen refresh"},
     };
     for (const auto& row : kRows) {

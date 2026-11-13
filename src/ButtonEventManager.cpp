@@ -79,7 +79,7 @@ ButtonEventManager::PressLog ButtonEventManager::pressLog(const Button button) c
 }
 
 void ButtonEventManager::pushEvent(const Button button, const PressType type, const unsigned long pressMs,
-                                  const unsigned long releaseMs) {
+                                   const unsigned long releaseMs) {
   const int next = (eventTail + 1) % EVENT_BUF;
   // Full means a screen that polls has left its events here. A press that waits on this queue to
   // reach that screen must not be the one given up (MappedInputManager::setConfirmWaitsForGesture).

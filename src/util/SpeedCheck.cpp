@@ -13,7 +13,6 @@
 #include "CrossPointSettings.h"
 #include "SystemStatus.h"
 
-
 namespace SpeedCheck {
 namespace {
 Log theLog;

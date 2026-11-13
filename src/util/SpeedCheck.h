@@ -26,8 +26,8 @@ void sectionBuilt(int spine, uint16_t pages);
 void refreshStart();
 void pageVisible();
 /// The first page of a book open is on the panel: the phase stamps come from WakeTrace.
-void bookOpened(bool fromWake, uint32_t loadMs, uint32_t setupMs, uint32_t sectionMs, uint32_t drawMs,
-                uint32_t totalMs, uint32_t pageAtMs);
+void bookOpened(bool fromWake, uint32_t loadMs, uint32_t setupMs, uint32_t sectionMs, uint32_t drawMs, uint32_t totalMs,
+                uint32_t pageAtMs);
 
 /// The report as text, with the firmware version, the CPU clock, the power state and the card.
 /// `withCardSize` reads the card's free space, which walks its allocation table: seconds on a
