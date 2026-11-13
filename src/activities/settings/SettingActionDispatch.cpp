@@ -25,6 +25,7 @@
 #include "SdCardFontGlobals.h"
 #include "SdFirmwareUpdateActivity.h"
 #include "SilentRestart.h"
+#include "SpeedCheckActivity.h"
 #include "StatusBarSettingsActivity.h"
 #include "SwitchToUsbDriveActivity.h"
 #include "SyncTimeActivity.h"
@@ -79,6 +80,8 @@ std::unique_ptr<Activity> createActivityForAction(SettingAction action, GfxRende
       return std::make_unique<SystemInformationActivity>(renderer, mappedInput);
     case SettingAction::BootDiagnostics:
       return std::make_unique<BootDiagnosticsActivity>(renderer, mappedInput);
+    case SettingAction::SpeedCheck:
+      return std::make_unique<SpeedCheckActivity>(renderer, mappedInput);
     case SettingAction::FontScalingTest:
       return std::make_unique<FontScalingTestActivity>(renderer, mappedInput);
     case SettingAction::SyncTime:

@@ -53,6 +53,7 @@
 #include "util/FontDownloadRules.h"
 #include "util/FontManifestReader.h"
 #include "util/PluginLocations.h"
+#include "util/SpeedCheck.h"
 #include "util/UrlUtils.h"
 
 // Log free heap + max contiguous block at a named point.
@@ -1231,7 +1232,29 @@ void CrossPointWebServer::handleBootDiagnostics() const {
     if (i > 0) out.print(',');
     serializeJson(doc, out);
   }
-  out.print("]}");
+  out.print("]");
+  // The Speed check report rides along as one text field, so the report this page saves carries
+  // it without the page knowing: the reader's own timings of its last book open, chapter change
+  // and page turns (Settings > System > Speed check). Without the card's free space, whose walk
+  // would hold this response for seconds. Skipped when its buffer cannot be had.
+  if (const auto speed = makeUniqueNoThrow<char[]>(SpeedCheck::kReportBytes)) {
+    const size_t length = SpeedCheck::buildReport(speed.get(), SpeedCheck::kReportBytes, /*withCardSize=*/false);
+    // Escaped by hand: the text is ASCII lines, and a JsonDocument would hold a second copy of it.
+    out.print(",\"speedCheck\":\"");
+    for (size_t i = 0; i < length; i++) {
+      const char c = speed[i];
+      if (c == '\n') {
+        out.print("\\n");
+      } else if (c == '"' || c == '\\') {
+        out.print('\\');
+        out.print(c);
+      } else if (static_cast<unsigned char>(c) >= 0x20) {
+        out.print(c);
+      }
+    }
+    out.print('"');
+  }
+  out.print("}");
   response.finish();
 }
 

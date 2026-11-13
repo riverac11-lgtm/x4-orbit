@@ -78,12 +78,14 @@ ButtonEventManager::PressLog ButtonEventManager::pressLog(const Button button) c
   return {s.pressCount, s.loggedPressMs, s.priorLoggedPressMs};
 }
 
-void ButtonEventManager::pushEvent(const Button button, const PressType type, const unsigned long pressMs) {
+void ButtonEventManager::pushEvent(const Button button, const PressType type, const unsigned long pressMs,
+                                   const unsigned long releaseMs) {
   const int next = (eventTail + 1) % EVENT_BUF;
   // Full means a screen that polls has left its events here. A press that waits on this queue to
   // reach that screen must not be the one given up (MappedInputManager::setConfirmWaitsForGesture).
   if (next == eventHead) eventHead = (eventHead + 1) % EVENT_BUF;
   eventBuf[eventTail] = {button, type, pressMs};
+  eventBuf[eventTail].releaseMs = releaseMs;
   eventTail = next;
 }
 
@@ -166,7 +168,7 @@ void ButtonEventManager::applyEdge(const int idx, const Button btn, const bool p
           s.state = State::ReleasedOnce;
         } else {
           // No double action configured — fire immediately.
-          pushEvent(btn, PressType::Short, s.pressDownTime);
+          pushEvent(btn, PressType::Short, s.pressDownTime, t);
           s.state = State::Idle;
         }
       }
@@ -177,7 +179,7 @@ void ButtonEventManager::applyEdge(const int idx, const Button btn, const bool p
         if (t - s.releaseTime >= DOUBLE_WINDOW_MS) {
           // Window already elapsed before this press arrived (e.g. the loop task
           // was blocked past it): the first press was a Short, this starts fresh.
-          pushEvent(btn, PressType::Short, s.pressDownTime);
+          pushEvent(btn, PressType::Short, s.pressDownTime, s.releaseTime);
           s.state = State::Pressed;
           s.pressDownTime = t;
         } else {
@@ -212,7 +214,7 @@ void ButtonEventManager::applyTimeout(const int idx, const Button btn, const uns
     case State::ReleasedOnce:
       if (now - s.releaseTime >= DOUBLE_WINDOW_MS) {
         // Window expired without a second press — it was a Short.
-        pushEvent(btn, PressType::Short, s.pressDownTime);
+        pushEvent(btn, PressType::Short, s.pressDownTime, s.releaseTime);
         s.state = State::Idle;
       }
       break;

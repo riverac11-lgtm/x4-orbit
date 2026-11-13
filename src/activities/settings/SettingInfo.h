@@ -74,6 +74,7 @@ enum class SettingAction {
   KeyboardLayouts,
   SystemInfo,
   BootDiagnostics,
+  SpeedCheck,
   FontScalingTest,
   DetectTimezone,
   SyncTime,

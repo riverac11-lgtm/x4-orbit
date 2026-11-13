@@ -204,6 +204,9 @@ void SettingsActivity::onEnter() {
   // nothing" report already looks.
   addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_BOOT_DIAGNOSTICS, SettingAction::BootDiagnostics)
                                            .withSubcategory(StrId::STR_MENU_SYS_SYSTEM)));
+  // Beside it: the other screen whose job is to be read off and sent in.
+  addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_SPEED_CHECK, SettingAction::SpeedCheck)
+                                           .withSubcategory(StrId::STR_MENU_SYS_SYSTEM)));
   // A comparison screen, not a setting: it decides whether the size ladder can ship fewer real
   // faces and scale the rest, which the coverage metrics in bench/font_main.cpp cannot settle.
 #if CP_FEATURE_DEV_SCREENS
