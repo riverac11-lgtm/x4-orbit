@@ -1,4 +1,4 @@
-# x4-orbit handoff (paused again 2026-11-12 18:43; agents restarted once, each saved WIP on its branch). Read this INSTEAD of re-exploring.
+# x4-orbit handoff — RELEASED v2.41-orbit.2 (2026-11-13, x4-orbit = 4baf26e). Read this INSTEAD of re-exploring.
 
 Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = e438b0cd9 (Witch 2.41-dev
 + ours, release `x4-orbit-latest`). Work branch: `orbit-next` (pushed). Fallbacks: `x4-orbit-2.40`,
@@ -44,3 +44,11 @@ Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Published: branch `x4-orbit` = 
 ## User preferences
 Non-technical-friendly UI, keep Witch(hunt)'s feel and essential options, speed first, search is
 essential. User is usage-limited: work in few, large steps; avoid re-reading; agents are allowed.
+
+## Released in v2.41-orbit.2 (all merged into x4-orbit)
+Online Library on home, orbit profile (simple home, cover sleep screen, no 300 ms double-press wait on
+Left/Right), orbit art on sleep, search (whole word, kept results in <cache>/search.bin, next/prev match,
+recent searches), Speed check (Settings > System > Speed check, /speed-report.txt), OPDS remember position
+(/.crosspoint/opds_<hash>_pos.txt) + download queue (hold Confirm to mark). Flash 97.5%.
+Next ideas: wait for the user's speed-report.txt; refresh cadence default (15 -> 20-30?); instant cached
+OPDS pages; parser -O2 (~70 KB); NAS tracker sync (needs API); Murphy M3 long-Confirm check.
