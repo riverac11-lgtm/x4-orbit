@@ -1136,12 +1136,20 @@ class EpubReaderActivity final : public Activity {
 
   // Full-text search (reader menu > Search book). The last query pre-fills the next search;
   // the hit's words are underlined on the page it lands on until the page is turned.
+  // The result list itself lives in the book's cache folder (SearchList.h), not here.
   std::string lastSearchQuery;
+  bool lastSearchWholeWord = false;
   struct SearchHighlight {
-    int spine = -1;  // -1: none
-    int page = -1;   // page it landed on, set at its first render
+    int spine = -1;       // -1: none
+    int page = -1;        // page it landed on, set at its first render
+    uint32_t offset = 0;  // the hit's visible offset
+    uint16_t nth = 0;     // which of the query's matches on that page it is, set with `page`
   } searchHighlight;
   void openSearch();
+  // Reader menu > Next match / Previous match: the hit after or before the one last opened.
+  void stepSearchHit(bool forward);
+  void goToSearchHit(const SearchResult& hit);
+  [[nodiscard]] uint16_t searchHitOrdinalOnPage() const;
   void drawSearchHighlight(const Page& page, int fontId, int marginLeft, int marginTop);
   bool stepPageState(bool isForwardTurn);
   bool stepPageStateLocked(bool isForwardTurn);

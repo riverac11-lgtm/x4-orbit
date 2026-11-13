@@ -32,8 +32,8 @@ using booksearch::Hit;
 namespace {
 
 std::vector<Hit> search(const std::string& xhtml, const std::string& query, size_t maxHits = 50,
-                        bool byteAtATime = false) {
-  ChapterSearcher searcher(foldQuery(query), maxHits);
+                        bool byteAtATime = false, booksearch::Options options = {}) {
+  ChapterSearcher searcher(foldQuery(query, options.matchCase), maxHits, 28, options);
   EXPECT_TRUE(searcher.ok());
   if (byteAtATime) {
     for (const char c : xhtml) searcher.write(static_cast<uint8_t>(c));
@@ -48,6 +48,15 @@ std::string doc(const std::string& body) {
   return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>T"
          "</title></head><body>" +
          body + "</body></html>";
+}
+
+// Whole-word search.
+std::vector<Hit> words(const std::string& xhtml, const std::string& query, size_t maxHits = 50) {
+  return search(xhtml, query, maxHits, false, {.wholeWord = true});
+}
+
+std::vector<Hit> cased(const std::string& xhtml, const std::string& query, bool wholeWord = false) {
+  return search(xhtml, query, 50, false, {.wholeWord = wholeWord, .matchCase = true});
 }
 
 std::vector<uint32_t> cps(const char32_t* s) {
@@ -152,6 +161,112 @@ TEST(BookTextSearchTest, AbortProbeStopsAndReports) {
   EXPECT_TRUE(searcher.aborted());
   EXPECT_TRUE(*searcher.stopFlag());
   EXPECT_TRUE(searcher.hits().empty());
+}
+
+TEST(BookTextSearchTest, WholeWordSkipsLongerWords) {
+  const std::string text = doc("<p>The cat sat; concatenate cats. Cat</p><p>cat</p>");
+  EXPECT_EQ(search(text, "cat").size(), 5u);
+  const auto hits = words(text, "cat");
+  ASSERT_EQ(hits.size(), 3u);
+  EXPECT_EQ(hits[0].visibleOffset, 3u);  // "The" is 3 bytes
+  EXPECT_EQ(hits[0].visibleEnd, 6u);
+  // The last two: end of a paragraph, then a paragraph of its own up to the chapter's end.
+  EXPECT_EQ(hits[2].visibleEnd - hits[2].visibleOffset, 3u);
+}
+
+TEST(BookTextSearchTest, WholeWordBoundaries) {
+  // Punctuation, quotes, hyphens and apostrophes end a word.
+  EXPECT_EQ(words(doc("<p>(well) “well” well-known well's well_ swell wells</p>"), "well").size(), 5u);
+  // Digits and accented or non-Latin letters do not.
+  EXPECT_EQ(words(doc("<p>well2 wellé éwell wellж</p>"), "well").size(), 0u);
+  EXPECT_EQ(words(doc("<p>мир миру мир.</p>"), "мир").size(), 2u);
+  // Inline markup does not split a word; a block does.
+  EXPECT_EQ(words(doc("<p>wel<b>l</b>s <i>well</i></p>"), "well").size(), 1u);
+  EXPECT_EQ(words(doc("<p>well</p><p>s</p>"), "well").size(), 1u);
+  // A soft hyphen inside a word is skipped, not a boundary.
+  EXPECT_EQ(words(doc("<p>well\xC2\xADness</p>"), "well").size(), 0u);
+  EXPECT_EQ(words(doc("<p>well&nbsp;ness</p>"), "well").size(), 1u);
+}
+
+TEST(BookTextSearchTest, WholeWordPhrasesAndPunctuationEnds) {
+  EXPECT_EQ(words(doc("<p>the old man, the cold man</p>"), "old man").size(), 1u);
+  EXPECT_EQ(words(doc("<p>old manner</p>"), "old man").size(), 0u);
+  // An end of the query that is not a letter or digit needs no boundary on that side.
+  EXPECT_EQ(words(doc("<p>stop.Go on</p>"), "stop.").size(), 1u);
+  EXPECT_EQ(words(doc("<p>unstop.Go on</p>"), "stop.").size(), 0u);
+  // CJK is written without spaces: each character is its own word.
+  EXPECT_EQ(words(doc("<p>我喜欢读书</p>"), "读书").size(), 1u);
+}
+
+TEST(BookTextSearchTest, WholeWordStillSeesAMatchOverlappingARefusedOne) {
+  // "a a" at offset 1 is refused ("xa" runs into it); the one after it overlaps and is good.
+  const auto hits = words(doc("<p>xa a a</p>"), "a a");
+  ASSERT_EQ(hits.size(), 1u);
+  EXPECT_EQ(hits[0].visibleOffset, 2u);
+  EXPECT_EQ(hits[0].visibleEnd, 4u);
+  // Accepted matches still do not overlap.
+  EXPECT_EQ(words(doc("<p>a a a a</p>"), "a a").size(), 2u);
+}
+
+TEST(BookTextSearchTest, WholeWordCapSnippetsAndStreaming) {
+  const std::string text = doc("<p>one cat, two cats, a cat and a cat</p>");
+  const auto capped = words(text, "cat", 2);
+  ASSERT_EQ(capped.size(), 2u);
+  // The character that ended the word opens the after-context.
+  EXPECT_NE(capped[0].snippet.find("one cat, two"), std::string::npos);
+  EXPECT_NE(capped[1].snippet.find("a cat and"), std::string::npos);
+  const auto bytes = search(text, "cat", 50, true, {.wholeWord = true});
+  ASSERT_EQ(bytes.size(), 3u);
+  EXPECT_EQ(bytes[1].visibleOffset, capped[1].visibleOffset);
+}
+
+TEST(BookTextSearchTest, MatchCase) {
+  EXPECT_EQ(foldQuery("Bill", true), (std::vector<uint32_t>{'b' | booksearch::CASE_BIT, 'i', 'l', 'l'}));
+  EXPECT_EQ(foldQuery("Bill", false), cps(U"bill"));
+  const std::string text = doc("<p>Bill paid the bill. BILL! Élan élan Ďábel Źle źle Ÿ ÿ Ωμέγα ПРИВЕТ привет</p>");
+  EXPECT_EQ(search(text, "bill").size(), 3u);
+  EXPECT_EQ(cased(text, "Bill").size(), 1u);
+  EXPECT_EQ(cased(text, "bill").size(), 1u);
+  EXPECT_EQ(cased(text, "BILL").size(), 1u);
+  // Accents are still ignored, capitals are not.
+  EXPECT_EQ(cased(text, "Elan").size(), 1u);
+  EXPECT_EQ(cased(text, "elan").size(), 1u);
+  EXPECT_EQ(cased(text, "Dabel").size(), 1u);
+  EXPECT_EQ(cased(text, "dabel").size(), 0u);
+  EXPECT_EQ(cased(text, "Zle").size(), 1u);
+  EXPECT_EQ(cased(text, "zle").size(), 1u);
+  EXPECT_EQ(cased(text, "Ÿ").size(), 1u);
+  EXPECT_EQ(cased(text, "ωμέγα").size(), 0u);
+  EXPECT_EQ(cased(text, "привет").size(), 1u);
+  EXPECT_EQ(cased(text, "Привет").size(), 0u);
+  // Both options together.
+  EXPECT_EQ(cased(doc("<p>Rose rose Roses</p>"), "Rose", true).size(), 1u);
+}
+
+TEST(BookTextSearchTest, WordCharClasses) {
+  using booksearch::isWordChar;
+  for (const uint32_t cp : {U'a', U'Z', U'7', U'é', U'ß', U'ł', U'ω', U'я', U'א'}) EXPECT_TRUE(isWordChar(cp)) << cp;
+  for (const uint32_t cp : {U' ', U'-', U'_', U'\'', U'.', U'«', U'×', U'’', U'—', U'…', U'。', U'書', U'か'}) {
+    EXPECT_FALSE(isWordChar(cp)) << cp;
+  }
+  EXPECT_TRUE(isWordChar('b' | booksearch::CASE_BIT));
+}
+
+TEST(BookTextSearchTest, FindInFoldedPicksTheNthMatchByTheSameRules) {
+  using booksearch::findInFolded;
+  const auto text = cps(U"concatenate cat, cats cat");
+  const auto needle = foldQuery("Cat");
+  EXPECT_EQ(findInFolded(text, needle, false), 3u);
+  EXPECT_EQ(findInFolded(text, needle, false, 1), 12u);
+  EXPECT_EQ(findInFolded(text, needle, true), 12u);
+  EXPECT_EQ(findInFolded(text, needle, true, 1), 22u);
+  // Fewer matches than asked for: the last one. None: SIZE_MAX.
+  EXPECT_EQ(findInFolded(text, needle, true, 7), 22u);
+  EXPECT_EQ(findInFolded(text, foldQuery("dog"), false), SIZE_MAX);
+  EXPECT_EQ(findInFolded(text, {}, false), SIZE_MAX);
+  EXPECT_EQ(findInFolded(cps(U"ca"), needle, false), SIZE_MAX);
+  // Matches do not overlap, as in the chapter search.
+  EXPECT_EQ(findInFolded(cps(U"aaaa"), cps(U"aa"), false, 1), 2u);
 }
 
 // --- Corpus cross-checks -----------------------------------------------------------------

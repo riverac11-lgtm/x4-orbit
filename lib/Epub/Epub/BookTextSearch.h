@@ -27,9 +27,44 @@ namespace booksearch {
 // are ignored entirely (soft hyphen, zero-width marks).
 uint32_t foldCodepoint(uint32_t cp);
 
-// The query in folded form: trimmed, inner whitespace collapsed to one space. Empty when the
-// query has no searchable characters.
-std::vector<uint32_t> foldQuery(const std::string& utf8);
+// Search options. Both default to off: the plain search finds the text anywhere, in any case.
+//
+// wholeWord: a match counts only when it is not part of a longer word. The rule: if the
+//   query starts with a word character, the character just before the match must not be one,
+//   and likewise for its end and the character just after. A word character (isWordChar) is
+//   an ASCII letter or digit, or any character from U+00C0 up that is not punctuation, a
+//   symbol or CJK: so accented Latin, Greek, Cyrillic, Hebrew, Arabic... letters all count.
+//   Space, block boundaries, the start and end of a chapter, apostrophes, hyphens and
+//   underscores do not ("don" is found in "don't", "well" in "well-known"). CJK ideographs
+//   and kana are written without spaces, so each stands as its own word and the option
+//   changes nothing for them. Ignored characters (soft hyphen, zero-width marks) are skipped
+//   before the rule applies, so a soft-hyphenated word is still one word.
+// matchCase: capitals must match ("Bill" does not find "bill"). Accents are still ignored.
+//   Case is known for the same letters foldCodepoint() lowercases: Latin (ASCII, Latin-1,
+//   Extended-A), Greek and Cyrillic capitals.
+struct Options {
+  bool wholeWord = false;
+  bool matchCase = false;
+};
+
+// See Options::wholeWord. Takes a codepoint or a matchKey().
+bool isWordChar(uint32_t cp);
+
+// The unit the matcher compares: foldCodepoint(), with CASE_BIT set for a capital letter
+// when matchCase is on. ' ' and 0 as for foldCodepoint().
+inline constexpr uint32_t CASE_BIT = 0x80000000u;
+uint32_t matchKey(uint32_t cp, bool matchCase);
+
+// The query in folded form (matchKey units): trimmed, inner whitespace collapsed to one
+// space. Empty when the query has no searchable characters.
+std::vector<uint32_t> foldQuery(const std::string& utf8, bool matchCase = false);
+
+// Finds the query in text that is already folded (the reader's page: its words' foldCodepoint()
+// units, one ' ' between words), by the search's own rules: matches do not overlap, wholeWord as
+// in Options. Returns where match number `ordinal` (0 is the first) starts, or the last match
+// when there are fewer; SIZE_MAX when there is none.
+size_t findInFolded(const std::vector<uint32_t>& text, const std::vector<uint32_t>& needle, bool wholeWord,
+                    size_t ordinal = 0);
 
 struct Hit {
   uint32_t visibleOffset = 0;  // visible offset of the first matched character
@@ -39,9 +74,10 @@ struct Hit {
 
 class ChapterSearcher final : public Print {
  public:
-  // `needle` comes from foldQuery() and must be non-empty. Collection stops after `maxHits`;
-  // contextChars codepoints of context are kept each side.
-  ChapterSearcher(const std::vector<uint32_t>& needle, size_t maxHits, size_t contextChars = 28);
+  // `needle` comes from foldQuery() -- called with the same matchCase as `options` -- and must
+  // be non-empty. Collection stops after `maxHits`; contextChars codepoints of context are
+  // kept each side.
+  ChapterSearcher(const std::vector<uint32_t>& needle, size_t maxHits, size_t contextChars = 28, Options options = {});
   ~ChapterSearcher() override;
   ChapterSearcher(const ChapterSearcher&) = delete;
   ChapterSearcher& operator=(const ChapterSearcher&) = delete;
@@ -84,6 +120,7 @@ class ChapterSearcher final : public Print {
   void blockBoundary();
   void appendContext(uint32_t original);
   void stopParsing();
+  void acceptHit(Hit&& hit);
 
   SaxParser parser;
   bool parserOk = false;
@@ -109,13 +146,20 @@ class ChapterSearcher final : public Print {
   // Snippets: a ring of recent original codepoints (before-context), and hits still
   // collecting after-context.
   size_t contextChars;
-  std::vector<uint32_t> recent;  // ring, capacity contextChars + needle.size()
+  std::vector<uint32_t> recent;  // ring, capacity contextChars + needle.size() + 1
   size_t recentCount = 0;
   struct Pending {
     size_t hitIndex;
     size_t remaining;
   };
   std::vector<Pending> pending;
+
+  // Whole-word: a match whose last character is a word character waits here for the unit
+  // after it, which decides whether the word ended there.
+  Options options;
+  bool endNeedsBoundary = false;
+  bool hasCandidate = false;
+  Hit candidate;
 
   size_t maxHits;
   std::vector<Hit> found;

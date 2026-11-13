@@ -95,7 +95,7 @@ EpubReaderMenuActivity::EpubReaderMenuActivity(
     const int8_t initialFontSizeNormalizationOverride, const int8_t initialInlineFootnotePreviewsOverride,
     const int8_t initialLineSpacingOverride, const int8_t initialVerticalTextOverride,
     const int8_t initialPublisherFontsOverride, const bool verticalAllowed, const bool hasStarredPages,
-    const bool isCurrentPageStarred, const bool hasPrintedPages)
+    const bool isCurrentPageStarred, const bool hasPrintedPages, const bool hasSearchList)
     : TabbedUiListActivity("EpubReaderMenu", renderer, mappedInput),
       currentPageStarred(isCurrentPageStarred),
       pendingOrientation(currentOrientation),
@@ -121,16 +121,16 @@ EpubReaderMenuActivity::EpubReaderMenuActivity(
       currentPage(currentPage),
       totalPages(totalPages),
       bookProgressPercent(bookProgressPercent) {
-  buildMenuItems(hasFootnotes, hasStarredPages, hasPrintedPages, verticalAllowed);
+  buildMenuItems(hasFootnotes, hasStarredPages, hasPrintedPages, verticalAllowed, hasSearchList);
 }
 
 void EpubReaderMenuActivity::buildMenuItems(bool hasFootnotes, bool hasStarredPages, bool hasPrintedPages,
-                                            bool verticalAllowed) {
+                                            bool verticalAllowed, bool hasSearchList) {
   auto& navigationItems = tabMenuItems[static_cast<size_t>(MenuTab::Navigation)];
   auto& settingsItems = tabMenuItems[static_cast<size_t>(MenuTab::Settings)];
   auto& syncItems = tabMenuItems[static_cast<size_t>(MenuTab::Sync)];
   auto& toolsItems = tabMenuItems[static_cast<size_t>(MenuTab::Tools)];
-  navigationItems.reserve(9);
+  navigationItems.reserve(11);
   settingsItems.reserve(13);
   syncItems.reserve(3);
   toolsItems.reserve(8);
@@ -142,6 +142,11 @@ void EpubReaderMenuActivity::buildMenuItems(bool hasFootnotes, bool hasStarredPa
 
   navigationItems.push_back(SettingInfo::Action(StrId::STR_SELECT_CHAPTER, SettingAction::None));
   navigationItems.push_back(SettingInfo::Action(StrId::STR_SEARCH_BOOK, SettingAction::None));
+  // Only while this book has a kept result list: step through it without reopening the list.
+  if (hasSearchList) {
+    navigationItems.push_back(SettingInfo::Action(StrId::STR_SEARCH_NEXT_MATCH, SettingAction::None));
+    navigationItems.push_back(SettingInfo::Action(StrId::STR_SEARCH_PREV_MATCH, SettingAction::None));
+  }
   navigationItems.push_back(SettingInfo::Action(StrId::STR_GO_TO_PERCENT, SettingAction::None));
   if (hasPrintedPages) {
     navigationItems.push_back(SettingInfo::Action(StrId::STR_GO_TO_PRINTED_PAGE, SettingAction::None));
@@ -477,6 +482,10 @@ EpubReaderMenuActivity::MenuAction EpubReaderMenuActivity::actionForNameId(StrId
       return MenuAction::SELECT_CHAPTER;
     case StrId::STR_SEARCH_BOOK:
       return MenuAction::SEARCH;
+    case StrId::STR_SEARCH_NEXT_MATCH:
+      return MenuAction::SEARCH_NEXT;
+    case StrId::STR_SEARCH_PREV_MATCH:
+      return MenuAction::SEARCH_PREV;
     case StrId::STR_GO_TO_PERCENT:
       return MenuAction::GO_TO_PERCENT;
     case StrId::STR_GO_TO_PRINTED_PAGE:
