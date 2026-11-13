@@ -49,7 +49,7 @@ picker, X3 and X4 support in one binary.
 ## Build
 
 GitHub: push the `x4-orbit` branch. The **x4-orbit firmware** workflow runs the host tests, builds
-`env:x4-orbit` and publishes `firmware-x4-orbit.bin` plus its web bundle (`web-<hash>.bin`) to the
+`env:x4-orbit` and publishes the versioned firmware file (`v<version>-orbit.<revision>.bin`) plus its web bundle (`web-<hash>.bin`) to the
 rolling pre-release `x4-orbit-latest`.
 
 Locally:
@@ -63,7 +63,7 @@ pio run -e x4-orbit
 
 ## Flash
 
-Copy `firmware-x4-orbit.bin` to the SD card and pick it in **Settings > System > SD Card Firmware
+Copy the versioned firmware file (`v<version>-orbit.<revision>.bin`) to the SD card and pick it in **Settings > System > SD Card Firmware
 Update**. The first time the reader's web page is opened on Wi-Fi, it fetches its web bundle from
 the `x4-orbit-latest` release by itself. In hotspot mode, copy the `web-*.bin` from that release
 to the top of the SD card instead.
