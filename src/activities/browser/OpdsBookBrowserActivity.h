@@ -85,25 +85,34 @@ class OpdsBookBrowserActivity final : public Activity {
   bool formatNotice = false;
   // What the notice says when it is not "Format not supported": the queue's summary, a full list.
   std::string noticeText;
+  // Raises the notice over the list or the book detail; nullptr means "Format not supported".
   void showNotice(const char* text);
 
   // Remember where you were: the feed, the way back and the row of the last visit to this server,
-  // kept in /.crosspoint and reopened by onEnter(). Not for a visit opened on a search of its own
-  // (a finished book's "more by this author"), which neither reads nor replaces it.
+  // kept in /.crosspoint, reopened by onEnter() and written by onExit(). Not for a visit opened on a
+  // search of its own (a finished book's "more by this author"), which neither reads nor replaces it.
   bool rememberPosition = false;
   // The feed being loaded is the remembered one: a failure opens the root instead of the error.
   bool restoring = false;
   int restoreRow = 0;
-  // The remembered feed could not be reached this time. Leave the file alone on the way out, unless
-  // the user browses on or backs out of the root.
+  // The remembered feed could not be reached this time (Wi-Fi, server or tunnel down). Leave the
+  // file alone on the way out until a feed loads again, so a bad moment does not forget the place.
   bool keepSavedPosition = false;
+  // Back out of the catalog root: the next visit opens at the root.
+  bool forgetPosition = false;
   bool loadSavedPosition();
-  void savePosition() const;
+  void writeSavedPosition() const;
+  // The remembered feed did not load: the root instead, from the discovery cache or the network.
+  void restoreFailed(bool unreachable);
   // The root from the per-server discovery cache, without the network. False when there is none.
   bool showRootFromDiscovery();
   // fetchFeed() without the remembered-position fallback. False with the error screen set up;
-  // `unreachable` then says the feed could not be fetched at all (as opposed to read).
-  bool loadFeed(const std::string& path, bool& unreachable);
+  // `unreachable` then says the feed could not be fetched at all (as opposed to read). `row` is the
+  // row to select, clamped to the feed.
+  bool loadFeed(const std::string& path, bool& unreachable, int row = 0);
+  // The feed on screen lists books: the header line about marking is shown (and kept while marks
+  // exist), decided once per feed so the page height does not change as the selection moves.
+  bool feedHasBooks = false;
 
   // Download queue: books marked in the lists (hold Confirm), fetched one after another by Confirm
   // on a marked one. Kept across pages and feeds for the visit; each mark's download details are a
@@ -114,9 +123,11 @@ class OpdsBookBrowserActivity final : public Activity {
   bool isMarked(const OpdsEntry& book) const;
   void toggleMark(const OpdsEntry& book);
   void unmark(uint32_t key);
+  void clearMarks();
   void runQueue();
-  // One book to the download folder, with its cover and cache clean-up. Draws the progress under
-  // statusMessage; the caller sets the state before and after.
+  // One book to the download folder, with its cover and cache clean-up, drawing the progress under
+  // statusMessage. The caller sets the state before and after. `keepSession` false drops the TLS
+  // connection before the book's cache is touched (the single-book flow, as before).
   HttpDownloader::DownloadError fetchBook(const OpdsQueueItem& item, bool keepSession);
   bool onTransferProgress(unsigned int downloaded, unsigned int total);
   std::string resolveUrl(const std::string& href) const;
@@ -149,7 +160,9 @@ class OpdsBookBrowserActivity final : public Activity {
   void fetchCoverForEntry(const OpdsEntry& entry);
   bool preventAutoSleep() override;
 
-  int catalogRowsPerPage() const;
+  int catalogRowsPerPage(const char* subtitle) const;
+  // The header line of the catalog (marking help or the count), or "" for none. `buf` holds it.
+  const char* catalogSubtitle(char* buf, size_t size) const;
   // Rows per page as the last render drew them. Paging runs on the loop task, where the renderer's
   // orientation can be mid-flip to Portrait for a hint strip, so input reads what render published.
   std::atomic<int> catalogPageRows{1};

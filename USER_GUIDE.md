@@ -644,6 +644,17 @@ way. A book the catalog offers only in formats the reader cannot open (PDF or MO
 listed, with **Format not supported** in place of its author; **Confirm** on it says so in a box, which the
 next press, tap or swipe takes down.
 
+**Downloading several books.** Hold **Confirm** on a book to mark it (a check mark appears beside
+it; hold again to unmark). Marks stay while you move between pages and folders, up to 20 books.
+**Confirm** on any marked book then downloads all of them, one after another ("2 of 5 - Title");
+a book that fails stays marked and the others go on. **Back** stops them; the book being
+downloaded at that moment is not kept, and the books not yet downloaded stay marked.
+
+**Where you left off.** The next time you open the same catalog, it returns to the page and the
+row you were on, and **Back** still leads up through the folders you came through. If that page
+cannot be reached, the catalog opens at its top. Pressing **Back** at the top of the catalog
+makes it open there next time.
+
 #### 3.7.6 Web Settings (WiFi + OPDS)
 
 While in **File Transfer** mode, the web settings page has **Wi-Fi networks** and **OPDS servers** in its menu, to manage both.
