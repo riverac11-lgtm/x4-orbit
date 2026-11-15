@@ -311,6 +311,82 @@ void renderReaderBar(const std::string& dir, const std::string& name, const int 
   writePgm(r, dir + "/" + name + ".pgm");
 }
 
+// A two-line book list (title + author) as the Online Library's All books draws it: the theme's
+// header, then UiListActivity::addList()'s explicit row height (ThemeMetrics::
+// listWithSubtitleRowHeight) on a non-touch panel. `rowHeight` 68 is Lyra's; Orbit takes
+// OrbitListStyle::kTwoLineRowTrim off it. Prints how many rows fit.
+void renderBookList(const std::string& dir, const std::string& name, const int rowHeight) {
+  namespace fui = freeink::ui;
+  GfxRenderer r;
+  r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
+  battery(r);
+  r.drawText(UI_12_FONT_ID, 20, 5 + 40 + 3, "All books", true, EpdFontFamily::BOLD);
+  r.drawLine(20, 5 + 84 - 2, 459, 5 + 84 - 2, true);
+
+  fui::GfxRendererTarget target(r);
+  target.setFont(fui::GfxRendererTarget::FONT_SMALL, SMALL_FONT_ID);
+  target.setFont(fui::GfxRendererTarget::FONT_BODY, UI_10_FONT_ID);
+  target.setFont(fui::GfxRendererTarget::FONT_TITLE, UI_12_FONT_ID);
+  target.setFont(fui::GfxRendererTarget::FONT_LABEL, SMALL_FONT_ID);
+  fui::ThemeTokens tokens = fui::themeTokensForLineHeight(target.lineHeight(fui::GfxRendererTarget::FONT_BODY));
+  tokens.headerHeight = 84;
+  tokens.footerHeight = 40;
+  tokens.listSidePadding = 20;
+  tokens.listScrollWidth = 4;
+  tokens.listScrollInset = 5;
+  OrbitListStyle::applyTokens(tokens, 20);
+
+  static fui::InputSnapshot input;
+  fui::InteractionBuffer<64> interactions;
+  const fui::DeviceContext device = target.deviceContext();
+  fui::Frame<64> frame(target, device, input, interactions);
+  fui::Screen<64> screen(frame, tokens);
+
+  static const char* const kBooks[][2] = {
+      {"14", "Peter Clines"},
+      {"20th Century Ghosts", "Joe Hill"},
+      {"Accomplice to the Villain", "Hannah Nicole Maehrer"},
+      {"Adversary to the Villain", "Hannah Nicole Maehrer"},
+      {"Alchemised", "SenLinYu"},
+      {"All Systems Red: The Murderbot Diaries", "Martha Wells"},
+      {"American Gods", "Neil Gaiman"},
+      {"Apprentice to the Villain", "Hannah Nicole Maehrer"},
+      {"Arcanum Unbounded", "Brandon Sanderson"},
+      {"Artificial Condition", "Martha Wells"},
+      {"The Blade Itself", "Joe Abercrombie"},
+      {"Children of Time", "Adrian Tchaikovsky"},
+      {"The Way of Kings", "Brandon Sanderson"},
+      {"Words of Radiance", "Brandon Sanderson"},
+      {"Project Hail Mary", "Andy Weir"},
+  };
+  constexpr int kCount = sizeof(kBooks) / sizeof(kBooks[0]);
+  fui::ListItem items[kCount];
+  for (int i = 0; i < kCount; ++i) {
+    items[i].label = kBooks[i][0];
+    items[i].subtitle = kBooks[i][1];
+    items[i].actionValue = static_cast<int16_t>(i);
+  }
+  items[4].value = "On device";
+  fui::ListProps list;
+  list.items = items;
+  list.count = kCount;
+  list.selectedIndex = 0;
+  list.action = 2;
+  list.labelText = tokens.bodyText;
+  list.labelText.maxLines = 2;
+  list.rowHeight = static_cast<int16_t>(rowHeight);
+  OrbitListStyle::applyList(list, tokens);
+  const fui::ListProps resolved = screen.resolveListProps(list);
+  // UiListActivity::layoutListArea(): below the header and its verticalSpacing, above the hints.
+  const fui::Rect area{0, 5 + 84 + 16, 480 - 20, 800 - 40 - 8 - (5 + 84 + 16)};
+  fui::list(frame, area, resolved);
+  std::printf("%s: row %d px, body %d px -> %d rows (label line %d, subtitle line %d)\n", name.c_str(), rowHeight,
+              area.height, area.height / rowHeight, target.lineHeight(resolved.labelText.font),
+              target.lineHeight(resolved.subtitleText.font));
+  hints(r, "\xC2\xAB Back", "Select", "\xC2\xAB Up", "\xC2\xBB Down");
+  writePgm(r, dir + "/" + name + ".pgm");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -335,6 +411,8 @@ int main(int argc, char** argv) {
   cNoBook.shelfCount = 2;
   render(dir, "home-c-nobook", cNoBook);
   renderList(dir, "list-orbit", true);
+  renderBookList(dir, "list-books-before", 68);
+  renderBookList(dir, "list-books-after", 68 - OrbitListStyle::kTwoLineRowTrim);
 
   // x4-orbit stats: the Orbit-B line and the battery estimate, Reading Stats, the reader's bar.
   auto bToday = baseView(Variant::B, true, 1);

@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <ctime>
 
 #include "CatalogSyncActivity.h"
 #include "MappedInputManager.h"
@@ -58,9 +57,10 @@ void sortTitles(TitleRow* rows, const size_t n) {
   }
 }
 
+// The order on screen: Search and All books first, the ways in a reader reaches for most.
 enum RootRow : int {
-  kRowAll,
   kRowSearch,
+  kRowAll,
   kRowWaiting,
   kRowNew,
   kRowSeries,
@@ -100,6 +100,9 @@ OrbitCatalogActivity::OrbitCatalogActivity(GfxRenderer& renderer, MappedInputMan
 
 void OrbitCatalogActivity::onEnter() {
   UiListActivity::onEnter();
+  // A FAST first frame diffs against Home (or the boot after a sync) and left the old screen's
+  // hint boxes ghosting through; a HALF repaints the panel clean, as the reader's open does.
+  renderer.setNextDisplayRefreshMode(HalDisplay::HALF_REFRESH);
   loadState();
   showRoot();
 }
@@ -390,11 +393,11 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
         return;
       }
       switch (index) {
-        case kRowAll:
-          item.label = tr(STR_CATALOG_ALL);
-          break;
         case kRowSearch:
           item.label = tr(STR_SEARCH);
+          return;
+        case kRowAll:
+          item.label = tr(STR_CATALOG_ALL);
           return;
         case kRowWaiting:
           snprintf(label, sizeof(labelBuf), tr(STR_CATALOG_WAITING), self->waitingCount);
@@ -413,15 +416,13 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
           return;
         default: {
           item.label = tr(STR_CATALOG_UPDATE);
-          char when[32] = "-";
-          const time_t t = static_cast<time_t>(self->header.updateTime);
-          struct tm tm{};
-          // Not strftime(): it would link ~9 KB of newlib's integer printf for this one line.
-          if (t > 0 && localtime_r(&t, &tm)) {
-            snprintf(when, sizeof(when), "%04d-%02d-%02d %02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                     tm.tm_hour, tm.tm_min);
+          char when[24];
+          if (OrbitCatalog::formatStamp(OrbitCatalog::lastUpdated(self->header), when, sizeof(when))) {
+            snprintf(sub, sizeof(subBuf), tr(STR_CATALOG_LAST_UPDATED), when);
+          } else {
+            // Saved while the clock was unknown: what is there says more than a bare "-".
+            snprintf(sub, sizeof(subBuf), tr(STR_CATALOG_BOOKS_SAVED), static_cast<unsigned>(self->header.count));
           }
-          snprintf(sub, sizeof(subBuf), tr(STR_CATALOG_LAST_UPDATED), when);
           item.subtitle = sub;
           return;
         }
@@ -532,11 +533,11 @@ void OrbitCatalogActivity::activateIndex(const int index) {
         return;
       }
       switch (index) {
-        case kRowAll:
-          showBooks(Kind::All);
-          return;
         case kRowSearch:
           startSearch();
+          return;
+        case kRowAll:
+          showBooks(Kind::All);
           return;
         case kRowWaiting:
           showBooks(Kind::Waiting);

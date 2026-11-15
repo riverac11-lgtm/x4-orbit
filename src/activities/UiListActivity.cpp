@@ -104,7 +104,9 @@ void UiListActivity::navigateButtons() { listController.update(); }
 void UiListActivity::syncListViewport(UiScreen& screen, fui::ListProps& props, const bool hasSubtitle) {
   if (!mappedInput.hasTouch()) {
     const auto& metrics = UITheme::getInstance().getMetrics();
-    props.rowHeight = static_cast<int16_t>(hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight);
+    int rowHeight = hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight;
+    if (hasSubtitle && GUI.refinedChrome()) rowHeight -= OrbitListStyle::kTwoLineRowTrim;  // x4-orbit
+    props.rowHeight = static_cast<int16_t>(rowHeight);
   }
   // Measure the page with the row height and gap the list will actually DRAW with, which is
   // what resolveListProps() decides (the touch minimums and the touch row gap) -- the same call

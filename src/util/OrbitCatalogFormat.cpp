@@ -7,8 +7,29 @@
 #include <climits>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 
 namespace OrbitCatalog {
+
+namespace {
+constexpr uint32_t kFirstRealTime = 1577836800;  // 2020-01-01: HalClock's own "set" threshold
+}
+
+uint32_t lastUpdated(const Header& header) {
+  const uint32_t t = std::max(header.fullTime, header.updateTime);
+  return t >= kFirstRealTime ? t : 0;
+}
+
+bool formatStamp(const uint32_t t, char* out, const size_t size) {
+  if (size == 0) return false;
+  out[0] = '\0';
+  if (t < kFirstRealTime) return false;
+  const time_t when = static_cast<time_t>(t);
+  struct tm tm{};
+  if (!localtime_r(&when, &tm)) return false;
+  snprintf(out, size, "%04d-%02d-%02d %02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min);
+  return true;
+}
 
 namespace {
 uint32_t parseUint(std::string_view s) {
