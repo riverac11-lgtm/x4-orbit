@@ -801,6 +801,12 @@ class CrossPointSettings {
   // server are only as safe as the network path. OTA is deliberately exempt:
   // firmware is executed, so it stays verified whatever this is set to.
   uint8_t skipHttpsValidation = 0;
+  // Books waiting in the Online Library (and the "Send to X4" collection) are fetched while the
+  // reader charges, asleep included (ChargeDelivery.h). Never on battery.
+  uint8_t chargeDownload = 1;
+  // How often a sleeping reader wakes for a moment to see whether it is on a charger: 0 = every
+  // hour, 1 = every 3 hours, 2 = every 6 hours. Only while chargeDownload is on.
+  uint8_t chargeCheckEvery = 1;
 
   // Configurable actions for short / double / long press on each logical button.
   //

@@ -32,6 +32,7 @@
 #include "fontIds.h"
 #include "network/HttpDownloader.h"
 #include "util/OpdsFilename.h"
+#include "util/OpdsOnDevice.h"
 #include "util/OpdsSavedPosition.h"
 #include "util/StringUtils.h"
 #include "util/UrlUtils.h"
@@ -419,60 +420,16 @@ void OpdsBookBrowserActivity::restoreFailed(const bool unreachable) {
   loadFeed("", rootUnreachable);
 }
 
-namespace {
-// FNV-1a of the name up to its last '.', ASCII case folded: FAT names compare without case.
-uint32_t bookNameHash(const char* name) {
-  const char* end = strrchr(name, '.');
-  if (!end || end == name) end = name + strlen(name);
-  uint32_t h = 2166136261u;
-  for (const char* p = name; p < end; ++p) {
-    const char c = (*p >= 'A' && *p <= 'Z') ? static_cast<char>(*p + 32) : *p;
-    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
-  }
-  return h;
-}
-
-bool isBookFileName(const char* name) {
-  const char* dot = strrchr(name, '.');
-  if (!dot) return false;
-  return strcasecmp(dot, ".epub") == 0 || strcasecmp(dot, ".kepub") == 0 || strcasecmp(dot, ".txt") == 0 ||
-         strcasecmp(dot, ".md") == 0 || strcasecmp(dot, ".xtc") == 0 || strcasecmp(dot, ".xtch") == 0;
-}
-}  // namespace
-
 void OpdsBookBrowserActivity::scanOnDeviceBooks() {
   onDeviceScanned = true;
-  onDeviceHashes.clear();
-  const char* folder = SETTINGS.opdsDownloadFolder[0] ? SETTINGS.opdsDownloadFolder : "/";
-  auto dir = Storage.open(folder);
-  if (!dir || !dir.isDirectory()) return;
-  dir.rewindDirectory();
-  char name[256];
-  for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
-    if (file.isDirectory()) continue;
-    file.getName(name, sizeof(name));
-    if (isBookFileName(name)) onDeviceHashes.push_back(bookNameHash(name));
-  }
-  dir.close();
-  std::sort(onDeviceHashes.begin(), onDeviceHashes.end());
-  LOG_DBG("OPDS", "On-device scan: %u books in %s", static_cast<unsigned>(onDeviceHashes.size()), folder);
+  OpdsOnDevice::scan(onDeviceHashes);
 }
 
 bool OpdsBookBrowserActivity::isOnDevice(const OpdsEntry& book) const {
-  if (onDeviceHashes.empty()) return false;
-  // No extension: the hashes leave theirs off, so any format of the book counts.
-  const std::string name =
-      opdsBookFilename(book.author, book.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat), "") +
-      ".x";
-  return std::binary_search(onDeviceHashes.begin(), onDeviceHashes.end(), bookNameHash(name.c_str()));
+  return OpdsOnDevice::contains(onDeviceHashes, book.author, book.title);
 }
 
-void OpdsBookBrowserActivity::markOnDevice(const std::string& path) {
-  const size_t slash = path.rfind('/');
-  const uint32_t h = bookNameHash(slash == std::string::npos ? path.c_str() : path.c_str() + slash + 1);
-  const auto it = std::lower_bound(onDeviceHashes.begin(), onDeviceHashes.end(), h);
-  if (it == onDeviceHashes.end() || *it != h) onDeviceHashes.insert(it, h);
-}
+void OpdsBookBrowserActivity::markOnDevice(const std::string& path) { OpdsOnDevice::add(onDeviceHashes, path); }
 
 HttpDownloader::Session& OpdsBookBrowserActivity::session() {
   if (!netSession) netSession = std::make_unique<HttpDownloader::Session>();
@@ -1209,25 +1166,7 @@ HttpDownloader::DownloadError OpdsBookBrowserActivity::fetchBook(const OpdsQueue
   downloadTotal = 0;
   requestUpdate(true);
 
-  const char* folder = SETTINGS.opdsDownloadFolder;  // "" => SD root
-  bool haveFolder = folder[0] != '\0';
-  if (haveFolder && !Storage.exists(folder) && !Storage.mkdir(folder)) {
-    // exists()-guard first: mkdir's return-on-existing is unconfirmed, and every
-    // existing caller checks exists() before mkdir. On real failure, fall back
-    // to SD root so the download is never lost.
-    LOG_ERR("OPDS", "mkdir failed for %s, using SD root", folder);
-    haveFolder = false;
-  }
-
-  // downloadToFile() needs a std::string, and titles are unbounded (a fixed
-  // char[] would truncate). Cold path (a multi-second download follows), so one
-  // reserve'd, in-place-appended owning string is the right call.
-  std::string filename;
-  filename.reserve(96);
-  if (haveFolder) filename += folder;
-  filename += '/';
-  filename += opdsBookFilename(item.author, item.title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat),
-                               item.extension);
+  const std::string filename = OpdsOnDevice::downloadPath(item.author, item.title, item.extension.c_str());
   LOG_DBG("OPDS", "Downloading: %s -> %s", item.url.c_str(), filename.c_str());
 
   const auto progress = [this](const unsigned int downloaded, const unsigned int total) {

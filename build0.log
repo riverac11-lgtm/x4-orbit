@@ -1,0 +1,903 @@
+Processing check_orbit (platform: https://github.com/pioarduino/platform-espressif32/releases/download/55.03.311/platform-espressif32.zip; board: esp32-c3-devkitm-1; framework: arduino)
+--------------------------------------------------------------------------------
+Warning: Failed to install freertos-gdb into /root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python: Command '['/root/.platformio/penv/bin/uv', 'pip', 'install', '--quiet', '--python=/root/.platformio/penv/bin/python', '--target', '/root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python', 'freertos-gdb']' returned non-zero exit status 2.
+Warning: Failed to install freertos-gdb into /root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python: Command '['/root/.platformio/penv/bin/uv', 'pip', 'install', '--quiet', '--python=/root/.platformio/penv/bin/python', '--target', '/root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python', 'freertos-gdb']' returned non-zero exit status 2.
+Verbose mode can be enabled via `-v, --verbose` option
+Warning: Failed to install freertos-gdb into /root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python: Command '['/root/.platformio/penv/bin/uv', 'pip', 'install', '--quiet', '--python=/root/.platformio/penv/bin/python', '--target', '/root/.platformio/packages/tool-riscv32-esp-elf-gdb/share/gdb/python', 'freertos-gdb']' returned non-zero exit status 2.
+Patched wolfSSL user_settings: .pio/libdeps/check_orbit/wolfssl/src/user_settings.h
+Building HTML/JS assets for Witch Reader version 2.41-dev+orbit-catalog
+WARNING [build_html.py]: terser not found - inline JS keeps its original identifiers, so the generated pages are roughly 17% larger than a release build. Run `npm install` in the project root to match CI.
+Generated: src/network/html/StatsPageHtml.generated.gz
+  Original: 35617 bytes
+  Minified: 30701 bytes (86.2%)
+  Compressed: 8102 bytes (22.7%)
+Generated: src/network/html/FilesPageHtml.generated.gz
+  Original: 322966 bytes
+  Minified: 268591 bytes (83.2%)
+  Compressed: 52804 bytes (16.3%)
+Generated: src/network/html/WebSetupPageHtml.generated.h
+  Original: 8102 bytes
+  Minified: 7275 bytes (89.8%)
+  Compressed: 2592 bytes (32.0%)
+Generated: src/network/html/SettingsPageHtml.generated.gz
+  Original: 75692 bytes
+  Minified: 63482 bytes (83.9%)
+  Compressed: 16925 bytes (22.4%)
+Generated: src/network/html/PluginsPageHtml.generated.gz
+  Original: 37798 bytes
+  Minified: 30621 bytes (81.0%)
+  Compressed: 8231 bytes (21.8%)
+Generated: src/network/html/WelcomePageHtml.generated.gz
+  Original: 16013 bytes
+  Minified: 13021 bytes (81.3%)
+  Compressed: 3741 bytes (23.4%)
+Generated: src/network/html/HomePageHtml.generated.gz
+  Original: 26974 bytes
+  Minified: 23068 bytes (85.5%)
+  Compressed: 6117 bytes (22.7%)
+Generated: src/network/html/DictionaryPageHtml.generated.gz
+  Original: 81463 bytes
+  Minified: 66010 bytes (81.0%)
+  Compressed: 17444 bytes (21.4%)
+Generated: src/network/html/DiagnosticsPageHtml.generated.gz
+  Original: 36666 bytes
+  Minified: 31683 bytes (86.4%)
+  Compressed: 9271 bytes (25.3%)
+Generated: src/network/html/FontsPageHtml.generated.gz
+  Original: 56548 bytes
+  Minified: 47986 bytes (84.9%)
+  Compressed: 11872 bytes (21.0%)
+Generated: src/network/html/js/metadata_editorJs.generated.gz
+  Original: 27254 bytes
+  Minified: 27254 bytes (100.0%)
+  Compressed: 8586 bytes (31.5%)
+Generated: src/network/html/js/font_converterJs.generated.gz
+  Original: 1706 bytes
+  Minified: 1706 bytes (100.0%)
+  Compressed: 800 bytes (46.9%)
+Generated: src/network/html/js/epub_fontsJs.generated.gz
+  Original: 13972 bytes
+  Minified: 13972 bytes (100.0%)
+  Compressed: 4804 bytes (34.4%)
+Generated: src/network/html/js/jszip_minJs.generated.gz
+  Original: 97630 bytes
+  Minified: 97630 bytes (100.0%)
+  Compressed: 27346 bytes (28.0%)
+Generated: /root/wt-catalog/.pio/web-cache/ftwasm.wasm.gz (265673 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/ftwasm.mjs.gz (2297 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/cpfont-raster.mjs.gz (4578 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/cpfont-writer.mjs.gz (6891 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/otf-tables.mjs.gz (5003 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/pyset-order.mjs.gz (1148 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/kern-reduce.mjs.gz (1853 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/FreeType-FTL.txt.gz (2801 bytes)
+Generated: /root/wt-catalog/.pio/web-cache/HarfBuzz-COPYING.txt.gz (1004 bytes)
+Generated: src/network/html/WebBundle.generated.h
+Web bundle: web-e36145e9b9c2.bin (467291 bytes, 22 files) in /root/wt-catalog/.pio/build/check_orbit
+Web bundle release: (none: not a published build)
+Language              Code  Own  Fallback  Unused  Data (B)
+--------------------  ----  ---  --------  ------  --------
+English               EN    936  0         0       15194   
+Беларуская            BE    887  49        0       9049    
+Català                CA    887  49        0       7216    
+Čeština               CS    887  49        0       7643    
+Dansk                 DA    887  49        0       6499    
+Deutsch               DE    887  49        0       6847    
+Español               ES    887  49        0       7194    
+Suomi                 FI    887  49        0       7042    
+Français              FR    887  49        0       7085    
+Magyar                HU    887  49        0       7538    
+Italiano              IT    887  49        0       6843    
+日本語                   JA    886  50        0       7173    
+Қазақша               KK    887  49        0       8803    
+한국어                   KO    886  50        0       6691    
+Lietuvių              LT    887  49        0       7027    
+Nederlands            NL    887  49        0       6749    
+Polski                PL    887  49        0       7440    
+Português (Brasil)    PO    887  49        0       7114    
+Português (Portugal)  PT    887  49        0       7309    
+Română                RO    887  49        0       7238    
+Русский               RU    887  49        0       8976    
+Slovenščina           SI    887  49        0       6980    
+Svenska               SV    887  49        0       6773    
+Türkçe                TR    887  49        0       7123    
+Українська            UK    887  49        0       9084    
+Tiếng Việt            VI    887  49        0       7158    
+简体中文                  ZH    886  50        0       6238    
+
+  Total: 936  |  Used in code: 936  |  Never used: 0
+  Flash: 206,026 B strings (EN raw + packs)  +   1,872 B EN offset table  =  207,898 B
+
+
+Code generation complete!
+  Languages: 27
+  String keys: 936
+CrossPoint Git repository: jpirnay/witchhunt-reader
+CrossPoint display SDK: FreeInk 050fc80
+c3_bootloader: bootloader/esp32c3/bootloader.bin (ESP-IDF 5.5.5, no image check on power-on)
+x4-orbit: -O2 for 19 hot-path patterns
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-c3-devkitm-1.html
+PLATFORM: Espressif 32 (55.3.311) > Espressif ESP32-C3-DevKitM-1
+HARDWARE: ESP32C3 160MHz, 320KB RAM, 16MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-builtin, esp-prog, esp-prog-2, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - contrib-piohome @ 3.4.4 
+ - framework-arduinoespressif32 @ 3.3.11 
+ - framework-arduinoespressif32-libs @ 5.5.5+sha.b774170ff46 
+ - tool-cppcheck @ 2.20.1 
+ - tool-esptoolpy @ 5.3.0 
+ - tool-riscv32-esp-elf-gdb @ 17.1.0+20260402 
+ - toolchain-riscv32-esp @ 14.2.0+20260121
+[ComponentManager] Ignored library: bt (56 entries)
+[ComponentManager] Updated build file (56 total removals)
+[ComponentManager] Processed 1 ignored libraries
+[ComponentManager] Session completed with 3 changes
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 99 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- BoardConfig @ 2.0.0
+|-- XteinkDetect @ 1.0.0
+|-- BatteryMonitor @ 2.0.0
+|-- InputManager @ 2.0.0
+|-- EInkDisplay @ 2.0.0
+|-- SdFat @ 2.3.1
+|-- SDCardManager @ 2.0.0
+|-- UsbMassStorage @ 1.0.0
+|-- PowerManager @ 1.0.0
+|-- FrontlightManager @ 1.0.0
+|-- Rtc @ 1.0.0
+|-- FreeInkUI @ 0.1.0
+|-- Icons @ 1.0.0
+|-- FreeInkOpenType @ 0.1.0
+|-- ArduinoJson @ 7.4.2+sha.733bc4e
+|-- QRCode @ 1.8.0
+|-- WebSockets @ 2.7.3+sha.1c8b8de
+|-- SaxParser @ 1.0.0
+|-- SerialTransfer @ 1.0.0
+|-- SecureNet @ 1.0.0
+|-- wolfssl @ 5.7.2+sha.9ecc5e7
+|-- Epub
+|-- FsHelpers
+|-- hal
+|-- KOReaderSync
+|-- Logging
+|-- Txt
+|-- Xtc
+|-- Preferences @ 3.3.11
+|-- EpdFont
+|-- Utf8
+|-- GfxRenderer
+|-- Memory
+|-- Serialization
+|-- JsonParser
+|-- I18n
+|-- OtShaper
+|-- PngDecoder
+|-- JpegToBmpConverter
+|-- OpdsParser
+|-- WiFi @ 3.3.11
+|-- CooperativeAbort
+|-- LibraryIndex
+|-- PngToBmpConverter
+|-- DNSServer @ 3.3.11
+|-- ESPmDNS @ 3.3.11
+|-- HTTPClient @ 3.3.11
+|-- Networking @ 3.3.11
+|-- ZipFile
+|-- Weather
+|-- SPI @ 3.3.11
+|-- WebServer @ 3.3.11
+|-- TextShaping
+|-- InflateReader
+|-- FileIndex
+|-- Md
+Building in release mode
+Compiling .pio/build/check_orbit/lib767/Wire/Wire.cpp.o
+Compiling .pio/build/check_orbit/lib27c/XteinkDetect/XteinkDetect.cpp.o
+Compiling .pio/build/check_orbit/libfbf/BatteryMonitor/BatteryMonitor.cpp.o
+Compiling .pio/build/check_orbit/lib0fb/InputManager/InputManager.cpp.o
+Compiling .pio/build/check_orbit/liba96/SPI/SPI.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/FreeInkDisplay.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/bus/EpdBus.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Ed2208M5Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/It8951Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/LgfxEpdDriver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/M5OfficialDriver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/PaperMonoDriver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Ssd1677Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Ssd2677Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8179Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8253MurphyDriver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8253X3Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8279Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8279X4Driver.cpp.o
+Compiling .pio/build/check_orbit/lib095/FreeInkDisplay/driver/Uc8279cA4Driver.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatDbg.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatFile.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatFilePrint.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatFileWrite.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatFormatter.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatName.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatPartition.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/ExFatLib/ExFatVolume.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatDbg.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatFile.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatFileLFN.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatFilePrint.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatFileSFN.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatFormatter.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatName.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatPartition.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FatLib/FatVolume.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FreeStack.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FsLib/FsFile.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FsLib/FsNew.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/FsLib/FsVolume.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/MinimumSerial.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/PioSdio/PioSdioCard.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdCardInfo.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdSpiCard/SdSpiCard.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdSpiCard/SpiDriver/SdSpiChipSelect.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdSpiCard/SpiDriver/SdSpiDue.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdSpiCard/SpiDriver/SdSpiSTM32Core.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/SdSpiCard/SpiDriver/SdSpiTeensy3.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/SdCard/TeensySdio/TeensySdio.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FmtNumber.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FsCache.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FsDateTime.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FsName.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FsStructs.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/FsUtf.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/PrintBasic.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/common/upcase.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/iostream/StdioStream.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/iostream/StreamBaseClass.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/iostream/istream.cpp.o
+Compiling .pio/build/check_orbit/lib08b/SdFat/iostream/ostream.cpp.o
+Compiling .pio/build/check_orbit/lib5ea/SDCardManager/SDCardManager.cpp.o
+Compiling .pio/build/check_orbit/lib5ea/SDCardManager/SdmmcBlockDevice.cpp.o
+Compiling .pio/build/check_orbit/lib002/UsbMassStorage/UsbMassStorage.cpp.o
+Compiling .pio/build/check_orbit/libd2d/PowerManager/PowerManager.cpp.o
+Compiling .pio/build/check_orbit/lib57f/FrontlightManager/FrontlightManager.cpp.o
+Compiling .pio/build/check_orbit/liba10/Rtc/Rtc.cpp.o
+Compiling .pio/build/check_orbit/libf2c/Preferences/Preferences.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkClient.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkEvents.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkInterface.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkManager.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkServer.cpp.o
+Compiling .pio/build/check_orbit/liba04/Network/NetworkUdp.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/AP.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/STA.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFi.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFiAP.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFiGeneric.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFiMulti.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFiSTA.cpp.o
+Compiling .pio/build/check_orbit/lib789/WiFi/WiFiScan.cpp.o
+Compiling .pio/build/check_orbit/lib790/FS/FS.cpp.o
+Compiling .pio/build/check_orbit/lib790/FS/vfs_api.cpp.o
+Compiling .pio/build/check_orbit/liba30/uzlib/tinflate.c.o
+Compiling .pio/build/check_orbit/libf53/InflateReader/InflateReader.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/EspNorFlash.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/FlashFontPartition.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/FlashLangPartition.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalClock.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalDisplay.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalFrontlight.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalGPIO.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalI2cBus.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalPowerManager.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalSpiBus.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalStorage.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalSystem.cpp.o
+Compiling .pio/build/check_orbit/libc9d/hal/HalTiltSensor.cpp.o
+Compiling .pio/build/check_orbit/libecd/Logging/Logging.cpp.o
+Compiling .pio/build/check_orbit/lib1bb/Utf8/IndicReorder.cpp.o
+Compiling .pio/build/check_orbit/lib1bb/Utf8/Utf8.cpp.o
+Compiling .pio/build/check_orbit/libf07/MiniBidi/BidiUtils.cpp.o
+Compiling .pio/build/check_orbit/libf07/MiniBidi/minibidi.c.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtArabic.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtBuffer.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtContext.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtFace.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtFilterWriter.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtGpos.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtGsub.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtIndic.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtLayout.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtMyanmar.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtNormalize.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtPlan.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtPlanBuild.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtShaper.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtTable.cpp.o
+Compiling .pio/build/check_orbit/lib64f/OtShaper/OtUse.cpp.o
+Compiling .pio/build/check_orbit/lib327/FreeInkOpenType/Gpos.cpp.o
+Compiling .pio/build/check_orbit/lib327/FreeInkOpenType/Gsub.cpp.o
+Compiling .pio/build/check_orbit/lib327/FreeInkOpenType/KernTable.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/EpdFont.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/EpdFontFamily.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/FallbackFaceProvider.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/FontDecompressor.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/GlyphFallback.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/SdCardFont.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/SdCardFontManager.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/SdCardFontRegistry.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ShapingFace.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/UiFaceProvider.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/FlashGlyphStore.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/FontBytes.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/GlyphStoreFormat.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfCff.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfCffBlock.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfCffCharString.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfCffLoad.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfFace.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfFamily.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfFont.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfOpenType.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfRasterizer.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/TtfShaping.cpp.o
+Compiling .pio/build/check_orbit/lib2ea/EpdFont/ttf/third_party/freetype/ftgrays.c.o
+Compiling .pio/build/check_orbit/libbda/GfxRenderer/Bitmap.cpp.o
+Compiling .pio/build/check_orbit/libbda/GfxRenderer/BitmapHelpers.cpp.o
+Compiling .pio/build/check_orbit/libbda/GfxRenderer/FontCacheManager.cpp.o
+Compiling .pio/build/check_orbit/libbda/GfxRenderer/GfxRenderer.cpp.o
+Compiling .pio/build/check_orbit/libbda/GfxRenderer/TextTruncation.cpp.o
+Compiling .pio/build/check_orbit/libee9/FreeInkUI/FreeInkUI.cpp.o
+Compiling .pio/build/check_orbit/lib387/QRCode/qrcodegen.c.o
+Compiling .pio/build/check_orbit/libf0c/Ethernet/ETH.cpp.o
+Compiling .pio/build/check_orbit/lib243/NetworkClientSecure/NetworkClientSecure.cpp.o
+Compiling .pio/build/check_orbit/lib243/NetworkClientSecure/ssl_client.cpp.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/SocketIOclient.cpp.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/WebSockets.cpp.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/WebSocketsClient.cpp.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/WebSocketsServer.cpp.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/libb64/cdecode.c.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/libb64/cencode.c.o
+Compiling .pio/build/check_orbit/lib43b/WebSockets/libsha1/libsha1.c.o
+Compiling .pio/build/check_orbit/lib533/SaxParser/SaxParserYxml.cpp.o
+Compiling .pio/build/check_orbit/lib533/SaxParser/yxml.c.o
+Compiling .pio/build/check_orbit/lib91c/SerialTransfer/SerialTransfer/SerialTransferProtocol.cpp.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/bio.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/conf.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/crl.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/dtls.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/dtls13.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/internal.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/keys.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ocsp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/pk.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/quic.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/sniffer.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_asn1.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_bn.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_certman.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_crypto.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_load.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_misc.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_p7p12.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/ssl_sess.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/tls.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/tls13.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/wolfio.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/x509.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/src/x509_str.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/aes.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/arc4.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/asm.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/asn.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/async.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/bio.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/blake2b.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/blake2s.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/camellia.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/chacha.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/chacha20_poly1305.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/cmac.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/coding.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/compress.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/cpuid.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/cryptocb.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/curve25519.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/curve448.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/des3.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/dh.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/dilithium.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/dsa.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ecc.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ecc_fp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/eccsi.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ed25519.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ed448.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/error.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/evp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ext_kyber.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ext_lms.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ext_xmss.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/falcon.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/fe_448.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/fe_low_mem.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/fe_operations.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ge_448.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ge_low_mem.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ge_operations.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/hash.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/hmac.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/hpke.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/integer.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/kdf.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/logging.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/md2.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/md4.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/md5.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/memory.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/misc.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/pkcs12.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/pkcs7.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/poly1305.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp32_aes.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp32_mp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp32_sha.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp32_util.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp_sdk_mem_lib.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp_sdk_time_lib.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/Espressif/esp_sdk_wifi_lib.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/port/atmel/atmel.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/pwdbased.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/random.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/rc2.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/ripemd.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/rsa.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sakke.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sha.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sha256.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sha3.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sha512.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/signature.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/siphash.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sm2.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sm3.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sm4.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_arm32.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_arm64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_armthumb.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_c32.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_c64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_cortexm.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_dsp32.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_int.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_arm32.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_arm64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_armthumb.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_c32.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_c64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_cortexm.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_sm2_x86_64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sp_x86_64.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/sphincs.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/srp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/tfm.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_dsp.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_encrypt.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_kyber.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_kyber_poly.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_lms.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_lms_impl.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_pkcs11.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_port.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_xmss.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wc_xmss_impl.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wolfevent.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfcrypt/src/wolfmath.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfssl/bio.c.o
+Compiling .pio/build/check_orbit/libdd2/wolfssl/wolfssl/evp.c.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/HttpRange.cpp.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/RangeDownload.cpp.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/SecureClient.cpp.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/SecureHttpClient.cpp.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/SecureNetSelfTest.cpp.o
+Compiling .pio/build/check_orbit/libb2c/SecureNet/TlsPolicy.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/BookCache.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/FileReplace.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/FolderWalk.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/FsHelpers.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/NaturalSort.cpp.o
+Compiling .pio/build/check_orbit/lib225/FsHelpers/SidecarFiles.cpp.o
+Compiling .pio/build/check_orbit/libed5/Serialization/ObfuscationUtils.cpp.o
+Compiling .pio/build/check_orbit/lib8bd/CooperativeAbort/CooperativeAbort.cpp.o
+Compiling .pio/build/check_orbit/lib7e5/ProgressiveJpeg/ProgressiveJpeg.cpp.o
+Compiling .pio/build/check_orbit/lib3f5/ZipFile/ZipFile.cpp.o
+Compiling .pio/build/check_orbit/libe81/TJpgDec/tjpgd.c.o
+Compiling .pio/build/check_orbit/lib0bb/TextShaping/HebrewShaper.cpp.o
+Compiling .pio/build/check_orbit/lib0bb/TextShaping/IndicShaper.cpp.o
+Compiling .pio/build/check_orbit/lib0bb/TextShaping/TextShaping.cpp.o
+Compiling .pio/build/check_orbit/lib7c3/I18n/I18n.cpp.o
+Compiling .pio/build/check_orbit/lib7c3/I18n/I18nStrings.cpp.o
+Compiling .pio/build/check_orbit/libf74/JpegToBmpConverter/JpegToBmpConverter.cpp.o
+Compiling .pio/build/check_orbit/lib99a/PngDecoder/PngStreamDecoder.cpp.o
+Compiling .pio/build/check_orbit/libac6/PngToBmpConverter/PngToBmpConverter.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/BidiLine.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/BookFonts.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/BookMetadataCache.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/BookTextSearch.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/CjkLineBreak.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/CjkPunctuation.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/EpubImageManifest.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/FlowContext.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/FootnotePreviews.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/FootnoteShape.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/MetadataSidecar.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/Page.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/ParsedText.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/Section.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/ShapedStore.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/SpinePageIndex.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/TypographyProfile.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/VerticalDraw.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/VerticalOrientation.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/WordShapeCache.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/blocks/ImageBlock.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/blocks/TextBlock.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/content/CompiledContent.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/converters/GifToFramebufferConverter.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/converters/ImageDecoderFactory.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/converters/ImageToFramebufferDecoder.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/converters/JpegToFramebufferConverter.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/converters/PngToFramebufferConverter.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/css/CssParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/htmlEntities.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/hyphenation/HyphenationCommon.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/hyphenation/Hyphenator.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/hyphenation/LanguageRegistry.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/hyphenation/LiangHyphenation.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/ChapterHtmlSlimParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/ContainerParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/ContentOpfParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/PageListSink.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/PageMapParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/TocNavParser.cpp.o
+Compiling .pio/build/check_orbit/libddd/Epub/Epub/parsers/TocNcxParser.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ChapterXPathForwardMapper.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ChapterXPathIndexer.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ChapterXPathIndexerInternal.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ChapterXPathReverseMapper.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/KOReaderCredentialStore.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/KOReaderDocumentId.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/KOReaderSyncClient.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ProgressComparison.cpp.o
+Compiling .pio/build/check_orbit/lib687/KOReaderSync/ProgressMapper.cpp.o
+Compiling .pio/build/check_orbit/libac8/Txt/Txt.cpp.o
+Compiling .pio/build/check_orbit/lib3b9/Xtc/Xtc.cpp.o
+Compiling .pio/build/check_orbit/lib3b9/Xtc/Xtc/XtcParser.cpp.o
+Compiling .pio/build/check_orbit/libb56/JsonParser/FontManifestParser.cpp.o
+Compiling .pio/build/check_orbit/libb56/JsonParser/ReleaseJsonParser.cpp.o
+Compiling .pio/build/check_orbit/libb56/JsonParser/ReleaseNotesExcerpt.cpp.o
+Compiling .pio/build/check_orbit/libb56/JsonParser/StreamingJsonParser.cpp.o
+Compiling .pio/build/check_orbit/lib268/OpdsParser/OpdsParser.cpp.o
+Compiling .pio/build/check_orbit/lib268/OpdsParser/OpdsStream.cpp.o
+Compiling .pio/build/check_orbit/lib268/OpdsParser/OpenSearchDescription.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryBlob.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryBuilder.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryIndexReader.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryJoin.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryKeys.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryOrder.cpp.o
+Compiling .pio/build/check_orbit/lib5b7/LibraryIndex/LibraryPublish.cpp.o
+Compiling .pio/build/check_orbit/lib6cd/AsyncUDP/AsyncUDP.cpp.o
+Compiling .pio/build/check_orbit/lib43b/DNSServer/DNSServer.cpp.o
+Compiling .pio/build/check_orbit/libe94/ESPmDNS/ESPmDNS.cpp.o
+Compiling .pio/build/check_orbit/lib1b5/HTTPClient/HTTPClient.cpp.o
+Compiling .pio/build/check_orbit/libd3a/Weather/WeatherClient.cpp.o
+Compiling .pio/build/check_orbit/libd3a/Weather/WeatherIcons.cpp.o
+Compiling .pio/build/check_orbit/libd3a/Weather/WeatherSettingsStore.cpp.o
+Compiling .pio/build/check_orbit/lib819/Hash/PBKDF2_HMACBuilder.cpp.o
+Compiling .pio/build/check_orbit/lib819/Hash/SHA1Builder.cpp.o
+Compiling .pio/build/check_orbit/lib819/Hash/SHA2Builder.cpp.o
+Compiling .pio/build/check_orbit/lib819/Hash/SHA3Builder.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/Parsing.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/WebServer.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/detail/mimetable.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/middleware/AuthenticationMiddleware.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/middleware/CorsMiddleware.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/middleware/LoggingMiddleware.cpp.o
+Compiling .pio/build/check_orbit/lib5f9/WebServer/middleware/MiddlewareChain.cpp.o
+Compiling .pio/build/check_orbit/lib370/FileIndex/FileIndex.cpp.o
+Compiling .pio/build/check_orbit/lib6ba/Md/MdParser.cpp.o
+Compiling .pio/build/check_orbit/src/BookRelocation.cpp.o
+Compiling .pio/build/check_orbit/src/BootDiagnostics.cpp.o
+Compiling .pio/build/check_orbit/src/ButtonEventManager.cpp.o
+Compiling .pio/build/check_orbit/src/CjkUiFonts.cpp.o
+Compiling .pio/build/check_orbit/src/CrossPointSettings.cpp.o
+Compiling .pio/build/check_orbit/src/CrossPointState.cpp.o
+Compiling .pio/build/check_orbit/src/FontInstaller.cpp.o
+Compiling .pio/build/check_orbit/src/FontPreviewCache.cpp.o
+Compiling .pio/build/check_orbit/src/GestureEventManager.cpp.o
+Compiling .pio/build/check_orbit/src/GlobalBookmarkIndex.cpp.o
+Compiling .pio/build/check_orbit/src/JsonSettingsIO.cpp.o
+Compiling .pio/build/check_orbit/src/MappedInputManager.cpp.o
+Compiling .pio/build/check_orbit/src/OpdsServerStore.cpp.o
+Compiling .pio/build/check_orbit/src/OrbitProfile.cpp.o
+Compiling .pio/build/check_orbit/src/ReadingSessionTracker.cpp.o
+Compiling .pio/build/check_orbit/src/ReadingStats.cpp.o
+Compiling .pio/build/check_orbit/src/ReadingStatsJson.cpp.o
+Compiling .pio/build/check_orbit/src/ReadingStatsSlotFile.cpp.o
+Compiling .pio/build/check_orbit/src/RecentBooksStore.cpp.o
+Compiling .pio/build/check_orbit/src/SdCardFontSystem.cpp.o
+Compiling .pio/build/check_orbit/src/SerialBuffers.cpp.o
+Compiling .pio/build/check_orbit/src/SerialTestApi.cpp.o
+Compiling .pio/build/check_orbit/src/SerialTransferDevice.cpp.o
+Compiling .pio/build/check_orbit/src/SettingsByKey.cpp.o
+Compiling .pio/build/check_orbit/src/SystemStatus.cpp.o
+Compiling .pio/build/check_orbit/src/UiLanguage.cpp.o
+Compiling .pio/build/check_orbit/src/UiScriptPack.cpp.o
+Compiling .pio/build/check_orbit/src/WifiCredentialStore.cpp.o
+Compiling .pio/build/check_orbit/src/activities/Activity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/ActivityManager.cpp.o
+Compiling .pio/build/check_orbit/src/activities/ListController.cpp.o
+Compiling .pio/build/check_orbit/src/activities/ListTabBar.cpp.o
+Compiling .pio/build/check_orbit/src/activities/MenuListActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/NetworkMemoryTrim.cpp.o
+Compiling .pio/build/check_orbit/src/activities/SliderPickerActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/TabbedUiListActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/UiListActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/boot_sleep/BootActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/boot_sleep/SleepActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/browser/OpdsBookBrowserActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/browser/OpdsFormatLabel.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/BookDetails.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/BookDetailsCache.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/BookInfoActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/BookRowResolver.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/CoverThumbLoader.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/FileBrowserActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/FileBrowserModel.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/FileContextMenuActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/FolderCountMemo.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/FolderSearch.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/GlobalBookmarksActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/HomeActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/HomeMenu.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/HomeMoreActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/home/LibraryFreshness.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/CalibreConnectActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/CrossPointWebServerActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/NetworkModeSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/SerialTransferActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/ServerSession.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/UsbDriveActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/WifiLinkWatch.cpp.o
+Compiling .pio/build/check_orbit/src/activities/network/WifiSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/DictionaryDefinitionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/DictionaryWordSelectActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubNavigationTarget.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderAutoSync.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderBenchmark.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderChapterSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderFootnotesActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderMenuActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderPrintedPageInputActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderSearchActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubReaderSync.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/EpubRenderBenchmarkActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/FinishedBookActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/KOReaderAutoSync.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/KOReaderSyncActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/KOReaderSyncMetadata.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/KOReaderSyncWorker.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/LineReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/MdReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/MdReaderTocSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/QrDisplayActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/QuickOverridesActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/ReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/StarredPagesActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/TxtReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/XtcReaderActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/reader/XtcReaderChapterSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/BootDiagnosticsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ButtonActionsOverviewActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ButtonRemapActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ClearCacheActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ClockSettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/DetectTimezoneActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/DictionarySelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/EnumSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/FontDownloadActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/FontScalingTestActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/FontSelectionActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/GestureActionsOverviewActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/KOReaderAuthActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/KOReaderSettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/KeyboardLayoutsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/LanguageSelectActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/OpdsServerListActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/OpdsSettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/OtaUpdateActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ReadingStatsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ReadingStatsBookDetailActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ReadingStatsBookListActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/ScreenRepairActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SdFirmwareUpdateActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SettingActionDispatch.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SettingInfo.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SettingsSubmenuActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SliderSettingPicker.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SpeedCheckActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/StatusBarSettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SwitchToUsbDriveActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SyncTimeActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/settings/SystemInformationActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/BmpViewerActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/ConfirmationActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/FrontlightPanelActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/FullScreenMessageActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/KeyboardEntryActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/util/KeyboardLayoutSet.cpp.o
+Compiling .pio/build/check_orbit/src/activities/weather/WeatherActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/weather/WeatherCityResultsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/activities/weather/WeatherSettingsActivity.cpp.o
+Compiling .pio/build/check_orbit/src/components/BookProgressPresentation.cpp.o
+Compiling .pio/build/check_orbit/src/components/CardLayout.cpp.o
+Compiling .pio/build/check_orbit/src/components/CoverGridLayout.cpp.o
+Compiling .pio/build/check_orbit/src/components/OrbitArt.cpp.o
+Compiling .pio/build/check_orbit/src/components/TouchExitButton.cpp.o
+Compiling .pio/build/check_orbit/src/components/UITheme.cpp.o
+Compiling .pio/build/check_orbit/src/components/UiAppHost.cpp.o
+Compiling .pio/build/check_orbit/src/components/themes/BaseTheme.cpp.o
+Compiling .pio/build/check_orbit/src/components/themes/lyra/Lyra3CoversTheme.cpp.o
+Compiling .pio/build/check_orbit/src/components/themes/lyra/LyraCarouselTheme.cpp.o
+Compiling .pio/build/check_orbit/src/components/themes/lyra/LyraTheme.cpp.o
+Compiling .pio/build/check_orbit/src/main.cpp.o
+Compiling .pio/build/check_orbit/src/network/CrossPointWebServer.cpp.o
+Compiling .pio/build/check_orbit/src/network/FirmwareBoardTag.cpp.o
+Compiling .pio/build/check_orbit/src/network/FirmwareFlasher.cpp.o
+Compiling .pio/build/check_orbit/src/network/HttpDownloader.cpp.o
+Compiling .pio/build/check_orbit/src/network/HttpFileStreamer.cpp.o
+Compiling .pio/build/check_orbit/src/network/OtaBootSwitch.cpp.o
+Compiling .pio/build/check_orbit/src/network/OtaUpdater.cpp.o
+Compiling .pio/build/check_orbit/src/network/WebAssets.cpp.o
+Compiling .pio/build/check_orbit/src/network/WebDAVHandler.cpp.o
+Compiling .pio/build/check_orbit/src/network/WebPathGuard.cpp.o
+Compiling .pio/build/check_orbit/src/network/WifiApChoice.cpp.o
+Compiling .pio/build/check_orbit/src/platform/UsbSerialJtagHandoff.cpp.o
+Compiling .pio/build/check_orbit/src/platform/skip_efuse_blk_check.c.o
+Compiling .pio/build/check_orbit/src/util/ButtonNavigator.cpp.o
+Compiling .pio/build/check_orbit/src/util/CjkLookupRun.cpp.o
+Compiling .pio/build/check_orbit/src/util/DictHtmlNormalize.cpp.o
+Compiling .pio/build/check_orbit/src/util/DictHtmlPages.cpp.o
+Compiling .pio/build/check_orbit/src/util/DictZip.cpp.o
+Compiling .pio/build/check_orbit/src/util/Dictionary.cpp.o
+Compiling .pio/build/check_orbit/src/util/DictionaryRegistry.cpp.o
+Compiling .pio/build/check_orbit/src/util/FontCatalog.cpp.o
+Compiling .pio/build/check_orbit/src/util/FontManifestReader.cpp.o
+Compiling .pio/build/check_orbit/src/util/HtmlToPlainText.cpp.o
+Compiling .pio/build/check_orbit/src/util/ListGrammar.cpp.o
+Compiling .pio/build/check_orbit/src/util/OpdsDownloadQueue.cpp.o
+Compiling .pio/build/check_orbit/src/util/OpdsFilename.cpp.o
+Compiling .pio/build/check_orbit/src/util/OpdsSavedPosition.cpp.o
+Compiling .pio/build/check_orbit/src/util/PluginLocations.cpp.o
+Compiling .pio/build/check_orbit/src/util/QrUtils.cpp.o
+Compiling .pio/build/check_orbit/src/util/ScreenshotUtil.cpp.o
+Compiling .pio/build/check_orbit/src/util/SerialCommandGrammar.cpp.o
+Compiling .pio/build/check_orbit/src/util/SpeedCheck.cpp.o
+Compiling .pio/build/check_orbit/src/util/StringUtils.cpp.o
+Compiling .pio/build/check_orbit/src/util/Timezones.cpp.o
+Compiling .pio/build/check_orbit/src/util/UrlUtils.cpp.o
+Compiling .pio/build/check_orbit/src/util/WakeTrace.cpp.o
+Generating partitions .pio/build/check_orbit/partitions.bin
+Compiling .pio/build/check_orbit/FrameworkArduino/ColorFormat.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/Esp.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/FirmwareMSC.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/FunctionalInterrupt.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/HEXBuilder.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/HWCDC.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/HardwareSerial.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/HashBuilder.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/IPAddress.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/MD5Builder.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/MacAddress.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/Print.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/Stream.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/StreamString.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/StringUtils.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/Tone.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/USB.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/USBCDC.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/USBMSC.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/WMath.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/WString.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/base64.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/cbuf.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/chip-debug-report.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-adc.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-bt.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-cpu.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-dac.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-gpio.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-hosted.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-i2c-ng.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-i2c-slave.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-i2c.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-ldo.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-ledc.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-log-wrapper.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-matrix.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-misc.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-periman.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-psram.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-rgb-led.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-rmt.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-sigmadelta.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-spi.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-time.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-timer.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-tinyusb.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-touch-ng.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-touch.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/esp32-hal-uart.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/firmware_msc_fat.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/freertos_stats.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/idf_openthread_mpool_wrapper.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/libb64/cdecode.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/libb64/cencode.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/main.cpp.o
+Compiling .pio/build/check_orbit/FrameworkArduino/stdlib_noniso.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/wiring_pulse.c.o
+Compiling .pio/build/check_orbit/FrameworkArduino/wiring_shift.c.o
+Archiving .pio/build/check_orbit/libFrameworkArduino.a
+Indexing .pio/build/check_orbit/libFrameworkArduino.a
+Linking .pio/build/check_orbit/firmware.elf
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Data          │      3243620 │          │                │               │
+│    .rodata          │      3230052 │          │                │               │
+│    .eh_frame        │        12880 │          │                │               │
+│    .init_array      │          432 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ Flash Code          │      3069848 │          │                │               │
+│    .text            │      3069848 │          │                │               │
+│ DRAM                │       130519 │    40.62 │         190777 │        321296 │
+│    .text            │        72090 │    22.44 │                │               │
+│    .bss             │        39888 │    12.41 │                │               │
+│    .data            │        18541 │     5.77 │                │               │
+│ RTC SLOW            │         5604 │    68.41 │           2588 │          8192 │
+│    .rtc_noinit      │         5584 │    68.16 │                │               │
+│    .text            │           20 │     0.24 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 6404119 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size. The total external RAM size is not included either, because the amount of RAM connected to the chip is detected at boot and is not known during the build.
+Checking the TTF engine for floating point
+check_no_float: 14 TTF engine objects, no floating point
+Retrieving maximum program size .pio/build/check_orbit/firmware.elf
+Checking size .pio/build/check_orbit/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [==        ]  17.8% (used 58432 bytes from 327680 bytes)
+Flash: [==========]  97.5% (used 6390531 bytes from 6553600 bytes)
+Building .pio/build/check_orbit/firmware.bin
+esptool v5.3.0
+Creating ESP32-C3 image...
+Merged 3 ELF sections.
+Successfully created ESP32-C3 image.
+Creating binary "firmware.factory.bin" with:
+    Offset   | File
+ -  0x0000   | bootloader.bin
+ -  0x8000   | partitions.bin
+ -  0xe000   | boot_app0.bin
+ -  0x10000  | firmware.bin
+Successfully created combined binary image.
+======================== [SUCCESS] Took 485.64 seconds ========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+check_orbit    SUCCESS   00:08:05.645
+========================= 1 succeeded in 00:08:05.645 =========================

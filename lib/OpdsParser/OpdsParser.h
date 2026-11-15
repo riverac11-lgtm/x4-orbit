@@ -21,6 +21,7 @@ struct OpdsAcquisitionLink {
   std::string mimeType;
   std::string formatKey;
   std::string fileExtension;
+  uint32_t length = 0;  // The link's length= attribute (bytes), 0 when the catalog gives none
 };
 
 /**
@@ -37,6 +38,12 @@ struct OpdsEntry {
   // of those downloads.
   std::vector<OpdsAcquisitionLink> acquisitionLinks;
   std::string imageHref;  // Cover image URL (rel="http://opds-spec.org/image"), books only
+  // Series metadata where the catalog carries it as data: calibre's <meta name="calibre:series"
+  // content=...> (and calibre:series_index), or an element named series / series_index in any
+  // namespace. Empty when absent; the index is kept as text ("2", "2.5").
+  std::string series;
+  std::string seriesIndex;
+  std::string updated;  // <updated> of the entry (Atom date), as given
 };
 
 // Legacy alias for backward compatibility
@@ -120,6 +127,9 @@ class OpdsParser final : public Print {
   bool inId = false;
   bool inSummary = false;
   bool inContent = false;
+  bool inUpdated = false;
+  bool inSeries = false;
+  bool inSeriesIndex = false;
   // currentEntry.href is a download in a format the reader cannot open, kept only until the entry
   // shows a link it can use.
   bool hrefIsUnsupportedDownload = false;

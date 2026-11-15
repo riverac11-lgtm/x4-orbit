@@ -573,3 +573,59 @@ TEST(OpdsParser, BuyLinkAloneIsNotListed) {
   const auto entries = parseFeed(xml, parser);
   EXPECT_TRUE(entries.empty());
 }
+
+namespace {
+std::vector<OpdsEntry> parseFeed(const std::string& xml) {
+  std::vector<OpdsEntry> entries;
+  OpdsParser parser;
+  parser.onEntryParsed = [&](OpdsEntry e) { entries.push_back(std::move(e)); };
+  parser.write(reinterpret_cast<const uint8_t*>(xml.data()), xml.size());
+  parser.flush();
+  EXPECT_FALSE(parser.error());
+  return entries;
+}
+}  // namespace
+
+TEST(OpdsParser, SeriesUpdatedAndLengthFromCalibreMeta) {
+  const auto entries = parseFeed(R"(<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><updated>2026-01-01T00:00:00Z</updated>
+  <entry>
+    <title>Foundation and Empire</title>
+    <id>urn:book:2</id>
+    <updated>2026-11-02T10:00:00Z</updated>
+    <meta name="calibre:series" content="Foundation"/>
+    <meta name="calibre:series_index" content="2.0"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/b/2.epub" length="123456"/>
+  </entry>
+</feed>)");
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries[0].series, "Foundation");
+  EXPECT_EQ(entries[0].seriesIndex, "2.0");
+  EXPECT_EQ(entries[0].updated, "2026-11-02T10:00:00Z");
+  ASSERT_EQ(entries[0].acquisitionLinks.size(), 1u);
+  EXPECT_EQ(entries[0].acquisitionLinks[0].length, 123456u);
+}
+
+TEST(OpdsParser, SeriesFromNamespacedElements) {
+  const auto entries = parseFeed(R"(<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:calibre="http://calibre.kovidgoyal.net/2009/metadata">
+  <entry>
+    <title>Second Foundation</title>
+    <id>urn:book:3</id>
+    <calibre:series>Foundation</calibre:series>
+    <calibre:series_index>3</calibre:series_index>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/b/3.epub"/>
+  </entry>
+  <entry>
+    <title>No Series</title>
+    <id>urn:book:4</id>
+    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/b/4.epub"/>
+  </entry>
+</feed>)");
+  ASSERT_EQ(entries.size(), 2u);
+  EXPECT_EQ(entries[0].series, "Foundation");
+  EXPECT_EQ(entries[0].seriesIndex, "3");
+  EXPECT_TRUE(entries[1].series.empty());
+  EXPECT_TRUE(entries[1].updated.empty());
+  EXPECT_EQ(entries[1].acquisitionLinks[0].length, 0u);
+}

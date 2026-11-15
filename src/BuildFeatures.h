@@ -46,6 +46,12 @@
 #define CP_FEATURE_HOME_OPDS 1  // "Online Library" (the OPDS catalog) as a home screen entry
 #endif
 
+#ifndef CP_FEATURE_ORBIT_CATALOG
+// Online Library opens a saved copy of the catalog (search, series, authors, waiting list), and
+// books are fetched while charging, asleep included (ChargeDelivery.h).
+#define CP_FEATURE_ORBIT_CATALOG 1
+#endif
+
 #ifndef CP_FEATURE_OTA
 #define CP_FEATURE_OTA 1  // Internet firmware update (the SD-card update stays)
 #endif
