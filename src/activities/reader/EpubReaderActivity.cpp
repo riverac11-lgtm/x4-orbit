@@ -985,6 +985,24 @@ void EpubReaderActivity::loop() {
     }
   }
 
+  // Chapter marks for the progress bar: once per book, when the render task is idle (Try: never hold
+  // input behind it). Only when a book bar will draw them; they show from the next page drawn.
+  if (chapterMarksPending_) {
+    const bool wanted =
+        SETTINGS.statusBarChapterMarks &&
+        (SETTINGS.statusBarUpperProgressBar == CrossPointSettings::STATUS_BAR_PROGRESS_BAR::BOOK_PROGRESS ||
+         SETTINGS.statusBarLowerProgressBar == CrossPointSettings::STATUS_BAR_PROGRESS_BAR::BOOK_PROGRESS);
+    if (!wanted) {
+      chapterMarksPending_ = false;
+    } else {
+      RenderLock lock(RenderLock::Mode::Try);
+      if (lock.ownsLock() && section && !section->hasActiveBuild()) {
+        loadChapterMarks();
+        chapterMarksPending_ = false;
+      }
+    }
+  }
+
   // Deferred by the render task (renderFinishedBookPass) because it ends in pushActivity().
   // After the progress flush and before input handling: this is the reader's LAST loop() pass —
   // the launch pushes it onto the activity stack, which stops loop() being called — so anything
@@ -7039,6 +7057,31 @@ void EpubReaderActivity::restoreCurrentPageToBufferIfPreRendered() {
   usePreRenderedBuffer = false;
 }
 
+void EpubReaderActivity::loadChapterMarks() {
+  chapterMarks_.clear();
+  const int tocCount = epub->getTocItemsCount();
+  if (tocCount <= 1) return;
+  // The top level of the TOC; a book whose top level is one or two entries ("Part One", "Part
+  // Two") gets the level under it as well. Both from one pass: each entry is a read from the card.
+  // A very long TOC is sampled, at most 512 reads.
+  ChapterMarks second;
+  const int step = tocCount > 512 ? (tocCount + 511) / 512 : 1;
+  int topCount = 0;
+  for (int i = 0; i < tocCount; i += step) {
+    const auto entry = epub->getTocItem(i);
+    if (entry.spineIndex < 0 || entry.level > 2) continue;
+    const float at = epub->calculateProgress(entry.spineIndex, 0.0f);
+    const auto position = static_cast<uint16_t>(at * ChapterMarks::kFull);
+    if (entry.level <= 1) {
+      chapterMarks_.add(position);
+      ++topCount;
+    }
+    second.add(position);
+  }
+  if (topCount < 3) chapterMarks_ = second;
+  LOG_DBG("ERS", "chapter marks: %u of %d TOC entries", static_cast<unsigned>(chapterMarks_.count), tocCount);
+}
+
 float EpubReaderActivity::statusBarBookPercent() const {
   // Calculate progress in book. During an active section build pageCount only reflects pages
   // built so far, not the final chapter length, so show a byte-based estimate ("page X of ~Y")
@@ -7092,7 +7135,7 @@ void EpubReaderActivity::renderStatusBar() const {
                     /*fillMargin=*/true, /*pageCountApproximate=*/chapter.approximate, syncIndicator,
                     /*lowMemory=*/memoryDegradedPage(currentSpineIndex, section->currentPage) ||
                         glyphStarvedPage(currentSpineIndex, section->currentPage),
-                    /*fillFromRight=*/pageProgressionRtl_.load());
+                    /*fillFromRight=*/pageProgressionRtl_.load(), &chapterMarks_);
 
 #if DEBUG_BACKGROUND_WORK
   renderBackgroundDebugOverlay();

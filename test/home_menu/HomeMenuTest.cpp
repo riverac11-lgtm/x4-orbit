@@ -224,3 +224,22 @@ TEST_F(HomeMenuTest, OrbitProfileTwoOverAVersionOneFileLeavesItsHomeEntriesAlone
   OrbitProfile::apply(SETTINGS, OrbitProfile::VERSION);
   EXPECT_EQ(SETTINGS.uiTheme, CrossPointSettings::LYRA);
 }
+
+TEST_F(HomeMenuTest, OrbitProfileThreeSetsAThirtyMinuteGoalAndChapterMarksButKeepsAnOwnGoal) {
+  SETTINGS.readingGoal = 0;
+  SETTINGS.statusBarChapterMarks = 0;
+  OrbitProfile::apply(SETTINGS, /*fromVersion=*/2);
+  EXPECT_EQ(SETTINGS.readingGoal, 4);  // ReadingCalendar::kGoalMinutes[4] == 30
+  EXPECT_EQ(SETTINGS.statusBarChapterMarks, 1);
+
+  SETTINGS.readingGoal = 6;  // 60 min, chosen before the profile came
+  OrbitProfile::apply(SETTINGS, /*fromVersion=*/2);
+  EXPECT_EQ(SETTINGS.readingGoal, 6);
+
+  // Turned off on a version-3 file, it stays off.
+  SETTINGS.readingGoal = 0;
+  SETTINGS.statusBarChapterMarks = 0;
+  OrbitProfile::apply(SETTINGS, OrbitProfile::VERSION);
+  EXPECT_EQ(SETTINGS.readingGoal, 0);
+  EXPECT_EQ(SETTINGS.statusBarChapterMarks, 0);
+}

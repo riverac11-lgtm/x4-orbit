@@ -158,6 +158,7 @@ constexpr ThemeMetrics values = forPanel({.batteryWidth = 15,
 }
 
 enum class SyncIndicator : uint8_t { None, Active, Failed };
+struct ChapterMarks;
 
 class BaseTheme {
  public:
@@ -216,7 +217,7 @@ class BaseTheme {
                              const bool isStarred = false, const std::string& printedPageLabel = std::string(),
                              const bool fillMargin = true, const bool pageCountApproximate = false,
                              const SyncIndicator syncIndicator = SyncIndicator::None, const bool lowMemory = false,
-                             const bool fillFromRight = false) const;
+                             const bool fillFromRight = false, const ChapterMarks* chapterMarks = nullptr) const;
   virtual void drawHelpText(const GfxRenderer& renderer, Rect rect, const char* label) const;
   virtual void drawTextField(const GfxRenderer& renderer, Rect rect, const int textWidth, bool cursorMode = false,
                              int contentStartX = 0, int contentWidth = 0) const;

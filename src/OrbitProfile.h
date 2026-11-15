@@ -19,8 +19,9 @@ class CrossPointSettings;
 // so a choice the owner already made is left alone.
 namespace OrbitProfile {
 
-// 1: the home menu, page turns, sleep screen.  2: the Orbit-A theme.
-inline constexpr uint8_t VERSION = 2;
+// 1: the home menu, page turns, sleep screen.  2: the Orbit-A theme.  3: a 30-minute daily reading
+// goal and chapter marks on the progress bar.
+inline constexpr uint8_t VERSION = 3;
 
 // Applies the steps a file stamped `fromVersion` has not had yet (0: none, a new card or a stock
 // file). A step runs once: a file already on version 1 does not get its home entries reset to

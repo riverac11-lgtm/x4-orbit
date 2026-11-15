@@ -174,7 +174,13 @@ void drawB(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
         r.drawText(SMALL_FONT_ID, f.status.x + f.status.w - w, f.status.y + 2, eta.c_str());
       }
     }
-    if (!v.book.history.empty()) centredText(r, SMALL_FONT_ID, f.history, f.history.y, v.book.history.c_str());
+    // The book's history and the day's reading share the line; the day's alone when both do not fit.
+    std::string line = v.book.history;
+    if (!v.today.empty()) {
+      line = line.empty() ? v.today : line + "  \xC2\xB7  " + v.today;
+      if (r.getTextWidth(SMALL_FONT_ID, line.c_str()) > f.history.w) line = v.today;
+    }
+    if (!line.empty()) centredText(r, SMALL_FONT_ID, f.history, f.history.y, line.c_str());
   } else {
     // An empty cover outline holds the place of the book, so the dock sits where it always does.
     r.drawRoundedRect(f.cover.x, f.cover.y, f.cover.w, f.cover.h, 2, 8, true);

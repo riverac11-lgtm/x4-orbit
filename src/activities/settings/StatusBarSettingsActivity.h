@@ -17,7 +17,7 @@ class StatusBarSettingsActivity final : public UiListActivity {
 
   // Every entry of statusBarItems[] (the .cpp static_asserts the match). The clock rows are the
   // only ones that can drop out.
-  static constexpr int MAX_STATUS_BAR_ITEMS = 12;
+  static constexpr int MAX_STATUS_BAR_ITEMS = 14;
 
   void onEnter() override;
 

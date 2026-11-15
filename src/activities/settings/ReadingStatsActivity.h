@@ -24,6 +24,15 @@ class ReadingStatsActivity final : public Activity {
   std::vector<BookReadingStats> topBooks_;  // up to three, most time first
   void loadSummary();
 
+  // The goal ring and the month calendar. `today_` is 0 while the clock has never been set: no
+  // ring then. The calendar needs a clock that is not merely a stale restore (calendar_).
+  uint16_t today_ = 0;
+  bool calendar_ = false;
+  int year_ = 0, month_ = 0;            // the month shown
+  int nowYear_ = 0, nowMonth_ = 0;      // today's month: the latest one Right reaches
+  int firstYear_ = 0, firstMonth_ = 0;  // the oldest month the history holds: the earliest Left reaches
+  bool canShowMonth(int delta) const;
+
   // Last millis() at which we refreshed the live "this session" block.
   // We only redraw once per second to avoid hammering the e-ink panel.
   uint32_t lastLiveRefreshMs = 0;

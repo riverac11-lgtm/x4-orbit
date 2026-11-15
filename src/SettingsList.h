@@ -439,6 +439,11 @@ inline void buildSettings(const RowSink& emit) {
            .withSubmenu(StrId::STR_READING_AIDS));
   emit(SettingInfo::Toggle(StrId::STR_INLINE_FOOTNOTE_PREVIEWS, &CrossPointSettings::inlineFootnotePreviews,
                            "inlineFootnotePreviews", StrId::STR_CAT_READER));
+  // The order is ReadingCalendar::kGoalMinutes'.
+  emit(SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::readingGoal,
+                         {StrId::STR_GOAL_OFF, StrId::STR_GOAL_10, StrId::STR_GOAL_15, StrId::STR_GOAL_20,
+                          StrId::STR_GOAL_30, StrId::STR_GOAL_45, StrId::STR_GOAL_60},
+                         "readingGoal", StrId::STR_CAT_READER));
 
   // --- Controls ---
   // --- Button Actions (short / double / long press per logical button) ---
@@ -763,6 +768,8 @@ inline void buildSettings(const RowSink& emit) {
                          StrId::STR_CUSTOMISE_STATUS_BAR));
   emit(SettingInfo::Toggle(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery, "statusBarBattery",
                            StrId::STR_CUSTOMISE_STATUS_BAR));
+  emit(SettingInfo::Toggle(StrId::STR_BATTERY_DAYS_ITEM, &CrossPointSettings::statusBarBatteryDays,
+                           "statusBarBatteryDays", StrId::STR_CUSTOMISE_STATUS_BAR));
   emit(SettingInfo::Toggle(StrId::STR_CLOCK, &CrossPointSettings::statusBarClock, "statusBarClock",
                            StrId::STR_CUSTOMISE_STATUS_BAR));
   emit(SettingInfo::Enum(StrId::STR_CLOCK_POSITION, &CrossPointSettings::statusBarClockPosition,
@@ -775,6 +782,8 @@ inline void buildSettings(const RowSink& emit) {
                          &CrossPointSettings::statusBarLowerProgressBarThickness,
                          {StrId::STR_PROGRESS_BAR_THIN, StrId::STR_PROGRESS_BAR_MEDIUM, StrId::STR_PROGRESS_BAR_THICK},
                          "statusBarLowerProgressBarThickness", StrId::STR_CUSTOMISE_STATUS_BAR));
+  emit(SettingInfo::Toggle(StrId::STR_CHAPTER_MARKS, &CrossPointSettings::statusBarChapterMarks,
+                           "statusBarChapterMarks", StrId::STR_CUSTOMISE_STATUS_BAR));
 }
 
 // Answers each capability ONCE, from the HAL or the active board profile, so the rest of the

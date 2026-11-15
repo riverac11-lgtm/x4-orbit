@@ -38,6 +38,7 @@
 #include <cstring>
 #include <vector>
 
+#include "BatteryLog.h"
 #include "BootDiagnostics.h"
 #include "BuildFeatures.h"
 #include "ButtonEventManager.h"
@@ -620,6 +621,9 @@ void enterDeepSleep(bool fromTimeout = false, BootDiag::SleepTrigger trigger = B
   const bool resumeIntoReader = APP_STATE.lastSleepFromReader && !APP_STATE.openEpubPath.empty();
   APP_STATE.showBootScreen = !(isQuickResumeSleep || resumeIntoReader);
 
+  // millis() is this wake's awake time: a deep-sleep wake is a reset.
+  BatteryLog::beforeSleep(static_cast<uint8_t>(powerManager.getBatteryPercentage()), gpio.isUsbConnected(),
+                          static_cast<uint32_t>(millis() / 1000));
   APP_STATE.saveToFile();
   BootDiag::markSleepStage(BootDiag::SleepStage::StatePersisted);
   bool keepRadioUp = false;
@@ -1467,6 +1471,8 @@ void setup() {
 #endif
   OPDS_STORE.loadFromFile();
   WEATHER_SETTINGS.loadFromFile();
+  // The battery at wake, for the "days of reading left" estimate; written out at the next sleep.
+  BatteryLog::begin(static_cast<uint8_t>(powerManager.getBatteryPercentage()), gpio.isUsbConnected());
   UITheme::getInstance().reload();
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   buttonEventManager.setReaderOnTopQuery([] { return activityManager.currentIsReaderActivity(); });

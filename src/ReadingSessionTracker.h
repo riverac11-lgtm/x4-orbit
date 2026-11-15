@@ -59,6 +59,9 @@ class ReadingSessionTracker {
   // Live read-only view of the in-flight session. Useful for UI ("you've
   // been reading for X minutes"). Returns 0 when no session is active.
   uint32_t getLiveSeconds() const;
+  // The part of the live figure not in the store yet (what was read before midnight is): what a
+  // screen adds to today's stored minutes.
+  uint32_t getUnrecordedSeconds() const { return active ? static_cast<uint32_t>(accumulatedMs / 1000) : 0; }
   uint32_t getLivePages() const { return carriedPages + pagesTurnedThisSession; }
   const std::string& getDocId() const { return docId; }
 

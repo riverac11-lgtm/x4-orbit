@@ -3,16 +3,23 @@
 #include <Bitmap.h>
 #include <GfxRenderer.h>
 #include <HalClock.h>
+#include <HalGPIO.h>
+#include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <I18n.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <ctime>
 #include <string>
 #include <vector>
 
+#include "BatteryLog.h"
+#include "CrossPointSettings.h"
+#include "ReadingStats.h"
 #include "RecentBooksStore.h"
 #include "components/BookProgressPresentation.h"
+#include "components/StatsDraw.h"
 #include "components/UITheme.h"
 #include "components/themes/TapTargets.h"
 #include "components/themes/orbit/OrbitHomeDraw.h"
@@ -112,6 +119,14 @@ void OrbitTheme::drawOrbitHome(GfxRenderer& renderer, const int top, const int b
     view.book.percent = getRecentBookProgressPercent(book);
     view.book.eta = BookProgressPresentation::etaText(book, view.book.percent);
     view.book.history = BookProgressPresentation::historyLine(book);
+    if (variant_ == Variant::B) {
+      const uint32_t minutes = READING_STATS.recentTodaySeconds() / 60;
+      if (minutes > 0) {
+        char today[40];
+        snprintf(today, sizeof(today), tr(STR_ORBIT_READ_TODAY), static_cast<int>(minutes));
+        view.today = today;
+      }
+    }
   }
   const int bookCount = static_cast<int>(books.size());
   view.shelfCount = variant_ == Variant::C ? std::max(0, bookCount - (view.hasBook ? 1 : 0)) : 0;
@@ -157,4 +172,17 @@ void OrbitTheme::drawOrbitHome(GfxRenderer& renderer, const int top, const int b
   }
 
   OrbitHomeDraw::draw(renderer, view, frame);
+}
+
+void OrbitTheme::drawBatteryDays(const GfxRenderer& renderer, const Rect header) const {
+  const uint16_t percent = powerManager.getBatteryPercentage();
+  char text[24];
+  if (!BatteryLog::format(text, sizeof(text), static_cast<uint8_t>(percent), gpio.isUsbConnected())) return;
+  // LyraTheme::drawHeader's battery: the icon at the right, its percentage left of it unless hidden.
+  int right = header.x + header.width - 12 - LyraMetrics::values.batteryWidth;
+  if (SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS) {
+    const std::string pct = std::to_string(percent) + "%";
+    right -= BaseTheme::batteryPercentSpacing + renderer.getTextWidth(SMALL_FONT_ID, pct.c_str());
+  }
+  StatsDraw::drawQuietText(renderer, right - 10, header.y + 5, text);
 }
