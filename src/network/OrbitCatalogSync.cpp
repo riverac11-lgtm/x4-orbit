@@ -432,17 +432,8 @@ Result OrbitCatalogSync::fetchOne(const std::string& id, char* buf, ChargeSessio
   summary.addName(book.title);
 
   const bool isEpub = book.format == "epub" || book.format == "kepub";
-  if (isEpub && !book.cover.empty() && keepGoing()) {
-    // The cover beside the book, as the browser saves it, for the home screen and the library.
-    std::string sidecar = path.substr(0, path.find_last_of('.'));
-    const size_t n = book.cover.size();
-    sidecar += n >= 4 && strcasecmp(book.cover.c_str() + n - 4, ".png") == 0 ? ".png" : ".jpg";
-    if (HttpDownloader::downloadToFile(session(), book.cover, sidecar, nullptr, server.username, server.password,
-                                       tlsPolicy()) != HttpDownloader::OK) {
-      Storage.remove(sidecar.c_str());
-      net.reset();
-    }
-  }
+  // No cover sidecar (the live browser saves one): the library takes the cover from the EPUB itself,
+  // and the extra request did not fit in flash. The catalog keeps the cover URL for a later use.
   // A book downloaded again must not open on the old copy's cache.
   if (isEpub) {
     Epub(path, "/.crosspoint").clearCache();

@@ -78,6 +78,8 @@ SMALL_PATTERNS = [
     # The live OPDS browser it sits beside: list screens waiting on TLS, ~45 KB of code.
     "*src/activities/browser/OpdsBookBrowserActivity.cpp",
     "*src/activities/settings/OpdsServerListActivity.cpp",
+    "*OpdsParser/OpdsParser.cpp",
+    "*src/network/HttpDownloader.cpp",
 ]
 
 

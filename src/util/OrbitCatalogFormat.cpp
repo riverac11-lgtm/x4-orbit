@@ -201,10 +201,11 @@ bool seriesFromSummary(std::string_view summary, std::string& name, std::string&
 
 const char* extensionFor(std::string_view formatKey) {
   if (formatKey == "kepub") return ".kepub.epub";
-  if (formatKey == "txt") return ".txt";
-  if (formatKey == "md") return ".md";
-  if (formatKey == "xtc") return ".xtc";
-  if (formatKey == "xtch") return ".xtch";
+  // The key is the extension for every other format the reader opens; anything else is EPUB.
+  static constexpr const char* kSame[] = {".txt", ".md", ".xtc", ".xtch"};
+  for (const char* ext : kSame) {
+    if (formatKey == ext + 1) return ext;
+  }
   return ".epub";
 }
 
@@ -246,14 +247,12 @@ bool matchesRole(std::string_view title, const RootRole role) {
   std::string t;
   fold(title, t);
   switch (role) {
-    case RootRole::AllBooks:
-      return t == "all" || startsWith(t, "all books") || startsWith(t, "all titles") || t == "books" ||
-             t == "by title" || t == "titles";
-    case RootRole::Recent:
-      return has(t, "recent") || has(t, "latest") || has(t, "newest") || startsWith(t, "new ") || t == "new" ||
-             has(t, "recently added");
-    case RootRole::Collections:
-      return has(t, "collection") || has(t, "shelves") || has(t, "shelf");
+    case RootRole::AllBooks:  // "All Books", "All titles", "All", "Books", "By title"
+      return startsWith(t, "all") || t == "books" || t == "titles" || t == "by title";
+    case RootRole::Recent:  // "Recent Books", "Recently added", "Latest additions", "Newest", "New"
+      return has(t, "recent") || has(t, "latest") || startsWith(t, "new");
+    case RootRole::Collections:  // "Collections", "Shelves", "My shelf"
+      return has(t, "collection") || has(t, "shel");
   }
   return false;
 }

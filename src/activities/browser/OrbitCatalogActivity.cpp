@@ -437,6 +437,11 @@ void OrbitCatalogActivity::getMissing(const bool now) {
   showBooks(Kind::Series, booksSelected);
 }
 
+void OrbitCatalogActivity::openLive() {
+  activityManager.replaceActivity(
+      std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, server, OpdsBackTo::Home));
+}
+
 void OrbitCatalogActivity::activateIndex(const int index) {
   app.clearTapFlash();
   if (!lineBuf || !rowBuf) return;
@@ -446,8 +451,7 @@ void OrbitCatalogActivity::activateIndex(const int index) {
         if (index == 0) {
           runSync(static_cast<uint8_t>(CatalogSyncActivity::Mode::Build), {});
         } else {
-          activityManager.replaceActivity(
-              std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, server, OpdsBackTo::Home));
+          openLive();
         }
         return;
       }
@@ -468,8 +472,7 @@ void OrbitCatalogActivity::activateIndex(const int index) {
           showNames(Kind::AuthorNames);
           return;
         case kRowLive:
-          activityManager.replaceActivity(
-              std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, server, OpdsBackTo::Home));
+          openLive();
           return;
         default:
           runSync(static_cast<uint8_t>(CatalogSyncActivity::Mode::Update), {});

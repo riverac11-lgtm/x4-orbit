@@ -55,6 +55,7 @@ class OrbitCatalogActivity final : public UiListActivity {
   void showActions(int bookRow, bool wholeSet);
   void runSync(uint8_t mode, const std::string& onlyId);
   void startSearch();
+  void openLive();
   void getMissing(bool now);
   bool bookAt(uint32_t offset, OrbitCatalog::RecordView& view) const;
   const std::string& listPath() const;
