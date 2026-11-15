@@ -179,6 +179,37 @@ struct WriteCtx {
 };
 }  // namespace
 
+// One book of a catalog walk to the file: every book for a full build; for an update only the new
+// ones, until the stop rule says the rest is known (`stop` set). One function for both walks.
+bool OrbitCatalogSync::writeBook(void* p, const OpdsEntry& entry, const std::string& pageUrl) {
+  auto& c = *static_cast<WriteCtx*>(p);
+  if (!c.sync->keepGoing()) return false;
+  if (!bookFromEntry(entry, pageUrl, *c.serverUrl, c.gen, c.book)) return true;
+  if (c.stop) {
+    switch (c.stop->offer(c.book.id)) {
+      case OrbitCatalog::MergeStop::Verdict::Known:
+        return true;
+      case OrbitCatalog::MergeStop::Verdict::Stop:
+        return false;
+      case OrbitCatalog::MergeStop::Verdict::TooMany:
+        c.tooMany = true;
+        return false;
+      case OrbitCatalog::MergeStop::Verdict::New:
+        break;
+    }
+  }
+  c.text.clear();
+  if (!OrbitCatalog::appendRecord(c.book, c.text)) return true;
+  if (!writeAll(*c.file, c.text)) {
+    c.cardFailed = true;
+    return false;
+  }
+  // An update names each new book; a full build only counts, every 25.
+  if (++c.written % 25 == 0 || c.stop)
+    c.sync->status(Step::Catalog, c.written, 0, c.stop ? c.book.title.c_str() : nullptr);
+  return true;
+}
+
 Result OrbitCatalogSync::buildFull(int& added) {
   added = 0;
   Result result = loadRoot();
@@ -198,22 +229,7 @@ Result OrbitCatalogSync::buildFull(int& added) {
   WriteCtx ctx{this, &file, &server.url, nullptr, 1};
   ctx.text.reserve(512);
   status(Step::Catalog, 0, 0, nullptr);
-  result = walkBooks(
-      feed,
-      [](void* p, const OpdsEntry& entry, const std::string& pageUrl) {
-        auto& c = *static_cast<WriteCtx*>(p);
-        if (!c.sync->keepGoing()) return false;
-        if (!OrbitCatalogSync::bookFromEntry(entry, pageUrl, *c.serverUrl, c.gen, c.book)) return true;
-        c.text.clear();
-        if (!OrbitCatalog::appendRecord(c.book, c.text)) return true;
-        if (!writeAll(*c.file, c.text)) {
-          c.cardFailed = true;
-          return false;
-        }
-        if (++c.written % 25 == 0) c.sync->status(Step::Catalog, c.written, 0, nullptr);
-        return true;
-      },
-      &ctx);
+  result = walkBooks(feed, &OrbitCatalogSync::writeBook, &ctx);
   if (result == Result::Ok && !keepGoing()) result = Result::Stopped;
   if (result == Result::Ok && ctx.cardFailed) result = Result::Card;
   if (result == Result::Ok) {
@@ -259,34 +275,7 @@ Result OrbitCatalogSync::updateCatalog(const bool full, int& added) {
   const uint16_t gen = static_cast<uint16_t>(header.gen + 1);
   WriteCtx ctx{this, &file, &server.url, &stop, gen};
   status(Step::Catalog, 0, 0, nullptr);
-  result = walkBooks(
-      root.recent,
-      [](void* p, const OpdsEntry& entry, const std::string& pageUrl) {
-        auto& c = *static_cast<WriteCtx*>(p);
-        if (!c.sync->keepGoing()) return false;
-        if (!OrbitCatalogSync::bookFromEntry(entry, pageUrl, *c.serverUrl, c.gen, c.book)) return true;
-        switch (c.stop->offer(c.book.id)) {
-          case OrbitCatalog::MergeStop::Verdict::Known:
-            return true;
-          case OrbitCatalog::MergeStop::Verdict::Stop:
-            return false;
-          case OrbitCatalog::MergeStop::Verdict::TooMany:
-            c.tooMany = true;
-            return false;
-          case OrbitCatalog::MergeStop::Verdict::New:
-            break;
-        }
-        c.text.clear();
-        if (!OrbitCatalog::appendRecord(c.book, c.text)) return true;
-        if (!writeAll(*c.file, c.text)) {
-          c.cardFailed = true;
-          return false;
-        }
-        ++c.written;
-        c.sync->status(Step::Catalog, c.written, 0, c.book.title.c_str());
-        return true;
-      },
-      &ctx);
+  result = walkBooks(root.recent, &OrbitCatalogSync::writeBook, &ctx);
   known.clear();
   known.shrink_to_fit();
   if (result == Result::Ok && !keepGoing()) result = Result::Stopped;

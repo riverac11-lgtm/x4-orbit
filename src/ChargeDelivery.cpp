@@ -78,30 +78,24 @@ bool connectSaved(HeadlessCtx& ctx) {
   powerManager.ensureFullSpeedForRadio();
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
-  // The last network used first, then the others in the order they were saved.
-  int order[8];
-  int count = 0;
-  for (size_t i = 0; i < creds.size() && count < 8; ++i) {
-    if (creds[i].ssid == last) order[count++] = static_cast<int>(i);
-  }
-  for (size_t i = 0; i < creds.size() && count < 8; ++i) {
-    if (creds[i].ssid != last) order[count++] = static_cast<int>(i);
-  }
-  for (int k = 0; k < count; ++k) {
-    const auto& cred = creds[static_cast<size_t>(order[k])];
-    LOG_DBG("CHG", "Joining %s", cred.ssid.c_str());
-    WiFi.begin(cred.ssid.c_str(), cred.password.c_str());
-    const uint32_t start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
-      if (!headlessKeepGoing(&ctx)) return false;
-      delay(200);
+  // The last network used first (pass 0), then the others in the order they were saved (pass 1).
+  for (int pass = 0; pass < 2; ++pass) {
+    for (const auto& cred : creds) {
+      if ((cred.ssid == last) != (pass == 0)) continue;
+      LOG_DBG("CHG", "Joining %s", cred.ssid.c_str());
+      WiFi.begin(cred.ssid.c_str(), cred.password.c_str());
+      const uint32_t start = millis();
+      while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
+        if (!headlessKeepGoing(&ctx)) return false;
+        delay(200);
+      }
+      if (WiFi.status() == WL_CONNECTED) {
+        WiFi.setSleep(false);
+        return true;
+      }
+      WiFi.disconnect(false);
+      delay(100);
     }
-    if (WiFi.status() == WL_CONNECTED) {
-      WiFi.setSleep(false);
-      return true;
-    }
-    WiFi.disconnect(false);
-    delay(100);
   }
   return false;
 }

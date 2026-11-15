@@ -40,6 +40,9 @@ class CatalogSyncActivity final : public Activity {
         state(State::Done),
         result(summary) {}
 
+  // Home's hook: the last delivery's notice in Home's place, when there is one not yet shown.
+  static bool openDeliveryNotice(GfxRenderer& renderer, MappedInputManager& mappedInput);
+
   void onEnter() override;
   void onExit() override;
   void loop() override;

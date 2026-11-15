@@ -36,7 +36,6 @@
 #include "TouchUi.h"
 #include "activities/reader/ReaderActivity.h"
 #if CP_FEATURE_ORBIT_CATALOG
-#include "ChargeDelivery.h"
 #include "activities/browser/CatalogSyncActivity.h"
 #endif
 #include "components/UITheme.h"
@@ -647,12 +646,7 @@ void HomeActivity::loop() {
   if (!deliveryNoticeChecked && firstRenderDone && !recentsLoading && !coverLoader.busy() && !inputWaiting &&
       (recentsLoaded || GUI.getHomeNavigation() != HomeNavigation::Carousel)) {
     deliveryNoticeChecked = true;
-    ChargeSession::Summary summary;
-    if (OPDS_STORE.hasServers() && ChargeDelivery::unseenSummary(summary)) {
-      activityManager.replaceActivity(
-          std::make_unique<CatalogSyncActivity>(renderer, mappedInput, OPDS_STORE.getServers().front(), summary));
-      return;
-    }
+    if (CatalogSyncActivity::openDeliveryNotice(renderer, mappedInput)) return;
   }
 #endif
 

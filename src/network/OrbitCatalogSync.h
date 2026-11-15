@@ -70,6 +70,8 @@ class OrbitCatalogSync {
   using BookFn = bool (*)(void* ctx, const OpdsEntry& entry, const std::string& pageUrl);
   Result walkBooks(const std::string& url, BookFn onBook, void* ctx);
   Result buildFull(int& added);
+  // walkBooks()' callback for the catalog walks (the context is the .cpp's WriteCtx).
+  static bool writeBook(void* ctx, const OpdsEntry& entry, const std::string& pageUrl);
   Result fetchOne(const std::string& id, char* lineBuf, ChargeSession::Summary& summary, bool& arrived);
 
   const OpdsServer& server;  // an OPDS_STORE entry, which outlives the sync

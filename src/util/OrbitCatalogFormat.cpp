@@ -227,36 +227,10 @@ void fold(std::string_view utf8, std::string& out) {
 
 bool containsFolded(std::string_view text, const std::string& foldedNeedle) {
   if (foldedNeedle.empty()) return true;
-  // The folded text into a bounded buffer (a title, an author: short), then a plain search.
-  char buf[512];
-  size_t n = 0;
-  foldUnits(text, [&](const uint32_t unit) {
-    char enc[4];
-    size_t len = 1;
-    if (unit < 0x80) {
-      enc[0] = static_cast<char>(unit);
-    } else if (unit < 0x800) {
-      enc[0] = static_cast<char>(0xC0 | (unit >> 6));
-      enc[1] = static_cast<char>(0x80 | (unit & 0x3F));
-      len = 2;
-    } else if (unit < 0x10000) {
-      enc[0] = static_cast<char>(0xE0 | (unit >> 12));
-      enc[1] = static_cast<char>(0x80 | ((unit >> 6) & 0x3F));
-      enc[2] = static_cast<char>(0x80 | (unit & 0x3F));
-      len = 3;
-    } else {
-      enc[0] = static_cast<char>(0xF0 | (unit >> 18));
-      enc[1] = static_cast<char>(0x80 | ((unit >> 12) & 0x3F));
-      enc[2] = static_cast<char>(0x80 | ((unit >> 6) & 0x3F));
-      enc[3] = static_cast<char>(0x80 | (unit & 0x3F));
-      len = 4;
-    }
-    if (n + len > sizeof(buf)) return false;
-    memcpy(buf + n, enc, len);
-    n += len;
-    return true;
-  });
-  return std::string_view(buf, n).find(foldedNeedle) != std::string_view::npos;
+  // A title or an author: short, so folding it whole costs one small allocation.
+  std::string folded;
+  fold(text, folded);
+  return folded.find(foldedNeedle) != std::string::npos;
 }
 
 void sortKey(std::string_view name, char (&out)[kSortKeyLength]) {

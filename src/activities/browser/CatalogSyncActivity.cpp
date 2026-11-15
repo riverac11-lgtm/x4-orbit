@@ -11,6 +11,7 @@
 
 #include "ChargeDelivery.h"
 #include "MappedInputManager.h"
+#include "OpdsServerStore.h"
 #include "SilentRestart.h"
 #include "activities/ActivityManager.h"
 #include "activities/network/WifiSelectionActivity.h"
@@ -35,6 +36,14 @@ ChargeDelivery::Work workFor(const CatalogSyncActivity::Mode mode) {
 }
 
 }  // namespace
+
+bool CatalogSyncActivity::openDeliveryNotice(GfxRenderer& renderer, MappedInputManager& mappedInput) {
+  ChargeSession::Summary summary;
+  if (!OPDS_STORE.hasServers() || !ChargeDelivery::unseenSummary(summary)) return false;
+  activityManager.replaceActivity(
+      std::make_unique<CatalogSyncActivity>(renderer, mappedInput, OPDS_STORE.getServers().front(), summary));
+  return true;
+}
 
 void CatalogSyncActivity::onEnter() {
   Activity::onEnter();
