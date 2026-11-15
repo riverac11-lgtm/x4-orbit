@@ -21,7 +21,8 @@ call `pio run` directly:
 Run it with run_in_background and wait for the completion notification (it may queue behind another
 build). Use `cmake --build ... -j1` for host tests for the same reason.
 First build takes ~10 min (run it in the background / with a long timeout, do not poll with sleep).
-Flash must stay under 98.0% (report the before/after numbers; baseline is 97.1%, 6365283 bytes).
+Flash: baseline is 98.4% (6451041 of 6553600 bytes) on orbit-next 4e64870b9; report before/after. The
+whole release must stay at or below 98.8%, so keep your change small (budgets are in your brief).
 Keep new code small: no new libraries, no large tables, avoid std::function/iostream/heavy templates.
 
 ## Host tests
@@ -44,7 +45,7 @@ Add unit tests for any pure logic you add (follow a neighbouring suite's CMakeLi
   needs a manual. Keep Witch(hunt)'s look (its themes/components: UiListActivity, GUI.draw*, UITheme).
 - Run `clang-format -i` (v21 is on PATH) on the C++ files you touched.
 - Commit on your branch with clear messages. End each commit message with:
-      Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
+      Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
       Claude-Session: https://claude.ai/code/session_01KxiKr8VCQh6cFFyF972WSo
 - No device is available: you cannot run the firmware. Be conservative; reason carefully about
   button handling, memory and SD/Wi-Fi failure paths. If part of the brief turns out risky or does not
@@ -54,3 +55,7 @@ Add unit tests for any pure logic you add (follow a neighbouring suite's CMakeLi
 Branch name and worktree path; what you built and how the user reaches it on the device (exact button
 path); what you left out and why; flash before/after; tests added and their results; anything the
 integrator must know to merge (files touched, new settings keys, strings).
+
+## Disk
+The disk is shared and small (about 11 GB free). When you finish, delete your worktree's build/test
+directory and .pio/build (keep .pio/libdeps) so the next agent has room.
