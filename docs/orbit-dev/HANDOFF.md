@@ -41,3 +41,21 @@ and files it touches; commit after each piece that compiles; final concise repor
 Wanted: #2 next in series, #3 charger delivery + saved catalog (his idea), #4 goal+calendar, #6 battery
 days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookOrbit collection
 "Send to X4". He wants wake-from-sleep on charger. Usage-limited: few large steps, no re-reading.
+
+## Released: v2.41-orbit.4 (x4-orbit = 6e8a196) — All books A-Z (<=1500) added after .3.
+
+## BACKLOG — the user asked to WAIT until he says to implement these
+1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
+   More tile/row with a Reading Stats GRAPHIC (e.g. today ring vs goal + streak + mini week bars, from
+   ReadingCalendar/StatsDraw) on all three Orbit homes; Confirm opens Reading Stats (deeper view).
+   Bookmarks (also behind More today) needs a new home: suggest Library tab or reader menu — ask him.
+   Touch points: HomeMenu.cpp entries + HomeMenuTest, OrbitProfile (new VERSION step), OrbitHomeLayout /
+   OrbitHomeDraw (a stats tile variant), SettingsList (File Transfer action), test/orbit_preview renders.
+2. Keyboard input lag. Finding so far: KeyboardEntryActivity redraws the WHOLE screen and pushes a
+   full-panel refresh (renderer.displayBuffer(), line ~979) on every key move. GfxRenderer has
+   displayWindow(x,y,w,h). Plan: (a) on cursor moves refresh only the two key cells that changed and on
+   typing only the text field (displayWindow, fast mode), full refresh only on layout switch/open;
+   (b) coalesce queued presses before rendering (drain input, render once); (c) skip the grey
+   anti-alias pass on the keyboard; (d) make sure no 300 ms double-press wait applies on the keyboard's
+   buttons; (e) measure with the Speed check page-turn split (button -> refresh start). Expected: from
+   a full refresh per key to a small-window fast refresh, the biggest single win.
