@@ -45,7 +45,23 @@ int keyboardKeysHeight(const ThemeMetrics& metrics, const int rows, const bool h
 // from here rather than from the screen. The side column is kept on every board, since every board draws
 // the side hints here: an X4 in landscape had them across the space bar, and in portrait under the tips
 // (found by syfq91, witchling-reader ad9e1d4f2).
-Rect keyboardContentRect(const GfxRenderer& renderer) { return UITheme::getContentRect(renderer, true, true); }
+//
+// x4-orbit: when the side column is the only thing taken off the width (portrait on a board with
+// both side keys on one edge), the same margin is taken off the other edge too, so the keyboard,
+// field and tips sit centred on the screen instead of hugging the far edge. In landscape the
+// bottom hints already take the other edge, so nothing changes there.
+Rect keyboardContentRect(const GfxRenderer& renderer) {
+  Rect content = UITheme::getContentRect(renderer, true, true);
+  const int screenWidth = renderer.getScreenWidth();
+  const int reserved = screenWidth - content.width;
+  const bool flushLeft = content.x == 0;
+  const bool flushRight = content.x + content.width == screenWidth;
+  if (reserved > 0 && reserved * 4 < screenWidth && flushLeft != flushRight) {
+    content.x = reserved;
+    content.width = screenWidth - 2 * reserved;
+  }
+  return content;
+}
 
 // ---------------------------------------------------------------------------
 // URL layers. A URL layer is the English letter layer with its bottom row
