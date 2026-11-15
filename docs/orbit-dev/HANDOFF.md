@@ -59,3 +59,13 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
    anti-alias pass on the keyboard; (d) make sure no 300 ms double-press wait applies on the keyboard's
    buttons; (e) measure with the Speed check page-turn split (button -> refresh start). Expected: from
    a full refresh per key to a small-window fast refresh, the biggest single win.
+   Bookmarks answer (user): move Bookmarks into the LIBRARY as a new top tab.
+3. Version naming -> our own: v3.0 (then v3.1, ...). Release file x4-orbit-v3.0.bin; Settings header shows
+   "3.0" (Witch base 2.41 noted in About/notes). Replace [orbit] revision + workflow naming accordingly;
+   firmware CROSSPOINT_VERSION string; web bundle tag stays x4-orbit-latest.
+4. Library tabs: remove the "New" tab (overlaps Recent). Keep the library index data it uses, because the
+   Orbit-C "Recently added" shelf reads it. Tabs become: Books, Recent, Authors, Bookmarks.
+5. Library tab switching like Settings: NO hold Up/Down to change tabs. Up from the first row moves focus
+   onto the tab bar; there Left/Right switch tabs; Down returns to the list.
+6. Library "Options": no own button/hint. Hold Confirm ("Open") opens the options menu for the selected
+   item; short Confirm still opens. Frees that button hint.
