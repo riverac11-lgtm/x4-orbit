@@ -1,4 +1,4 @@
-# x4-orbit handoff — PAUSED 2026-11-15 10:26. Read this INSTEAD of re-exploring.
+# x4-orbit handoff — updated 2026-11-15 (stats merged; catalog still running). Read this INSTEAD of re-exploring.
 
 Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Released: `x4-orbit` = 4baf26e = v2.41-orbit.2
 (release x4-orbit-latest). Integration branch: `orbit-next` (pushed). Never force-push; fast-forward
@@ -24,7 +24,7 @@ x4-orbit from orbit-next when releasing. Fallback releases: x4-orbit-2.40, x4-or
 
 ## In progress (WIP pushed; resume from briefs, NOT from scratch)
 - orbit-catalog (~/wt-catalog): docs/orbit-dev/briefs/catalog.md
-- orbit-stats   (~/wt-stats):   docs/orbit-dev/briefs/stats.md
+- orbit-stats: MERGED into orbit-next (328083ad3) + profile v3 thin book bar. 97.9% flash.
 Resume prompt for each agent: "Read ~/witchhunt/docs/orbit-dev/AGENT_SETUP.md and the brief
 docs/orbit-dev/briefs/<x>.md; your worktree exists; continue from the WIP commit; read only the WIP diff
 and files it touches; commit after each piece that compiles; final concise report."
