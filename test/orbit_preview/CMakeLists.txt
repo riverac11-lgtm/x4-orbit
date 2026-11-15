@@ -1,10 +1,15 @@
-# Host preview of the Orbit themes: renders the home screens with fake data through the firmware's own
+# Host preview of the Orbit themes: renders the home screens (and the Reading Stats goal and calendar, the
+# reader's status bar with chapter marks) with fake data through the firmware's own
 # drawing code (src/components/themes/orbit) onto the stand-in renderer here. Not a test; run it by hand:
 #   cmake --build build/test --target OrbitPreview -j1 && build/test/orbit_preview/OrbitPreview <dir>
 add_executable(OrbitPreview
   OrbitPreview.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitHomeDraw.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitChrome.cpp
+  ${REPO_ROOT}/src/components/StatsDraw.cpp
+  ${REPO_ROOT}/src/components/CardLayout.cpp
+  ${REPO_ROOT}/src/util/ChapterMarks.cpp
+  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
   ${REPO_ROOT}/lib/GfxRenderer/TextTruncation.cpp
   ${REPO_ROOT}/lib/EpdFont/EpdFont.cpp
   ${BIDI_MARK_SOURCES}

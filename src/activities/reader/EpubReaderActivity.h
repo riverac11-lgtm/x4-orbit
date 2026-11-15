@@ -35,6 +35,7 @@
 #include "activities/Activity.h"
 #include "components/themes/BaseTheme.h"
 #include "components/themes/TapTargets.h"
+#include "util/ChapterMarks.h"
 
 class EpubReaderActivity final : public Activity {
   // Reader can launch sync in several UX modes:
@@ -593,6 +594,12 @@ class EpubReaderActivity final : public Activity {
   // The book on screen turns its pages right to left (spec 5.5): stored by renderContents from the section's flow
   // context, read by loop() for the buttons, taps and swipes and by the percent picker and the status bar.
   std::atomic<bool> pageProgressionRtl_{false};
+  // Where the chapters start, for the ticks on a book progress bar. Read from the TOC once, by
+  // loop() after the first page is up (so opening the book pays nothing for it), under the render
+  // lock: the TOC reads seek the book.bin handle the status bar's progress math shares.
+  ChapterMarks chapterMarks_;
+  bool chapterMarksPending_ = true;
+  void loadChapterMarks();
   // Last valid spine/page/pageCount at book-finish time, stashed for onFinishedBookSyncRequested()
   // — see the SyncPositionOverride comment for why currentSpineIndex/section can't be used there.
   int finishedBookSyncSpineIndex_ = 0;

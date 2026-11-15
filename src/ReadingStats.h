@@ -115,6 +115,10 @@ class ReadingStatsStore {
   void prefetchRecent(const std::vector<std::string>& docIds);
   const RecentSnapshot* recent(const std::string& docId) const;
   float recentPooledPace() const { return pooledPace_; }
+  // From the same read: seconds read today (0 without a clock), and the average minutes a day over
+  // the last two weeks (ReadingCalendar::averageDailyMinutes; 0 when unknown).
+  uint32_t recentTodaySeconds() const { return todaySeconds_; }
+  uint16_t recentDailyMinutes() const { return dailyMinutes_; }
 
   // ---- The web ----------------------------------------------------------------------------------
   //
@@ -203,6 +207,8 @@ class ReadingStatsStore {
   bool prepared_ = false;
   std::vector<RecentSnapshot> recent_;
   float pooledPace_ = 0.0f;
+  uint32_t todaySeconds_ = 0;
+  uint16_t dailyMinutes_ = 0;
 };
 
 static_assert(ReadingStatsStore::kMaxBooks == ReadingStatsSlotFile::kEntryCount, "the directory holds the cap");

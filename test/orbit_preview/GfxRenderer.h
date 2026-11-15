@@ -155,7 +155,8 @@ class GfxRenderer {
   enum Orientation { Portrait, LandscapeClockwise, PortraitInverted, LandscapeCounterClockwise };
   Orientation getOrientation() const { return Portrait; }
   void getOrientedViewableTRBL(int* t, int* r, int* b, int* l) const { *t = *r = *b = *l = 0; }
-  void drawTextRotated90CW(int, int, int, const char*, bool = true, EpdFontFamily::Style = EpdFontFamily::REGULAR) const {}
+  void drawTextRotated90CW(int, int, int, const char*, bool = true,
+                           EpdFontFamily::Style = EpdFontFamily::REGULAR) const {}
   int getLineHeight(int fontId) const { return family(fontId).getData()->advanceY; }
   int getTextHeight(int fontId) const { return family(fontId).getData()->ascender; }
   int getTextWidth(int fontId, const char* text, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
@@ -198,6 +199,10 @@ class GfxRenderer {
         }
       fp += g.advanceX;
     }
+  }
+  void drawCenteredText(int fontId, int y, const char* text, bool black = true,
+                        EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
+    drawText(fontId, (W - getTextWidth(fontId, text, style)) / 2, y, text, black, style);
   }
   std::string truncatedText(int fontId, const char* text, int maxWidth,
                             EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {

@@ -439,6 +439,12 @@ class CrossPointSettings {
   uint8_t statusBarItemsPosition = STATUS_BAR_ITEMS_BOTTOM;
   uint8_t statusBarTitle = CHAPTER_TITLE;
   uint8_t statusBarBattery = 1;
+  // "~9 days": the reading left on this charge (BatteryLog), beside the battery. Off upstream.
+  uint8_t statusBarBatteryDays = 0;
+  // Ticks where the chapters start, on a progress bar showing the whole book.
+  uint8_t statusBarChapterMarks = 0;
+  // Reading Stats' daily goal: an index into ReadingCalendar::kGoalMinutes (0 = off).
+  uint8_t readingGoal = 0;
   // Text rendering settings
   uint8_t extraParagraphSpacing = 1;
   // The interval Auto Turn last ran at, in seconds: where its picker opens. The reader starts it from the menu.

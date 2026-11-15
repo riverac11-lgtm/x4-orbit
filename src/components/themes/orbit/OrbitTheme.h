@@ -23,6 +23,10 @@ class OrbitTheme final : public LyraTheme {
   const char* submenuMarker() const override { return "\xE2\x80\xBA"; }  // ›
   OrbitHomeLayout::Variant variant() const { return variant_; }
 
+  // "~9 days" in grey, left of the battery drawHeader() put in `header` (BatteryLog); nothing while
+  // there is no estimate.
+  void drawBatteryDays(const GfxRenderer& renderer, Rect header) const;
+
   // The whole home screen below the battery line and above the hints. `books` is HomeActivity's
   // list: the book being read first when `hasCurrent`, then the shelf (C). `selector` is its
   // selector over books, then menu entries. Publishes the tap targets of both, as the Lyra home does.

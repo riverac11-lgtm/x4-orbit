@@ -2,8 +2,16 @@
 
 #include "CrossPointSettings.h"
 #include "components/themes/PanelMetrics.h"
+#include "util/ReadingCalendar.h"
 
 void OrbitProfile::apply(CrossPointSettings& s, const uint8_t fromVersion) {
+  if (fromVersion < 3) {
+    // Version 3: a daily goal gives Reading Stats' ring and calendar something to measure against,
+    // and a reader who turns on a book progress bar sees where the chapters fall on it. Both only
+    // over the upstream "off", which is also what a card from before these settings reads as.
+    if (s.readingGoal == 0) s.readingGoal = ReadingCalendar::kGoalDefaultChoice;
+    s.statusBarChapterMarks = 1;
+  }
   if (fromVersion < 2) {
     // Version 2: the Orbit-A home (a continue-reading card over four large tiles) and the calmer
     // chrome that comes with it -- but only over the upstream default, never over a theme chosen.

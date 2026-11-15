@@ -2,6 +2,7 @@ add_executable(ReadingStatsTest
   ReadingStatsTest.cpp
   ReadingStatsJsonTest.cpp
   ${REPO_ROOT}/src/ReadingStats.cpp
+  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
   ${REPO_ROOT}/src/ReadingStatsJson.cpp
   ${REPO_ROOT}/src/ReadingStatsSlotFile.cpp
   ${REPO_ROOT}/lib/JsonParser/StreamingJsonParser.cpp
@@ -35,6 +36,7 @@ gtest_discover_tests(ReadingStatsTest)
 add_executable(ReadingStatsStoreTest
   ReadingStatsStoreTest.cpp
   ${REPO_ROOT}/src/ReadingStats.cpp
+  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
   ${REPO_ROOT}/src/ReadingStatsJson.cpp
   ${REPO_ROOT}/src/ReadingStatsSlotFile.cpp
   ${REPO_ROOT}/lib/JsonParser/StreamingJsonParser.cpp

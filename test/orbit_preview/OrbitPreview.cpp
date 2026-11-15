@@ -19,11 +19,15 @@
 #include <FreeInkApp.h>
 #include <FreeInkUIGfxRenderer.h>
 
+#include "components/CardLayout.h"
+#include "components/StatsDraw.h"
 #include "components/icons/stats.h"
 #include "components/themes/orbit/OrbitChrome.h"
 #include "components/themes/orbit/OrbitHomeDraw.h"
 #include "components/themes/orbit/OrbitListStyle.h"
 #include "fontIds.h"
+#include "util/ChapterMarks.h"
+#include "util/ReadingCalendar.h"
 
 namespace {
 
@@ -214,6 +218,99 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
   writePgm(r, dir + "/" + name + ".pgm");
 }
 
+// Reading Stats as ReadingStatsActivity composes it: the Lyra header, the today card, the month,
+// then the all-time card, the cards CardLayout draws at the activity's margins (Lyra: 32 px).
+void renderStats(const std::string& dir, const std::string& name, const int goal, const bool calendar,
+                 const int minutesToday) {
+  GfxRenderer r;
+  r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
+  battery(r);
+  r.drawText(UI_12_FONT_ID, 20, 5 + 40 + 3, "Reading Stats", true, EpdFontFamily::BOLD);
+  r.drawLine(20, 5 + 84 - 2, 459, 5 + 84 - 2, true);
+  CardLayoutConfig cfg;
+  cfg.outerMarginX = 32;
+  CardLayout layout(r, Rect{0, 0, 480, 760}, 5 + 84 + 16, cfg);
+
+  char caption[24], line[40], streak[32];
+  StatsDraw::Today today;
+  today.minutes = minutesToday;
+  today.goalMinutes = goal;
+  if (goal > 0) {
+    snprintf(caption, sizeof(caption), "of %d min", goal);
+    if (minutesToday >= goal) {
+      snprintf(line, sizeof(line), "Goal reached");
+    } else {
+      snprintf(line, sizeof(line), "%d min to your goal", goal - minutesToday);
+    }
+  } else {
+    snprintf(caption, sizeof(caption), "min");
+    snprintf(line, sizeof(line), "%d min read", minutesToday);
+  }
+  snprintf(streak, sizeof(streak), "%d-day streak", 6);
+  today.ringCaption = caption;
+  today.heading = "Today";
+  today.line = line;
+  today.streak = streak;
+  layout.card(nullptr, [&](CardLayout::Body& b) {
+    b.advance(StatsDraw::drawToday(r, b.innerLeft(), b.currentY(), b.innerWidth(), today));
+  });
+
+  if (calendar) {
+    // November 2026, today the 15th, as in the mock-up.
+    StatsDraw::Month month;
+    month.title = "November 2026";
+    month.weekdays = "M|T|W|T|F|S|S";
+    month.firstWeekday = ReadingCalendar::weekdayMondayFirst(ReadingCalendar::dayIndexOf(2026, 11, 1));
+    month.dayCount = ReadingCalendar::daysInMonth(2026, 11);
+    const int minutes[15] = {0, 12, 0, 35, 31, 0, 0, 0, 0, 22, 45, 8, 0, 5, minutesToday};
+    for (int d = 0; d < 15; ++d) month.shade[d] = ReadingCalendar::shade(minutes[d] * 60u, goal);
+    month.today = 15;
+    month.lastDay = 15;
+    month.canGoBack = true;
+    layout.card(nullptr, [&](CardLayout::Body& b) {
+      b.advance(StatsDraw::drawMonth(r, b.innerLeft(), b.currentY(), b.innerWidth(), month));
+    });
+  }
+
+  layout.card("Total time", [&](CardLayout::Body& b) {
+    b.statGrid({{{"42", "Sessions"}, {"7", "Books tracked"}, {"6", "Streak"}, {"11", "Longest"}}});
+    b.rowLR("Total time", "23h 40m");
+    b.rowLR("Pages turned", "1873");
+    b.rowLR("Pages/min", "1.3");
+  });
+  if (layout.cursorY() > 760 - 16)
+    std::fprintf(stderr, "%s: cards run past the hints (%d)\n", name.c_str(), layout.cursorY());
+  hints(r, "\xC2\xAB Back", "All books", calendar ? "Earlier" : "", "");
+  writePgm(r, dir + "/" + name + ".pgm");
+}
+
+// The reader's bottom edge as BaseTheme::drawStatusBar draws it with a book progress bar (medium, 4 px,
+// under the bezel) and chapter marks, items above it: the battery, "~9 days", the chapter, the page.
+void renderReaderBar(const std::string& dir, const std::string& name, const int barHeight, const bool rtl) {
+  GfxRenderer r;
+  r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
+  for (int y = 60; y < 700; y += 28) r.fillRectDither(40, y, (y / 28) % 5 == 4 ? 260 : 400, 10, Color::LightGray);
+  ChapterMarks marks;
+  constexpr int kChapters[] = {6, 11, 19, 27, 31, 40, 46, 53, 61, 66, 72, 81, 89, 94};
+  for (const int pct : kChapters) marks.add(static_cast<uint16_t>(pct * 65535 / 100));
+  const int y = 800 - barHeight;
+  const int filled = 480 * 41 / 100;
+  r.fillRect(rtl ? 480 - filled : 0, y, filled, barHeight, true);
+  StatsDraw::drawChapterTicks(r, 0, y, 480, barHeight, filled, rtl, /*upward=*/true, 2, marks);
+  // UITheme::getStatusBarItemsHeight(): statusBarVerticalMargin 19 + 2 * 4 padding + 4 clearance.
+  const int textY = y - 1 - 31 + 4;
+  r.drawRect(20, textY + 6, 15, 11, true);
+  r.fillRect(22, textY + 8, 9, 7, true);
+  r.drawText(SMALL_FONT_ID, 20 + 15 + 4, textY, "90%");
+  const int bx = 20 + 15 + 4 + r.getTextWidth(SMALL_FONT_ID, "90%") + 1 + 6;
+  r.drawText(SMALL_FONT_ID, bx, textY, "~9 days");
+  const char* page = "4/12  41%";
+  r.drawText(SMALL_FONT_ID, 460 - r.getTextWidth(SMALL_FONT_ID, page), textY, page);
+  const char* chapter = "Chapter 19";
+  r.drawText(SMALL_FONT_ID, (480 - r.getTextWidth(SMALL_FONT_ID, chapter)) / 2, textY, chapter);
+  writePgm(r, dir + "/" + name + ".pgm");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -238,5 +335,25 @@ int main(int argc, char** argv) {
   cNoBook.shelfCount = 2;
   render(dir, "home-c-nobook", cNoBook);
   renderList(dir, "list-orbit", true);
+
+  // x4-orbit stats: the Orbit-B line and the battery estimate, Reading Stats, the reader's bar.
+  auto bToday = baseView(Variant::B, true, 1);
+  bToday.today = "Read 18 min today";
+  {
+    GfxRenderer r;
+    r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
+    battery(r);
+    StatsDraw::drawQuietText(r, 480 - 12 - 16 - 4 - r.getTextWidth(SMALL_FONT_ID, "90%") - 10, 5, "~9 days");
+    const auto frame = OrbitHomeDraw::layout(r, bToday);
+    OrbitHomeDraw::draw(r, bToday, frame);
+    hints(r, "", "Open", "Left", "Right");
+    writePgm(r, dir + "/home-b-today.pgm");
+  }
+  renderStats(dir, "stats-goal", 30, true, 18);
+  renderStats(dir, "stats-goal-met", 20, true, 26);
+  renderStats(dir, "stats-no-goal", 0, true, 18);
+  renderStats(dir, "stats-no-clock", 30, false, 18);
+  renderReaderBar(dir, "reader-bar", 4, false);
+  renderReaderBar(dir, "reader-bar-thin-rtl", 2, true);
   return 0;
 }

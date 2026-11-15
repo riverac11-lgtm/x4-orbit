@@ -1,4 +1,3 @@
-#include "BuildFeatures.h"
 #include "HomeActivity.h"
 
 #include <Bitmap.h>
@@ -27,6 +26,8 @@
 #include <string>
 #include <vector>
 
+#include "BatteryLog.h"
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "GlobalBookmarkIndex.h"
@@ -541,6 +542,8 @@ void HomeActivity::onEnter() {
   recentDocIds.reserve(recentBooks.size());
   for (const auto& book : recentBooks) recentDocIds.push_back(KOReaderDocumentId::calculateFromFilename(book.path));
   READING_STATS.prefetchRecent(recentDocIds);
+  // The reading habit that turns the battery's drain into days, from the read just made.
+  BatteryLog::setDailyMinutes(READING_STATS.recentDailyMinutes());
   if (recentBooks.empty()) {
     recentsLoaded = true;
   }
@@ -931,7 +934,9 @@ void HomeActivity::renderOrbit(const uint8_t variant) {
 
   renderer.clearScreen();
   // The battery line only: the Orbit homes have no title bar.
-  GUI.drawHeader(renderer, Rect{contentRect.x, metrics.topPadding, contentRect.width, 24}, nullptr);
+  const Rect header{contentRect.x, metrics.topPadding, contentRect.width, 24};
+  GUI.drawHeader(renderer, header, nullptr);
+  static_cast<const OrbitTheme&>(GUI).drawBatteryDays(renderer, header);
   const int top = metrics.topPadding + 24;
   const int bottom = contentRect.y + contentRect.height - 8;
   static_cast<const OrbitTheme&>(GUI).drawOrbitHome(

@@ -13,11 +13,13 @@
 #include <string>
 #include <vector>
 
+#include "BatteryLog.h"
 #include "I18n.h"
 #include "RecentBooksStore.h"
 #include "SerialTestApi.h"
 #include "UiFontScale.h"
 #include "components/BookProgressPresentation.h"
+#include "components/StatsDraw.h"
 #include "components/UITheme.h"
 #include "components/themes/ButtonHintLayout.h"
 #include "components/themes/CardTextFit.h"
@@ -25,6 +27,7 @@
 #include "components/themes/ListTouchBand.h"
 #include "components/themes/TapTargets.h"
 #include "fontIds.h"
+#include "util/ChapterMarks.h"
 
 // Internal constants
 namespace {
@@ -1128,7 +1131,7 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
                               const int pageCount, std::string title, const int paddingBottom, const bool isStarred,
                               const std::string& printedPageLabel, const bool fillMargin,
                               const bool pageCountApproximate, const SyncIndicator syncIndicator, const bool lowMemory,
-                              const bool fillFromRight) const {
+                              const bool fillFromRight, const ChapterMarks* chapterMarks) const {
   // While a section is still being laid out the total page count is a byte-based estimate, shown
   // with a leading "~" so the reader knows it will firm up as the chapter finishes building.
   const char* pageCountPrefix = pageCountApproximate ? "~" : "";
@@ -1156,6 +1159,13 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
         topEdge ? orientedMarginTop + paddingBottom : screenHeight - orientedMarginBottom - paddingBottom - barHeight;
     const int barX = fillFromRight ? barMarginLeft + progressBarMaxWidth - barWidth : barMarginLeft;
     renderer.fillRect(barX, y, barWidth, barHeight + extraBottom, true);
+    // Where the chapters start, on a bar that shows the whole book; the ticks stand 2 px off the
+    // bar toward the page, inside the margin the bar reserves above its text.
+    if (chapterMarks && chapterMarks->count > 0 && SETTINGS.statusBarChapterMarks &&
+        progressBar == CrossPointSettings::STATUS_BAR_PROGRESS_BAR::BOOK_PROGRESS) {
+      StatsDraw::drawChapterTicks(renderer, barMarginLeft, y, progressBarMaxWidth, barHeight + extraBottom, barWidth,
+                                  fillFromRight, /*upward=*/!topEdge, 2, *chapterMarks);
+    }
   };
 
   // Draw progress bars first; status items are then placed inside the reserved band for their selected edge.
@@ -1163,7 +1173,14 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   drawEdgeProgressBar(SETTINGS.statusBarLowerProgressBar, SETTINGS.statusBarLowerProgressBarThickness, false);
 
   const bool hasProgressText = SETTINGS.statusBarBookProgressPercentage || SETTINGS.statusBarChapterPageCount;
-  const bool hasStatusItems = hasProgressText || SETTINGS.statusBarBattery || !title.empty() ||
+  // "~9 days" beside the battery; nothing while there is not enough to tell, or on the cable.
+  char batteryDays[24] = "";
+  if (SETTINGS.statusBarBatteryDays) {
+    BatteryLog::format(batteryDays, sizeof(batteryDays), static_cast<uint8_t>(powerManager.getBatteryPercentage()),
+                       gpio.isUsbConnected());
+  }
+  const bool hasStatusItems = hasProgressText || SETTINGS.statusBarBattery || batteryDays[0] != '\0' ||
+                              !title.empty() ||
                               SETTINGS.statusBarTitle != CrossPointSettings::STATUS_BAR_TITLE::HIDE_TITLE ||
                               (SETTINGS.useClock && SETTINGS.statusBarClock) || !printedPageLabel.empty() ||
                               syncIndicator != SyncIndicator::None || lowMemory;
@@ -1245,6 +1262,12 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     // is wider than a fixed guess, and the clock/title placed to the right would overlap it.
     // The leading 1 is the icon's own inset from the horizontal margin, above.
     batterySize = 1 + statusBarBatteryWidth(renderer, metrics, showBatteryPercentage);
+  }
+
+  if (batteryDays[0] != '\0') {
+    const int x = metrics.statusBarHorizontalMargin + orientedMarginLeft + batterySize + (batterySize > 0 ? 6 : 0);
+    renderer.drawText(SMALL_FONT_ID, x, textY, batteryDays);
+    batterySize += (batterySize > 0 ? 6 : 0) + renderer.getTextWidth(SMALL_FONT_ID, batteryDays);
   }
 
   // Right cluster, laid out from the right edge inwards: progress text (already drawn), then the

@@ -11,6 +11,7 @@
 
 #include "ReadingStatsJson.h"
 #include "ReadingStatsSlotFile.h"
+#include "util/ReadingCalendar.h"
 
 namespace {
 // Where a history that cannot be read is set aside: reading-stats.bin -> reading-stats.corrupt.bin,
@@ -722,6 +723,8 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   std::vector<RecentSnapshot> snapshots(docIds.size());
   for (size_t i = 0; i < docIds.size(); ++i) snapshots[i].docId = docIds[i];
   float pace = 0.0f;
+  uint32_t todaySeconds = 0;
+  uint16_t dailyMinutes = 0;
   ReadResult result = prepare();
   if (result == ReadResult::Ok) {
     auto meta = Meta::create();
@@ -742,6 +745,13 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
         snapshot.progress = entry.progress;
       }
       pace = pooledPaceOf(*meta);
+      // Today's minutes and the daily habit, from the day buckets the meta carries (transient: the
+      // snapshots above are already placed).
+      const uint16_t today = currentLocalDayIndex();
+      ReadingTotals totals;
+      meta->readTotals(totals);
+      todaySeconds = secondsOn(totals.globalDays, today);
+      dailyMinutes = ReadingCalendar::averageDailyMinutes(totals.globalDays, today);
     }
   }
   if (result != ReadResult::Ok) {
@@ -749,6 +759,8 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   }
   recent_ = std::move(snapshots);
   pooledPace_ = pace;
+  todaySeconds_ = todaySeconds;
+  dailyMinutes_ = dailyMinutes;
 }
 
 const ReadingStatsStore::RecentSnapshot* ReadingStatsStore::recent(const std::string& docId) const {

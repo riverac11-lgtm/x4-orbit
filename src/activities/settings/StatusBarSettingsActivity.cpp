@@ -9,8 +9,10 @@
 #include <string>
 
 #include "CrossPointSettings.h"
+#include "components/StatsDraw.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/ChapterMarks.h"
 
 namespace {
 const StrId progressBarNames[] = {StrId::STR_BOOK, StrId::STR_CHAPTER, StrId::STR_HIDE};
@@ -54,6 +56,7 @@ const StatusBarItem statusBarItems[] = {
     enumItem(StrId::STR_TITLE, &CrossPointSettings::statusBarTitle, titleNames,
              CrossPointSettings::STATUS_BAR_TITLE::HIDE_TITLE),
     toggleItem(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery),
+    toggleItem(StrId::STR_BATTERY_DAYS_ITEM, &CrossPointSettings::statusBarBatteryDays),
     toggleItem(StrId::STR_CLOCK, &CrossPointSettings::statusBarClock, /*requiresClock=*/true),
     enumItem(StrId::STR_CLOCK_POSITION, &CrossPointSettings::statusBarClockPosition, clockPositionNames,
              CrossPointSettings::STATUS_BAR_CLOCK_POSITION::STATUS_BAR_CLOCK_LEFT, /*requiresClock=*/true),
@@ -65,6 +68,7 @@ const StatusBarItem statusBarItems[] = {
              CrossPointSettings::STATUS_BAR_PROGRESS_BAR::HIDE_PROGRESS),
     enumItem(StrId::STR_LOWER_PROGRESS_BAR_THICKNESS, &CrossPointSettings::statusBarLowerProgressBarThickness,
              progressBarThicknessNames, CrossPointSettings::STATUS_BAR_PROGRESS_BAR_THICKNESS::PROGRESS_BAR_NORMAL),
+    toggleItem(StrId::STR_CHAPTER_MARKS, &CrossPointSettings::statusBarChapterMarks),
 };
 static_assert(sizeof(statusBarItems) / sizeof(statusBarItems[0]) ==
                   static_cast<size_t>(StatusBarSettingsActivity::MAX_STATUS_BAR_ITEMS),
@@ -113,13 +117,20 @@ void drawPreviewProgressBar(const GfxRenderer& renderer, const Rect& rect, const
   const int y = topEdge ? rect.y + previewInnerMargin : rect.y + rect.height - previewInnerMargin - barHeight;
   const int barWidth = (rect.width - previewInnerMargin * 2) * percent / 100;
   renderer.fillRect(rect.x + previewInnerMargin, y, barWidth, barHeight);
+  if (SETTINGS.statusBarChapterMarks && progressBar == CrossPointSettings::STATUS_BAR_PROGRESS_BAR::BOOK_PROGRESS) {
+    ChapterMarks marks;  // an example book of eight chapters
+    for (int i = 1; i < 8; ++i) marks.add(static_cast<uint16_t>(i * (ChapterMarks::kFull / 8)));
+    StatsDraw::drawChapterTicks(renderer, rect.x + previewInnerMargin, y, rect.width - previewInnerMargin * 2,
+                                barHeight, barWidth, false, /*upward=*/!topEdge, 2, marks);
+  }
 }
 
 void drawPreviewStatusItems(const GfxRenderer& renderer, const Rect& rect, const ThemeMetrics& metrics) {
   const bool hasProgressText = SETTINGS.statusBarChapterPageCount || SETTINGS.statusBarBookProgressPercentage;
   const bool hasTitle = SETTINGS.statusBarTitle != CrossPointSettings::STATUS_BAR_TITLE::HIDE_TITLE;
   const bool hasStatusItems = hasProgressText || hasTitle || SETTINGS.statusBarBattery ||
-                              SETTINGS.statusBarPrintedPage || (SETTINGS.useClock && SETTINGS.statusBarClock);
+                              SETTINGS.statusBarBatteryDays || SETTINGS.statusBarPrintedPage ||
+                              (SETTINGS.useClock && SETTINGS.statusBarClock);
   if (!hasStatusItems) {
     return;
   }
@@ -153,6 +164,13 @@ void drawPreviewStatusItems(const GfxRenderer& renderer, const Rect& rect, const
     GUI.drawBatteryLeft(renderer, Rect{leftClusterX, textY, metrics.batteryWidth, metrics.batteryHeight},
                         showBatteryPercentage);
     leftClusterWidth = BaseTheme::statusBarBatteryWidth(renderer, metrics, showBatteryPercentage);
+  }
+  if (SETTINGS.statusBarBatteryDays) {
+    char example[24];
+    snprintf(example, sizeof(example), tr(STR_BATTERY_DAYS), 9);
+    const int gap = leftClusterWidth > 0 ? 6 : 0;
+    renderer.drawText(SMALL_FONT_ID, leftClusterX + leftClusterWidth + gap, textY, example);
+    leftClusterWidth += gap + renderer.getTextWidth(SMALL_FONT_ID, example);
   }
 
   // Right-aligned zone: the printed ("physical") page label sits to the LEFT of the device page

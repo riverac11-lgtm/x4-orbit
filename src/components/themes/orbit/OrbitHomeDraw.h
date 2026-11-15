@@ -34,6 +34,7 @@ struct View {
 
   bool hasBook = false;
   Book book;
+  std::string today;  // B: "Read 18 min today" beside the book's history; empty: nothing read today
   int shelfCount = 0;
 
   int menuCount = 0;
