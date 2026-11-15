@@ -56,12 +56,11 @@ class CatalogSyncActivity final : public Activity {
   bool wifiFailed = false;
 };
 
-// The last charge-time delivery, once, over Home (any theme): what arrived, what failed. Confirm
-// retries the waiting list when something failed; Back closes it.
+// The last charge-time delivery, once, in Home's place (any theme): what arrived, what failed, and
+// the first titles. Confirm gets the books still waiting now (Wi-Fi); Back goes Home.
 class DeliveryNoticeActivity final : public Activity {
  public:
-  DeliveryNoticeActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                         const ChargeSession::Summary& summary)
+  DeliveryNoticeActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, const ChargeSession::Summary& summary)
       : Activity("DeliveryNotice", renderer, mappedInput), summary(summary) {}
   void onEnter() override;
   void loop() override;

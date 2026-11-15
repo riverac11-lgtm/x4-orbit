@@ -15,8 +15,8 @@ namespace ChargeSession {
 struct State {
   static constexpr uint32_t kMagic = 0x0C4A5E01;
   uint32_t magic = 0;
-  uint8_t chargeDone = 0;  // a session finished (or gave up) during the charge in progress
-  uint8_t failures = 0;    // failed sessions in this charge
+  uint8_t chargeDone = 0;   // a session finished (or gave up) during the charge in progress
+  uint8_t failures = 0;     // failed sessions in this charge
   uint32_t lastRunSec = 0;  // RTC seconds at the last session start
   // Counters, to show the extra wakes cost nothing: logged at each normal boot.
   uint32_t timerWakes = 0;

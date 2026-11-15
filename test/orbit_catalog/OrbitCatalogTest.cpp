@@ -141,8 +141,8 @@ TEST(OrbitCatalogMerge, StopsAfterKnownRun) {
   std::sort(known.begin(), known.end());
   MergeStop stop(known);
   EXPECT_EQ(stop.offer("new1"), MergeStop::Verdict::New);
-  EXPECT_EQ(stop.offer("a"), MergeStop::Verdict::Known);  // an edited old book moved up
-  EXPECT_EQ(stop.offer("new2"), MergeStop::Verdict::New);  // the run starts again
+  EXPECT_EQ(stop.offer("a"), MergeStop::Verdict::Known);     // an edited old book moved up
+  EXPECT_EQ(stop.offer("new2"), MergeStop::Verdict::New);    // the run starts again
   EXPECT_EQ(stop.offer("new2"), MergeStop::Verdict::Known);  // repeated on the next page
   EXPECT_EQ(stop.offer("b"), MergeStop::Verdict::Known);
   EXPECT_EQ(stop.offer("c"), MergeStop::Verdict::Known);

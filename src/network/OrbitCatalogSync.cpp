@@ -7,10 +7,10 @@
 #include <OpdsStream.h>
 #include <WiFi.h>
 #include <Xtc.h>
+#include <strings.h>
 
 #include <algorithm>
 #include <cstring>
-#include <strings.h>
 
 #include "util/OpdsOnDevice.h"
 #include "util/OrbitCatalogFiles.h"
@@ -325,8 +325,8 @@ Result OrbitCatalogSync::updateCatalog(const bool full, int& added) {
       &copy);
   bool ok = read && copy.ok;
   if (ok) {
-    ok = file.seekSet(0) && writeHeader(file, {copy.count + static_cast<uint32_t>(ctx.written), gen, header.fullTime,
-                                               nowEpoch()});
+    ok = file.seekSet(0) &&
+         writeHeader(file, {copy.count + static_cast<uint32_t>(ctx.written), gen, header.fullTime, nowEpoch()});
   }
   ok = file.close() && ok;
   if (!ok) {
@@ -362,7 +362,8 @@ Result OrbitCatalogSync::collectSendToX4(int& added) {
     };
     result = fetchFeed(pageUrl, parser);
     if (result != Result::Ok) return result;
-    const std::string next = parser.getNextPageUrl().empty() ? std::string{} : resolve(pageUrl, parser.getNextPageUrl());
+    const std::string next =
+        parser.getNextPageUrl().empty() ? std::string{} : resolve(pageUrl, parser.getNextPageUrl());
     pageUrl = next == pageUrl ? std::string{} : next;
   }
   if (find.href.empty()) {
@@ -434,8 +435,8 @@ Result OrbitCatalogSync::fetchOne(const std::string& id, char* buf, ChargeSessio
     if (hooks.bytes) hooks.bytes(hooks.ctx, done, total);
     return keepGoing();
   };
-  const auto error =
-      HttpDownloader::downloadToFile(session(), book.url, path, progress, server.username, server.password, tlsPolicy());
+  const auto error = HttpDownloader::downloadToFile(session(), book.url, path, progress, server.username,
+                                                    server.password, tlsPolicy());
   if (error != HttpDownloader::OK) {
     net.reset();
     return fromDownload(error);

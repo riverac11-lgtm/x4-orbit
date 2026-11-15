@@ -4,6 +4,7 @@
 #include <WiFi.h>
 
 #include "BootDiagnosticsActivity.h"
+#include "BuildFeatures.h"
 #include "ButtonActionsOverviewActivity.h"
 #include "ButtonRemapActivity.h"
 #include "ClearCacheActivity.h"
@@ -19,6 +20,7 @@
 #include "KeyboardLayoutsActivity.h"
 #include "LanguageSelectActivity.h"
 #include "OpdsServerListActivity.h"
+#include "OpdsServerStore.h"
 #include "OtaUpdateActivity.h"
 #include "ReadingStatsActivity.h"
 #include "ScreenRepairActivity.h"
@@ -30,6 +32,7 @@
 #include "SwitchToUsbDriveActivity.h"
 #include "SyncTimeActivity.h"
 #include "SystemInformationActivity.h"
+#include "activities/browser/CatalogSyncActivity.h"
 #include "activities/home/FileBrowserActivity.h"
 #include "activities/network/WifiSelectionActivity.h"
 #include "activities/weather/WeatherSettingsActivity.h"
@@ -92,6 +95,16 @@ std::unique_ptr<Activity> createActivityForAction(SettingAction action, GfxRende
       return std::make_unique<ReadingStatsActivity>(renderer, mappedInput);
     case SettingAction::DictionarySelect:
       return std::make_unique<DictionarySelectionActivity>(renderer, mappedInput);
+    case SettingAction::UpdateCatalog:
+#if CP_FEATURE_ORBIT_CATALOG
+      // The first server's catalog, as charging updates it; with no server yet, where to add one.
+      if (!OPDS_STORE.hasServers()) return std::make_unique<OpdsServerListActivity>(renderer, mappedInput);
+      return std::make_unique<CatalogSyncActivity>(renderer, mappedInput, OPDS_STORE.getServers().front(),
+                                                   CatalogSyncActivity::Mode::Update, std::string{},
+                                                   /*backToSettings=*/true);
+#else
+      return nullptr;
+#endif
     case SettingAction::Submenu:
     case SettingAction::None:
       return nullptr;

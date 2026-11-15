@@ -79,12 +79,12 @@ class OrbitCatalogActivity final : public UiListActivity {
   Kind kind = Kind::Search;
   std::vector<uint32_t> rows;  // book offsets in listPath()
   std::vector<NameRow> names;
-  std::string query;            // folded search text
-  uint32_t nameFilter = 0;      // the series or author whose books are listed
-  std::string nameTitle;        // and its name, for the header
-  int namesSelected = 0;        // where the names list was, for Back
-  int booksSelected = 0;        // where the book list was, for Back from the actions
-  int actionRow = -1;           // the book the actions are for, or -1 for the whole series
+  std::string query;        // folded search text
+  uint32_t nameFilter = 0;  // the series or author whose books are listed
+  std::string nameTitle;    // and its name, for the header
+  int namesSelected = 0;    // where the names list was, for Back
+  int booksSelected = 0;    // where the book list was, for Back from the actions
+  int actionRow = -1;       // the book the actions are for, or -1 for the whole series
   int missingCount = 0;
   std::vector<uint32_t> onDeviceSet;
   std::vector<uint32_t> waitingSet;

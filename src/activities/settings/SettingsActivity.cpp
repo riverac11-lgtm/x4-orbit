@@ -164,6 +164,10 @@ void SettingsActivity::onEnter() {
 #endif
   addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser)
                                            .withSubcategory(StrId::STR_MENU_SYS_NETWORK)));
+#if CP_FEATURE_ORBIT_CATALOG
+  addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_UPDATE_CATALOG_NOW, SettingAction::UpdateCatalog)
+                                           .withSubcategory(StrId::STR_MENU_SYS_NETWORK)));
+#endif
   addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_CLOCK_SETTINGS, SettingAction::ClockSettings)
                                            .withSubcategory(StrId::STR_MENU_SYS_TOOLS)));
 #if CP_FEATURE_WEATHER

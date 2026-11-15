@@ -341,8 +341,8 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
                                          self->rowBuf.get(), v) &&
                self->isWaiting(v[OrbitCatalog::kId]);
       }();
-      item.label = index == 0 ? tr(STR_CATALOG_GET_NOW)
-                              : (waiting ? tr(STR_CATALOG_DONT_GET) : tr(STR_CATALOG_GET_CHARGING));
+      item.label =
+          index == 0 ? tr(STR_CATALOG_GET_NOW) : (waiting ? tr(STR_CATALOG_DONT_GET) : tr(STR_CATALOG_GET_CHARGING));
       return;
     }
     case View::Names: {
@@ -378,8 +378,8 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
   copyField(sub, sizeof(subBuf), v[OrbitCatalog::kAuthor]);
   if (self->kind == Kind::Series && !v[OrbitCatalog::kSeriesIndex].empty()) {
     const size_t n = strlen(sub);
-    snprintf(sub + n, sizeof(subBuf) - n, "%s#%.*s", n ? "  " : "", static_cast<int>(v[OrbitCatalog::kSeriesIndex].size()),
-             v[OrbitCatalog::kSeriesIndex].data());
+    snprintf(sub + n, sizeof(subBuf) - n, "%s#%.*s", n ? "  " : "",
+             static_cast<int>(v[OrbitCatalog::kSeriesIndex].size()), v[OrbitCatalog::kSeriesIndex].data());
   }
   if (sub[0]) item.subtitle = sub;
   if (self->onDevice(v)) {
@@ -400,14 +400,13 @@ void OrbitCatalogActivity::startSearch() {
 }
 
 void OrbitCatalogActivity::runSync(const uint8_t mode, const std::string& onlyId) {
-  startActivityForResult(
-      std::make_unique<CatalogSyncActivity>(renderer, mappedInput, server, static_cast<CatalogSyncActivity::Mode>(mode),
-                                            onlyId),
-      [this](const ActivityResult&) {
-        // Only reached when no network was brought up (the sync screen reboots otherwise).
-        loadState();
-        showRoot();
-      });
+  startActivityForResult(std::make_unique<CatalogSyncActivity>(renderer, mappedInput, server,
+                                                               static_cast<CatalogSyncActivity::Mode>(mode), onlyId),
+                         [this](const ActivityResult&) {
+                           // Only reached when no network was brought up (the sync screen reboots otherwise).
+                           loadState();
+                           showRoot();
+                         });
 }
 
 void OrbitCatalogActivity::getMissing(const bool now) {

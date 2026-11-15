@@ -169,7 +169,8 @@ bool seriesFromSummary(std::string_view summary, std::string& name, std::string&
   // calibre: "SERIES: Name [2]" (any case); some catalogs: "Series: Name #2".
   size_t at = std::string_view::npos;
   for (size_t i = 0; i + 7 <= summary.size(); ++i) {
-    if ((summary[i] == 'S' || summary[i] == 's') && (summary.substr(i + 1, 6) == "ERIES:" || summary.substr(i + 1, 6) == "eries:")) {
+    if ((summary[i] == 'S' || summary[i] == 's') &&
+        (summary.substr(i + 1, 6) == "ERIES:" || summary.substr(i + 1, 6) == "eries:")) {
       at = i + 7;
       break;
     }

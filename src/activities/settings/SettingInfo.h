@@ -88,6 +88,7 @@ enum class SettingAction {
   FrontlightBrightnessPicker,
   FrontlightWarmthPicker,
   SwitchToUsbDrive,
+  UpdateCatalog,
   Submenu,
 };
 
