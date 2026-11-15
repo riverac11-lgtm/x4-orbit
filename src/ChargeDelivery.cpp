@@ -89,7 +89,7 @@ bool connectSaved(HeadlessCtx& ctx) {
   }
   for (int k = 0; k < count; ++k) {
     const auto& cred = creds[static_cast<size_t>(order[k])];
-    LOG_INF("CHG", "Joining %s", cred.ssid.c_str());
+    LOG_DBG("CHG", "Joining %s", cred.ssid.c_str());
     WiFi.begin(cred.ssid.c_str(), cred.password.c_str());
     const uint32_t start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {

@@ -110,7 +110,7 @@ Result OrbitCatalogSync::loadRoot() {
   const Result result = fetchFeed(server.url, parser);
   if (result != Result::Ok) return result;
   rootLoaded = true;
-  LOG_INF("OCAT", "Root: all=%d recent=%d collections=%d", !root.all.empty(), !root.recent.empty(),
+  LOG_DBG("OCAT", "Root: all=%d recent=%d collections=%d", !root.all.empty(), !root.recent.empty(),
           !root.collections.empty());
   return Result::Ok;
 }
@@ -243,7 +243,7 @@ Result OrbitCatalogSync::updateCatalog(const bool full, int& added) {
   Result result = loadRoot();
   if (result != Result::Ok) return result;
   if (root.recent.empty()) {
-    LOG_INF("OCAT", "No recent-books feed: rebuilding instead");
+    LOG_DBG("OCAT", "No recent-books feed: rebuilding instead");
     return buildFull(added);
   }
 
@@ -367,7 +367,7 @@ Result OrbitCatalogSync::collectSendToX4(int& added) {
     pageUrl = next == pageUrl ? std::string{} : next;
   }
   if (find.href.empty()) {
-    LOG_INF("OCAT", "No \"Send to X4\" collection");
+    LOG_DBG("OCAT", "No \"Send to X4\" collection");
     return Result::Ok;
   }
 
@@ -430,7 +430,7 @@ Result OrbitCatalogSync::fetchOne(const std::string& id, char* buf, ChargeSessio
     return Result::Ok;
   }
   const std::string path = OpdsOnDevice::downloadPath(book.author, book.title, OrbitCatalog::extensionFor(book.format));
-  LOG_INF("OCAT", "Fetching %s -> %s", book.title.c_str(), path.c_str());
+  LOG_DBG("OCAT", "Fetching %s -> %s", book.title.c_str(), path.c_str());
   const auto progress = [this](const unsigned int done, const unsigned int total) {
     if (hooks.bytes) hooks.bytes(hooks.ctx, done, total);
     return keepGoing();

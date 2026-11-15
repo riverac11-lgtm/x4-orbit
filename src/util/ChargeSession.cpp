@@ -1,6 +1,5 @@
 #include "ChargeSession.h"
 
-#include <cstdio>
 #include <cstring>
 
 namespace ChargeSession {
@@ -73,43 +72,33 @@ void Summary::addName(std::string_view title) {
   dst[n] = '\0';
 }
 
+namespace {
+// The file is the struct itself behind a magic word: written and read by this firmware only, and
+// a text format cost ~0.8 KB of flash for nothing a reader of the card would see.
+constexpr uint32_t kSummaryMagic = 0x4F534D32;  // "OSM2"
+struct Stored {
+  uint32_t magic;
+  Summary summary;
+};
+}  // namespace
+
 void encodeSummary(const Summary& s, std::string& out) {
-  char buf[96];
-  snprintf(buf, sizeof(buf), "S1\t%d\t%u\t%u\t%u\t%u\t%u\t%lu\n", s.shown ? 1 : 0, s.arrived, s.failed, s.waiting,
-           s.newInCatalog, static_cast<unsigned>(s.problem), static_cast<unsigned long>(s.when));
-  out = buf;
-  for (uint8_t i = 0; i < s.nameCount && i < Summary::kMaxNames; ++i) {
-    out += s.names[i];
-    out += '\n';
-  }
+  Stored stored{kSummaryMagic, s};
+  out.assign(reinterpret_cast<const char*>(&stored), sizeof(stored));
 }
 
 bool decodeSummary(std::string_view text, Summary& out) {
   out = Summary{};
-  const size_t nl = text.find('\n');
-  const std::string head(text.substr(0, nl));
-  int shown = 0;
-  unsigned arrived = 0, failed = 0, waiting = 0, fresh = 0, problem = 0;
-  unsigned long when = 0;
-  if (sscanf(head.c_str(), "S1\t%d\t%u\t%u\t%u\t%u\t%u\t%lu", &shown, &arrived, &failed, &waiting, &fresh, &problem,
-             &when) != 7 ||
-      problem > static_cast<unsigned>(Problem::Card)) {
+  Stored stored{0, {}};
+  if (text.size() != sizeof(stored)) return false;
+  memcpy(&stored, text.data(), sizeof(stored));
+  if (stored.magic != kSummaryMagic ||
+      static_cast<uint8_t>(stored.summary.problem) > static_cast<uint8_t>(Problem::Card) ||
+      stored.summary.nameCount > Summary::kMaxNames) {
     return false;
   }
-  out.shown = shown != 0;
-  out.arrived = static_cast<uint8_t>(arrived > 255 ? 255 : arrived);
-  out.failed = static_cast<uint8_t>(failed > 255 ? 255 : failed);
-  out.waiting = static_cast<uint8_t>(waiting > 255 ? 255 : waiting);
-  out.newInCatalog = static_cast<uint8_t>(fresh > 255 ? 255 : fresh);
-  out.problem = static_cast<Problem>(problem);
-  out.when = static_cast<uint32_t>(when);
-  size_t pos = nl == std::string_view::npos ? text.size() : nl + 1;
-  while (pos < text.size() && out.nameCount < Summary::kMaxNames) {
-    size_t end = text.find('\n', pos);
-    if (end == std::string_view::npos) end = text.size();
-    if (end > pos) out.addName(text.substr(pos, end - pos));
-    pos = end + 1;
-  }
+  for (auto& name : stored.summary.names) name[Summary::kNameLength - 1] = '\0';
+  out = stored.summary;
   return true;
 }
 

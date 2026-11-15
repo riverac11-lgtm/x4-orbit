@@ -72,7 +72,7 @@ class OrbitCatalogSync {
   Result buildFull(int& added);
   Result fetchOne(const std::string& id, char* lineBuf, ChargeSession::Summary& summary, bool& arrived);
 
-  OpdsServer server;
+  const OpdsServer& server;  // an OPDS_STORE entry, which outlives the sync
   Hooks hooks;
   std::unique_ptr<HttpDownloader::Session> net;
   RootLinks root;

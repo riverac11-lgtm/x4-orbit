@@ -65,7 +65,7 @@ class OrbitCatalogActivity final : public UiListActivity {
   bool onDevice(const OrbitCatalog::RecordView& view) const;
   void reloadWaiting();
 
-  OpdsServer server;
+  const OpdsServer& server;  // an OPDS_STORE entry, which outlives this screen
   std::string catPath;
   std::string waitPath;
   std::unique_ptr<char[]> lineBuf;

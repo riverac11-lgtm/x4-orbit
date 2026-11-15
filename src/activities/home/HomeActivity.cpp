@@ -648,8 +648,9 @@ void HomeActivity::loop() {
       (recentsLoaded || GUI.getHomeNavigation() != HomeNavigation::Carousel)) {
     deliveryNoticeChecked = true;
     ChargeSession::Summary summary;
-    if (ChargeDelivery::unseenSummary(summary)) {
-      activityManager.replaceActivity(std::make_unique<DeliveryNoticeActivity>(renderer, mappedInput, summary));
+    if (OPDS_STORE.hasServers() && ChargeDelivery::unseenSummary(summary)) {
+      activityManager.replaceActivity(
+          std::make_unique<CatalogSyncActivity>(renderer, mappedInput, OPDS_STORE.getServers().front(), summary));
       return;
     }
   }
