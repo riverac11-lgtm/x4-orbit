@@ -8,6 +8,15 @@
 // token edits so the host preview (test/orbit_preview) applies exactly what the device does.
 namespace OrbitListStyle {
 
+// Taken off a two-line row (a book's title over its author) in the FreeInkUI lists
+// (UiListActivity::syncListViewport): Lyra's 68 px fit 9 books on the X4 with ~20 px of air in
+// each; 52 fits 12 with the title face unchanged and the selection pill still clear of the text
+// (50 would fit 13 but puts the pill's edge on the author line). A trim rather than a height, so a
+// larger UI font (UiFontLadder) keeps its growth; a label that wraps still grows its row
+// (measureListRow). Not the theme metric itself: LyraTheme::drawList puts a second subtitle line
+// at +40 and needs the full height.
+constexpr int kTwoLineRowTrim = 16;
+
 // The selected row is a rounded light pill inset from the edges -- the home menu's own selection --
 // instead of a full-width black bar. Row heights are untouched, so each list pages and hit-tests as
 // before; the text keeps its distance from the panel edge (`contentSidePadding`).
