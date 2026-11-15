@@ -5,6 +5,14 @@
 #include "util/ReadingCalendar.h"
 
 void OrbitProfile::apply(CrossPointSettings& s, const uint8_t fromVersion) {
+  if (fromVersion < 4) {
+    // Version 4: the home screen has no "More" any more. It only appears for an entry hidden from
+    // the home screen, and the two that still can be (Library, Online Library) go back on it, so a
+    // card from an earlier version loses its More row too. Bookmarks, File Transfer and Reading
+    // Stats no longer read their "show on home" setting in this build (HomeMenuAvailability).
+    s.showLibraryOnHome = 1;
+    s.showOnlineLibraryOnHome = 1;
+  }
   if (fromVersion < 3) {
     // Version 3: a daily goal gives Reading Stats' ring and calendar something to measure against,
     // and a reader who turns on a book progress bar sees where the chapters fall on it. Both only

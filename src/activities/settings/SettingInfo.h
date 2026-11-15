@@ -89,6 +89,7 @@ enum class SettingAction {
   FrontlightWarmthPicker,
   SwitchToUsbDrive,
   UpdateCatalog,
+  FileTransfer,  // x4-orbit: opens the home screen's File Transfer flow (ActivityManager::goToFileTransfer)
   Submenu,
 };
 

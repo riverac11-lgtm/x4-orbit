@@ -166,15 +166,56 @@ TEST_F(HomeMenuTest, HidingOnlineLibraryMovesItBehindMore) {
   SETTINGS.showOnlineLibraryOnHome = 1;
 }
 
-TEST_F(HomeMenuTest, OrbitProfileLeavesTheEssentialsOnHomeAndTheRestOneStepAway) {
+TEST_F(HomeMenuTest, OrbitProfileHomeHasNoMoreAndReadingStatsInItsPlace) {
   SETTINGS.useWeather = 0;  // the orbit build has no weather
   OrbitProfile::apply(SETTINGS);
-  HomeMenuAvailability withCatalog{.hasBookmarks = true, .hasOnlineLibrary = true};
+  HomeMenuAvailability orbit{.hasBookmarks = true, .hasOnlineLibrary = true, .orbitHome = true};
 
-  EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, withCatalog),
-            (std::vector<A>{A::Library, A::OnlineLibrary, A::More, A::Settings}));
-  EXPECT_EQ(actionsAt(HomeMenuPlacement::More, withCatalog),
-            (std::vector<A>{A::ReadingStats, A::GlobalBookmarks, A::FileTransfer}));
+  // Orbit-A's four tiles: Library, Online Library, the stats graphic, Settings.
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, orbit),
+            (std::vector<A>{A::Library, A::OnlineLibrary, A::ReadingStats, A::Settings}));
+  EXPECT_TRUE(actionsAt(HomeMenuPlacement::More, orbit).empty());
+}
+
+// Bookmarks (a Library tab) and File Transfer (Settings > System) are reached elsewhere, so their old
+// "show on home" settings put them nowhere, and Reading Stats stays on the home screen either way.
+TEST_F(HomeMenuTest, OrbitHomeIgnoresTheOldPlacementOfStatsBookmarksAndTransfer) {
+  SETTINGS.useWeather = 0;
+  HomeMenuAvailability orbit{.hasBookmarks = true, .hasOnlineLibrary = true, .orbitHome = true};
+  for (const uint8_t shown : {0, 1}) {
+    SETTINGS.showReadingStatsOnHome = shown;
+    SETTINGS.showBookmarksOnHome = shown;
+    SETTINGS.showFileTransferOnHome = shown;
+    EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, orbit),
+              (std::vector<A>{A::Library, A::OnlineLibrary, A::ReadingStats, A::Settings}));
+    EXPECT_TRUE(actionsAt(HomeMenuPlacement::More, orbit).empty());
+  }
+}
+
+// The one way More comes back: the owner hid an entry that has no other way in.
+TEST_F(HomeMenuTest, OrbitHomeKeepsMoreAsTheSafetyNetForAHiddenLibrary) {
+  SETTINGS.useWeather = 0;
+  SETTINGS.showLibraryOnHome = 0;
+  HomeMenuAvailability orbit{.hasBookmarks = true, .hasOnlineLibrary = true, .orbitHome = true};
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::Home, orbit),
+            (std::vector<A>{A::OnlineLibrary, A::ReadingStats, A::More, A::Settings}));
+  EXPECT_EQ(actionsAt(HomeMenuPlacement::More, orbit), (std::vector<A>{A::Library}));
+}
+
+TEST_F(HomeMenuTest, OrbitProfileFourPutsHiddenLibraryEntriesBackOnHome) {
+  SETTINGS.showLibraryOnHome = 0;
+  SETTINGS.showOnlineLibraryOnHome = 0;
+  SETTINGS.sleepScreen = CrossPointSettings::DARK;
+  OrbitProfile::apply(SETTINGS, /*fromVersion=*/3);
+  EXPECT_EQ(SETTINGS.showLibraryOnHome, 1);
+  EXPECT_EQ(SETTINGS.showOnlineLibraryOnHome, 1);
+  EXPECT_EQ(SETTINGS.sleepScreen, CrossPointSettings::DARK);  // version 1's step does not run again
+
+  // Hidden again on a version-4 file, it stays hidden.
+  SETTINGS.showLibraryOnHome = 0;
+  OrbitProfile::apply(SETTINGS, OrbitProfile::VERSION);
+  EXPECT_EQ(SETTINGS.showLibraryOnHome, 0);
+  SETTINGS.showLibraryOnHome = 1;
 }
 
 TEST_F(HomeMenuTest, OrbitProfileMovesTheDefaultSleepScreenToTheBookCoverButKeepsAnOwnChoice) {
