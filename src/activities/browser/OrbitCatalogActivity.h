@@ -30,14 +30,14 @@ class OrbitCatalogActivity final : public UiListActivity {
 
  private:
   enum class View : uint8_t { Root, Books, Names, Actions };
-  enum class Kind : uint8_t { Search, Waiting, New, Series, Author, SeriesNames, AuthorNames };
+  enum class Kind : uint8_t { Search, Waiting, New, Series, Author, SeriesNames, AuthorNames, All };
   struct NameRow {
     uint32_t hash;
     uint32_t offset;
     uint16_t count;
     char key[OrbitCatalog::kSortKeyLength];
   };
-  static constexpr size_t kMaxRows = 600;
+  static constexpr size_t kMaxRows = 1500;
   static constexpr size_t kMaxNames = 600;
 
   int listCount() const override;

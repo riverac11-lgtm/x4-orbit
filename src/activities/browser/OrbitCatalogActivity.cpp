@@ -1,5 +1,6 @@
 #include "OrbitCatalogActivity.h"
 
+#include <Arduino.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
 #include <I18n.h>
@@ -22,7 +23,52 @@ namespace fui = freeink::ui;
 using OrbitCatalog::RecordView;
 
 namespace {
-enum RootRow : int { kRowSearch, kRowWaiting, kRowNew, kRowSeries, kRowAuthors, kRowLive, kRowUpdate, kRootRows };
+// One row of the A-Z "All books" list while it is being sorted (the keys are dropped after):
+// 12 bytes a book, so 1500 books take 18 KB for the moment of the sort.
+struct TitleRow {
+  char key[8];
+  uint32_t offset;
+};
+
+// The first 8 folded bytes of a title, leading "the "/"an "/"a " skipped, as libraries sort.
+void titleKey(std::string_view title, char (&out)[8]) {
+  char full[OrbitCatalog::kSortKeyLength];
+  OrbitCatalog::sortKey(title, full);
+  size_t skip = 0;
+  if (memcmp(full, "the ", 4) == 0) {
+    skip = 4;
+  } else if (memcmp(full, "an ", 3) == 0) {
+    skip = 3;
+  } else if (memcmp(full, "a ", 2) == 0) {
+    skip = 2;
+  }
+  memcpy(out, full + skip, sizeof(out));
+}
+
+// Shell sort: n log^2 n on a list in arbitrary (server) order, a few hundred bytes of code.
+void sortTitles(TitleRow* rows, const size_t n) {
+  static constexpr size_t kGaps[] = {701, 301, 132, 57, 23, 10, 4, 1};
+  for (const size_t gap : kGaps) {
+    for (size_t i = gap; i < n; ++i) {
+      const TitleRow item = rows[i];
+      size_t j = i;
+      for (; j >= gap && memcmp(rows[j - gap].key, item.key, sizeof(item.key)) > 0; j -= gap) rows[j] = rows[j - gap];
+      rows[j] = item;
+    }
+  }
+}
+
+enum RootRow : int {
+  kRowAll,
+  kRowSearch,
+  kRowWaiting,
+  kRowNew,
+  kRowSeries,
+  kRowAuthors,
+  kRowLive,
+  kRowUpdate,
+  kRootRows
+};
 
 std::string_view nameField(const RecordView& view, const bool series) {
   return series ? view[OrbitCatalog::kSeries] : view[OrbitCatalog::kAuthor];
@@ -148,7 +194,18 @@ void OrbitCatalogActivity::showBooks(const Kind k, const int selected) {
     OrbitCatalogActivity* self;
     Kind kind;
     std::vector<std::pair<int32_t, uint32_t>> ordered;  // series: (number, offset)
-  } ctx{this, k, {}};
+    std::vector<TitleRow> titles;                       // all books: (title key, offset)
+    bool sortAll = false;
+  } ctx{this, k, {}, {}};
+  if (k == Kind::All) {
+    // Sorting holds a 12-byte row a book next to the 4-byte list; with too little heap for both
+    // (and headroom), the list is shown in the catalog's own order instead of not at all.
+    const size_t books = std::min<size_t>(header.count + 16, kMaxRows);
+    if (ESP.getMaxAllocHeap() > books * (sizeof(TitleRow) + sizeof(uint32_t)) + 16 * 1024) {
+      ctx.titles.reserve(books);
+      ctx.sortAll = true;
+    }
+  }
   const std::string& path = k == Kind::Waiting ? waitPath : catPath;
   OrbitCatalogFiles::forEach(
       path, k == Kind::Waiting ? OrbitCatalog::kWaitingKind : OrbitCatalog::kCatalogKind, lineBuf.get(),
@@ -158,6 +215,7 @@ void OrbitCatalogActivity::showBooks(const Kind k, const int selected) {
         bool take = false;
         switch (c.kind) {
           case Kind::Waiting:
+          case Kind::All:
             take = true;
             break;
           case Kind::New:
@@ -178,6 +236,12 @@ void OrbitCatalogActivity::showBooks(const Kind k, const int selected) {
             break;
         }
         if (!take) return true;
+        if (c.kind == Kind::All && c.sortAll) {
+          TitleRow row{{}, offset};
+          titleKey(v[OrbitCatalog::kTitle], row.key);
+          c.titles.push_back(row);
+          return c.titles.size() < c.titles.capacity();
+        }
         if (c.kind == Kind::Series) {
           c.ordered.emplace_back(OrbitCatalog::seriesOrderKey(v[OrbitCatalog::kSeriesIndex]), offset);
           if (!s.onDevice(v) && !s.isWaiting(v[OrbitCatalog::kId])) ++s.missingCount;
@@ -187,6 +251,13 @@ void OrbitCatalogActivity::showBooks(const Kind k, const int selected) {
         return (s.rows.size() + c.ordered.size()) < kMaxRows;
       },
       &ctx);
+  if (k == Kind::All && ctx.sortAll) {
+    auto& t = ctx.titles;
+    sortTitles(t.data(), t.size());
+    rows.reserve(t.size());
+    for (const auto& row : t) rows.push_back(row.offset);
+    std::vector<TitleRow>().swap(t);
+  }
   if (k == Kind::Series) {
     // Insertion sort, stable (equal numbers keep the catalog's order): a series is short, and
     // std::stable_sort costs ~1.5 KB of flash this firmware does not have.
@@ -276,6 +347,8 @@ const char* OrbitCatalogActivity::headerTitle() const {
       return nameTitle.c_str();
     case Kind::Search:
       return tr(STR_SEARCH);
+    case Kind::All:
+      return tr(STR_CATALOG_ALL);
     default:
       return tr(STR_ONLINE_LIBRARY);
   }
@@ -317,6 +390,9 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
         return;
       }
       switch (index) {
+        case kRowAll:
+          item.label = tr(STR_CATALOG_ALL);
+          break;
         case kRowSearch:
           item.label = tr(STR_SEARCH);
           return;
@@ -456,6 +532,9 @@ void OrbitCatalogActivity::activateIndex(const int index) {
         return;
       }
       switch (index) {
+        case kRowAll:
+          showBooks(Kind::All);
+          return;
         case kRowSearch:
           startSearch();
           return;
@@ -555,7 +634,10 @@ void OrbitCatalogActivity::onBackButton() {
         showNames(kind == Kind::Series ? Kind::SeriesNames : Kind::AuthorNames, namesSelected);
         return;
       }
-      showRoot(kind == Kind::Waiting ? kRowWaiting : kind == Kind::New ? kRowNew : kRowSearch);
+      showRoot(kind == Kind::Waiting ? kRowWaiting
+               : kind == Kind::New   ? kRowNew
+               : kind == Kind::All   ? kRowAll
+                                     : kRowSearch);
       return;
   }
 }

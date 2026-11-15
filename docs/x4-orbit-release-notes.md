@@ -1,4 +1,4 @@
-# x4-orbit v2.41-orbit.3
+# x4-orbit v2.41-orbit.4
 
 Custom firmware for the **Xteink X4 and X3**, built for reading EPUBs and pulling books from a home OPDS library
 (BookOrbit). Based on [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader) 2.41-dev. Personal,
@@ -34,6 +34,8 @@ Online Library now opens a **saved copy of your BookOrbit catalog** instantly, w
 minute for a few hundred books.
 
 **The rows:**
+- **All books** *(new in .4)*: every book in the catalog, A to Z by title (a leading "The", "A" or "An"
+  is ignored), up to 1,500 books.
 - **Search**: type a few letters of a title, author or series. Results come straight away.
 - **Waiting to download (N)**: books queued for the next charge. Confirm on one takes it off the list; the **Get now**
   row at the top downloads them all now.
