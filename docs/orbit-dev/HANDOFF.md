@@ -79,7 +79,11 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
    Target ~12-13 rows: trim row padding, tighter title/author line gap, smaller pill inset; consider an
    option for one-line rows "Title · Author". Keep the selection pill readable; preview with orbit_preview.
    (All books sorting itself looks right on the device: numbers first, then A-Z.)
-10. "Update catalog / Last updated: -" after a full save: the label shows header.updateTime only (set by
-   incremental updates). Show the later of fullTime and updateTime.
+10. "Last updated: -" never shows a time. Photo device-12: an update HAS run ("New since last update (1)")
+   and it still shows "-". So it is not only fullTime vs updateTime: likely the time stamped at sync is 0
+   because the clock is not set/trusted during the sync (or the headless session), or localtime_r fails.
+   Fix: stamp with the best available time (synced clock; else NTP from the sync's own Wi-Fi session -
+   the reader is online then, so fetch time first); show the later of fullTime/updateTime; if still no
+   real time, show something useful instead of "-" (e.g. "today", or "N books, updated this session").
 11. Ghost marks were visible on the catalog screen photo (old side-hint boxes / hint outlines left on the
    panel): check that the catalog screens do a clean refresh when entering from Home.
