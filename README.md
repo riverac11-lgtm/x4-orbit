@@ -1,56 +1,123 @@
-# x4-orbit — a Witch(hunt) Reader build for the Xteink X4 and X3
+# x4-orbit
 
-> **This branch is a personal, unofficial build of [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader)**
-> (itself based on CrossPoint). It is not supported by either project. The Witch(hunt) README follows further down.
+**A reading firmware for the Xteink X4 and X3, built around a home ebook library.**
 
-**Download:** [latest build (`v…-orbit.….bin`)](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
+x4-orbit is a personal, unofficial build of [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader), which
+is itself based on [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader). It keeps Witch(hunt)'s
+excellent typesetting, fonts and image handling, and adds a calmer look, full-text search, and a library that comes
+to the reader: your whole OPDS catalog (BookOrbit, Calibre-Web, …) saved on the device, with books delivered while
+it charges.
 
-## What this build is
+> Not supported by the Witch(hunt) or CrossPoint projects. Use at your own risk.
 
-Witch(hunt) Reader — chosen for its font, embedded-style and image handling and its background pre-rendering —
-trimmed to reading and pulling books from an OPDS server (built around BookOrbit), with:
+**⬇ [Download the latest build](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)** ·
+[What's new and how it works](docs/x4-orbit-release-notes.md)
 
-- **Search in book** (reader menu > Search book): case- and accent-insensitive, shows chapter and snippet for each
-  hit, jumps to the page and underlines the match.
-- **Faster OPDS browsing.** One secure connection is kept open for the whole visit instead of a new TLS handshake per
-  catalog page, search, cover or download.
-- **"On device" marker** on catalog books that are already in your download folder.
-- **Hold Back to leave the OPDS browser** from any depth, straight to Home.
-- **Built for speed where it counts.** Unzipping, parsing, text layout, glyph drawing and image conversion are
-  compiled for speed rather than size, on top of Witch(hunt)'s own latest speed work (2.41-dev).
-- **Simple home screen** with the Online Library one press away, a download queue, a catalog that remembers where
-  you were, whole-word search with next/previous match, and a **Speed check** screen. See the
-  [release notes](docs/x4-orbit-release-notes.md).
-- **Its own boot splash.**
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/home-a.png" width="240" alt="Orbit-A home screen"><br><b>Orbit-A</b> · card + tiles</td>
+    <td align="center"><img src="docs/images/home-b.png" width="240" alt="Orbit-B home screen"><br><b>Orbit-B</b> · cover first</td>
+    <td align="center"><img src="docs/images/home-c.png" width="240" alt="Orbit-C home screen"><br><b>Orbit-C</b> · list + recent shelf</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/images/list-orbit.png" width="240" alt="Settings screen"><br>Refined settings and lists</td>
+    <td align="center"><img src="docs/images/stats-goal.png" width="240" alt="Reading stats with goal and calendar"><br>Daily goal and reading calendar</td>
+    <td align="center"><img src="docs/images/reader-bar.png" width="240" alt="Reading page with chapter marks"><br>Progress bar with chapter marks</td>
+  </tr>
+</table>
 
-**Removed** from the menus and build: screenshots, show page as QR, weather, KOReader sync, Calibre wireless, WebDAV,
-dictionary and internet firmware updates. The web server, USB file transfer, SD-card firmware update and recovery mode
-are kept. Settings and OPDS servers live in the same files as in CrossPoint, so they normally carry over; if an OPDS
-login fails after switching, enter it again. Details and build steps: [docs/x4-orbit.md](docs/x4-orbit.md).
+<sub>Rendered on a computer by the firmware's own drawing code and fonts at the reader's 480×800 resolution;
+hatched boxes stand in for book covers.</sub>
 
-## Who should not install it
+## Highlights
 
-**Only flash this on an Xteink X4 or X3** (one binary covers both). Do not install it on:
+**Your library, on the reader**
+- **Saved catalog.** Online Library opens instantly, even offline: search by title, author or series, browse
+  series in order, see what's new. Every book shows whether it's *On device* or *Waiting*.
+- **Delivered while charging.** Mark books *Get when charging*, or add them to a **Send to X4** collection on your
+  server. Next time the reader is on a charger, even asleep, it quietly downloads them, turns Wi-Fi off and goes
+  back to sleep without touching the screen. Home tells you what arrived.
+- **Next in series.** Finish a book and the reader offers the next one from your catalog.
+- **Live catalog browsing.** The live catalog is still there for everything else. It keeps one connection open per
+  visit, remembers where you were, and lets you mark several books to download in one go. Hold Back to leave from
+  any depth.
+
+**Reading**
+- **Search in book.** Full-text, ignores case and accents, with a whole-word option. It jumps to the page and
+  underlines the match, and has Next/Previous match in the reader menu.
+- **Daily goal and calendar.** A ring showing today's minutes against your goal, your streak, and a month calendar
+  shaded by how much you read.
+- **Battery in days.** "~9 days of reading" worked out from your own battery drain and reading habits, not a raw
+  percentage.
+- **Chapter marks** on the progress bar.
+
+**Look and feel**
+- **Three home screens** (Orbit-A, B, C) and a cleaner style across every screen: soft highlights, proper arrows,
+  no clutter. Witch(hunt)'s original themes are still available.
+- **A simple home**: your book, Library, Online Library, More and Settings. Everything else is one step away, and
+  nothing has been removed.
+- **Its own boot and sleep screens.**
+
+**Speed**
+- **Faster hot paths.** Unzipping, page layout, glyph drawing and image conversion are compiled for speed.
+- **Instant page turns** on the front buttons, with no double-press wait.
+- **Speed check.** Settings > System > Speed check shows real timings from your reader and can save them to a file.
+
+**Left out to keep it lean:** screenshots, page-as-QR, weather, KOReader sync, Calibre wireless, WebDAV,
+dictionary, internet firmware updates. The web server, USB file transfer, SD-card updates and recovery mode are
+all kept.
+
+## Install
+
+1. Download the `v…-orbit.….bin` file from the [latest release](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
+   and copy it to the SD card, **together with a fallback** (stock
+   [CrossPoint](https://github.com/daveallie/crosspoint-reader/releases) or
+   [Witch(hunt)](https://github.com/jpirnay/witchhunt-reader/releases)).
+2. On the reader: **Settings → System → SD Card Firmware Update**, then pick the file.
+3. Open the reader's web page once while on Wi-Fi; it downloads its matching web interface by itself.
+4. Add your OPDS server under Settings → System → OPDS Servers, then open **Online Library → Save the book list**.
+
+Settings and OPDS servers live in the same files as CrossPoint and Witch(hunt), so they normally carry over.
+
+**Going back:**
+- Flash the fallback file the same way.
+- If menus misbehave, hold **Up + Power** while turning the reader on to open the SD firmware picker.
+- If it won't boot, use the [web installer](https://crosspointreader.com/#flash-tools) over USB-C.
+
+## Don't install it on
 
 | Device | Why |
 | --- | --- |
-| Xteink X4 Pro, X4 Classic | Different chip (ESP32-S3) and hardware. The SD updater refuses this file; don't force it through a USB flasher. |
-| LilyGo T5S3, Seeed reTerminal Sticky, M5PaperMono, any other device | Not built for them; the SD updater refuses this file. |
-| **A USB-locked X4** (some third-party-store units) | If anything goes wrong there is no USB recovery path. Check that the [web installer](https://crosspointreader.com/#flash-tools) can see your device first, or unlock it with the [unlock tool](https://crosspointreader.com/#unlock-tool). |
+| Xteink X4 Pro, X4 Classic | Different chip (ESP32-S3). The SD updater refuses the file; don't force it with a USB flasher. |
+| LilyGo T5S3, reTerminal Sticky, M5PaperMono, any other device | Not built for them. |
+| **A USB-locked X4** (some third-party-store units) | No USB recovery if something goes wrong. Check the [web installer](https://crosspointreader.com/#flash-tools) sees your device first, or use the [unlock tool](https://crosspointreader.com/#unlock-tool). |
 
-Also skip it if you rely on any of the removed features above — use Witch(hunt) or CrossPoint instead.
+## Build it yourself
 
-## Installing and going back
+```sh
+git clone --recursive https://github.com/riverac11-lgtm/x4-orbit -b x4-orbit
+cd x4-orbit
+npm ci
+pio run -e x4-orbit
+# -> .pio/build/x4-orbit/firmware.bin and web-*.bin
+```
 
-1. Put the firmware `.bin` from the release **and a fallback `.bin`** (stock [CrossPoint](https://github.com/daveallie/crosspoint-reader/releases)
-   or [Witch(hunt)](https://github.com/jpirnay/witchhunt-reader/releases)) on the SD card.
-2. Flash with **Settings > System > SD Card Firmware Update**.
-3. Open the reader's web page once while on Wi-Fi: it downloads its matching web interface from the same release.
-4. To go back: flash the fallback file the same way. If menus misbehave, hold **Up + Power** while powering on to go
-   straight to the SD firmware picker. If the reader won't boot at all, use the
-   [web installer](https://crosspointreader.com/#flash-tools) over USB-C.
+Every push to `x4-orbit` runs the host tests and publishes the firmware to the
+[`x4-orbit-latest`](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest) release. The feature
+switches are in `src/BuildFeatures.h`, the x4-orbit defaults in `src/OrbitProfile.cpp`, and the build notes in
+[docs/x4-orbit.md](docs/x4-orbit.md).
 
-This build has not been through either project's testing. Use it at your own risk.
+**Earlier versions:**
+- [`x4-orbit-2.40`](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-2.40), on Witch(hunt) 2.40.
+- The [`x4-orbit-crosspoint`](https://github.com/riverac11-lgtm/x4-orbit/tree/x4-orbit-crosspoint) branch, the first
+  version, built on CrossPoint.
+
+## Credits
+
+All the heavy lifting is [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader) by jpirnay and
+[CrossPoint Reader](https://github.com/daveallie/crosspoint-reader) by Dave Allie and contributors. x4-orbit adds the
+catalog and delivery, search, the Orbit look, the reading goal and the speed work on top.
+The original Witch(hunt) README follows.
 
 ---
 
