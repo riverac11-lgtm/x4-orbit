@@ -39,6 +39,7 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "FileContextMenuActivity.h"
+#include "FolderDisplayName.h"
 #include "GlobalBookmarkIndex.h"
 #include "KOReaderCredentialStore.h"
 #include "LibraryFreshness.h"
@@ -1028,13 +1029,11 @@ bool FileBrowserActivity::moveInCoverGrid(const MappedInputManager::Button butto
 std::string getFileName(std::string filename) {
   filename = utf8NfcNorm(std::move(filename));
   if (filename.back() == '/') {
-    // Bracketed unconditionally. This used to skip the brackets when the theme reported
-    // showsFileIcons(), on the assumption that a folder icon carried the distinction -- but
-    // buildScreen() below fills in nothing but `label` and `actionValue`, so no row in this
-    // browser has ever had an icon, and under Lyra (the one theme that answers true) folders
-    // were left indistinguishable from files.
+    // No row in this browser has an icon, so a folder needs some mark that it is one. That used to
+    // be brackets around the name ("[COMPLETED]"); it is now the submenu marker in the row's value
+    // (materializeListWindow), and the name reads as a name (FolderDisplayName.h).
     filename.pop_back();
-    return "[" + filename + "]";
+    return folderDisplayName(std::move(filename));
   }
   if (SETTINGS.showFileExtensions) {
     return filename;
@@ -1065,6 +1064,8 @@ void FileBrowserActivity::materializeListWindow() {
       uint32_t hash = 0;
       if (model.authorAt(index, books, hash)) windowValues[offset] = std::to_string(books);
     }
+    // A folder opens a further list: its row carries the marker a settings submenu does.
+    if (!model.atAuthorList() && !entry.empty() && entry.back() == '/') windowValues[offset] = GUI.submenuMarker();
     if (details && !entry.empty() && entry.back() != '/' && index < drawnEnd) {
       const BookRowResolver::Row& row = bookRows.row(model.entryFullPath(index), model.entrySize(index));
       if (!row.title.empty()) windowLabels[offset] = row.title;

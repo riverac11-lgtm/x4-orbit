@@ -1,6 +1,7 @@
 add_executable(OrbitHomeLayoutTest
   OrbitHomeLayoutTest.cpp
   OrbitChromeTest.cpp
+  FolderDisplayNameTest.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitChrome.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitHomeDraw.cpp
   ${REPO_ROOT}/lib/GfxRenderer/TextTruncation.cpp
