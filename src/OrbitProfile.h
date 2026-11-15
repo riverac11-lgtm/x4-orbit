@@ -19,8 +19,12 @@ class CrossPointSettings;
 // so a choice the owner already made is left alone.
 namespace OrbitProfile {
 
-inline constexpr uint8_t VERSION = 1;
+// 1: the home menu, page turns, sleep screen.  2: the Orbit-A theme.
+inline constexpr uint8_t VERSION = 2;
 
-void apply(CrossPointSettings& s);
+// Applies the steps a file stamped `fromVersion` has not had yet (0: none, a new card or a stock
+// file). A step runs once: a file already on version 1 does not get its home entries reset to
+// version 1's choice when version 2 comes along.
+void apply(CrossPointSettings& s, uint8_t fromVersion = 0);
 
 }  // namespace OrbitProfile

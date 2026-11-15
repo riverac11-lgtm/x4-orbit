@@ -196,3 +196,31 @@ TEST_F(HomeMenuTest, OrbitProfileDropsTheDoublePressWaitOnlyWhereItIsStillTheDef
   EXPECT_EQ(SETTINGS.btnDoubleLeft, CrossPointSettings::BTN_DEFAULT);
   EXPECT_EQ(SETTINGS.btnDoubleRight, CrossPointSettings::BTN_PAGE_BACK_10);
 }
+
+TEST_F(HomeMenuTest, OrbitProfileTwoMovesTheDefaultThemeToOrbitAButKeepsAnOwnChoice) {
+  SETTINGS.uiTheme = CrossPointSettings::LYRA;
+  OrbitProfile::apply(SETTINGS);
+  EXPECT_EQ(SETTINGS.uiTheme, CrossPointSettings::ORBIT_A);
+
+  SETTINGS.uiTheme = CrossPointSettings::LYRA_CAROUSEL;
+  OrbitProfile::apply(SETTINGS);
+  EXPECT_EQ(SETTINGS.uiTheme, CrossPointSettings::LYRA_CAROUSEL);
+  SETTINGS.uiTheme = CrossPointSettings::LYRA;
+}
+
+TEST_F(HomeMenuTest, OrbitProfileTwoOverAVersionOneFileLeavesItsHomeEntriesAlone) {
+  SETTINGS.uiTheme = CrossPointSettings::LYRA;
+  SETTINGS.showReadingStatsOnHome = 1;  // chosen by the owner after version 1
+  SETTINGS.sleepScreen = CrossPointSettings::DARK;
+  OrbitProfile::apply(SETTINGS, /*fromVersion=*/1);
+  EXPECT_EQ(SETTINGS.uiTheme, CrossPointSettings::ORBIT_A);
+  EXPECT_EQ(SETTINGS.showReadingStatsOnHome, 1);
+  EXPECT_EQ(SETTINGS.sleepScreen, CrossPointSettings::DARK);
+  SETTINGS.uiTheme = CrossPointSettings::LYRA;
+  SETTINGS.showReadingStatsOnHome = 0;
+
+  // An up-to-date file gets nothing.
+  SETTINGS.uiTheme = CrossPointSettings::LYRA;
+  OrbitProfile::apply(SETTINGS, OrbitProfile::VERSION);
+  EXPECT_EQ(SETTINGS.uiTheme, CrossPointSettings::LYRA);
+}

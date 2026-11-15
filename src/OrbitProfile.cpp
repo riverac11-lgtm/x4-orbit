@@ -1,8 +1,17 @@
 #include "OrbitProfile.h"
 
 #include "CrossPointSettings.h"
+#include "components/themes/PanelMetrics.h"
 
-void OrbitProfile::apply(CrossPointSettings& s) {
+void OrbitProfile::apply(CrossPointSettings& s, const uint8_t fromVersion) {
+  if (fromVersion < 2) {
+    // Version 2: the Orbit-A home (a continue-reading card over four large tiles) and the calmer
+    // chrome that comes with it -- but only over the upstream default, never over a theme chosen.
+    // A compact panel offers no Orbit theme (SettingsList.h uiThemeChoices).
+    if (!PanelMetrics::COMPACT && s.uiTheme == CrossPointSettings::LYRA) s.uiTheme = CrossPointSettings::ORBIT_A;
+  }
+  if (fromVersion >= 1) return;
+
   // Home: the two things a reader does there, then More and Settings.
   s.showLibraryOnHome = 1;
   s.showOnlineLibraryOnHome = 1;
