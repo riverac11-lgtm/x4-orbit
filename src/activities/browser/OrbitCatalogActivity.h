@@ -11,7 +11,7 @@
 
 // The Online Library from its saved catalog (OrbitCatalogFiles.h): opens at once, with no network.
 //
-//   Search / Waiting to download (N) / New since last update (N) / Series / Authors /
+//   Search / All books / Waiting to download (N) / New since last update (N) / Series / Authors /
 //   Browse live server / Update catalog (last updated ...)
 //
 // Lists of books show each book's state at the right: "On device" (by the browser's file-name

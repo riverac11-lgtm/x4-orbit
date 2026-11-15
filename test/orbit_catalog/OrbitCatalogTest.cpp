@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include <string>
 #include <vector>
 
@@ -74,6 +76,38 @@ TEST(OrbitCatalogRecord, Header) {
   EXPECT_FALSE(parseHeader(line, kWaitingKind, h));
   EXPECT_FALSE(parseHeader("ORBITCAT\t2\t1\t1\t0\t0", kCatalogKind, h));  // a future version
   EXPECT_FALSE(parseHeader("garbage", kCatalogKind, h));
+}
+
+// "Last updated": the later of the build and the update; 0 (shown as the book count) when neither
+// stamp is a real time, which is what a sync with an untrusted clock wrote.
+TEST(OrbitCatalogStamp, LastUpdatedTakesTheLaterRealTime) {
+  EXPECT_EQ(lastUpdated({10, 1, 0, 0}), 0u);
+  EXPECT_EQ(lastUpdated({10, 2, 1767225600, 0}), 1767225600u);           // update stamped without a clock
+  EXPECT_EQ(lastUpdated({10, 2, 0, 1767225600}), 1767225600u);           // build stamped without a clock
+  EXPECT_EQ(lastUpdated({10, 2, 1767225600, 1767312000}), 1767312000u);  // update after build
+  EXPECT_EQ(lastUpdated({10, 2, 1767312000, 1767225600}), 1767312000u);  // a rebuild after the update
+  EXPECT_EQ(lastUpdated({10, 1, 3600, 86400}), 0u);                      // 1970: an unset clock
+}
+
+TEST(OrbitCatalogStamp, FormatsLocalTime) {
+  setenv("TZ", "UTC0", 1);
+  tzset();
+  char buf[24];
+  ASSERT_TRUE(formatStamp(1794747900, buf, sizeof(buf)));  // 2026-11-15 13:05 UTC
+  EXPECT_STREQ(buf, "2026-11-15 13:05");
+  setenv("TZ", "EST5", 1);
+  tzset();
+  ASSERT_TRUE(formatStamp(1794747900, buf, sizeof(buf)));
+  EXPECT_STREQ(buf, "2026-11-15 08:05");
+  setenv("TZ", "UTC0", 1);
+  tzset();
+  EXPECT_FALSE(formatStamp(0, buf, sizeof(buf)));
+  EXPECT_STREQ(buf, "");
+  EXPECT_FALSE(formatStamp(1000, buf, sizeof(buf)));
+  EXPECT_STREQ(buf, "");
+  char small[8];
+  ASSERT_TRUE(formatStamp(1794747900, small, sizeof(small)));  // cut, never overrun
+  EXPECT_STREQ(small, "2026-11");
 }
 
 TEST(OrbitCatalogSeries, OrderKey) {

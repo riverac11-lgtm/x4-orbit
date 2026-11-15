@@ -69,6 +69,14 @@ struct Header {
   uint32_t updateTime = 0;
 };
 
+// When the catalog was last brought up to date: the later of the full build and the last update
+// (either is 0 when the clock was unknown at the time). 0 when neither is a real time (before
+// 2020, which only an unset clock gives).
+uint32_t lastUpdated(const Header& header);
+// `t` as "YYYY-MM-DD HH:MM" in local time into `out` (at least 17 bytes). False, writing "", when
+// `t` is not a real time. Not strftime(): it would link ~9 KB of newlib's integer printf.
+bool formatStamp(uint32_t t, char* out, size_t size);
+
 // `line` without its line break. False for anything that is not a well-formed book line.
 bool splitRecord(std::string_view line, RecordView& out);
 void toBook(const RecordView& view, Book& out);

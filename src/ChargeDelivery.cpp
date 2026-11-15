@@ -176,6 +176,11 @@ void describe(const ChargeSession::Summary& s, char* buf, const size_t size) {
 
 ChargeSession::Summary run(const OpdsServer& server, const OrbitCatalogSync::Hooks& hooks, const Work work,
                            const std::string& onlyId) {
+  // The catalog is stamped with HalClock::now(), which stays 0 until the clock is trusted -- and a
+  // cold boot or a stale restore leaves it untrusted while the TLS check (ensureUsableForTls)
+  // passes, so nothing else syncs it: "Last updated" had no time to show. The reader is online
+  // here, so ask NTP once (fast path ~20 ms, at most ~5 s), only when the time is unknown.
+  if (work != Work::Download && !HalClock::isSynced()) HalClock::syncNtp(SETTINGS.ntpServer);
   ChargeSession::Summary summary;
   summary.when = static_cast<uint32_t>(HalClock::now());
   OrbitCatalogSync sync(server, hooks);
