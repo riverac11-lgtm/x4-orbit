@@ -77,10 +77,10 @@ jobs:
             grep -E "RAM:\s" -m1 pio.log | sed 's/^/- /' || true
             grep -E "Flash:\s" -m1 pio.log | sed 's/^/- /' || true
           } >> "$GITHUB_STEP_SUMMARY"
-          # Versioned file name: v<upstream version>-orbit.<our revision>.bin (platformio.ini).
-          ver=$(python3 -c "import configparser; c = configparser.ConfigParser(interpolation=None, strict=False); c.read('platformio.ini'); print('v%s-orbit.%s' % (c['crosspoint']['version'].strip(), c['orbit']['revision'].strip()))")
+          # Versioned file name: x4-orbit-v<our version>.bin ([orbit] version in platformio.ini).
+          ver=$(python3 -c "import configparser; c = configparser.ConfigParser(interpolation=None, strict=False); c.read('platformio.ini'); print('v' + c['orbit']['version'].strip())")
           echo "ORBIT_VERSION=$ver" >> "$GITHUB_ENV"
-          cp .pio/build/x4-orbit/firmware.bin "$ver.bin"
+          cp .pio/build/x4-orbit/firmware.bin "x4-orbit-$ver.bin"
           count=$(ls .pio/build/x4-orbit/web-*.bin 2>/dev/null | wc -l)
           [ "$count" = "1" ] || { echo "::error::expected one web-*.bin, found $count"; exit 1; }
           cp .pio/build/x4-orbit/web-*.bin .
@@ -90,7 +90,7 @@ jobs:
         with:
           name: firmware-x4-orbit
           path: |
-            v*-orbit.*.bin
+            x4-orbit-v*.bin
             web-*.bin
           if-no-files-found: error
 
@@ -104,7 +104,7 @@ jobs:
         run: |
           set -uo pipefail
           web=$(ls web-*.bin)
-          fw="$ORBIT_VERSION.bin"
+          fw="x4-orbit-$ORBIT_VERSION.bin"
           {
             cat docs/x4-orbit-release-notes.md
             echo
