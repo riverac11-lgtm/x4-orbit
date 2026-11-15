@@ -188,8 +188,15 @@ void OrbitCatalogActivity::showBooks(const Kind k, const int selected) {
       },
       &ctx);
   if (k == Kind::Series) {
-    std::stable_sort(ctx.ordered.begin(), ctx.ordered.end(),
-                     [](const auto& a, const auto& b) { return a.first < b.first; });
+    // Insertion sort, stable (equal numbers keep the catalog's order): a series is short, and
+    // std::stable_sort costs ~1.5 KB of flash this firmware does not have.
+    auto& o = ctx.ordered;
+    for (size_t i = 1; i < o.size(); ++i) {
+      const auto item = o[i];
+      size_t j = i;
+      for (; j > 0 && o[j - 1].first > item.first; --j) o[j] = o[j - 1];
+      o[j] = item;
+    }
     rows.reserve(ctx.ordered.size());
     for (const auto& entry : ctx.ordered) rows.push_back(entry.second);
   }
@@ -223,8 +230,13 @@ void OrbitCatalogActivity::showNames(const Kind k, const int selected) {
         return list.size() < kMaxNames;
       },
       &ctx);
-  std::sort(names.begin(), names.end(),
-            [](const NameRow& a, const NameRow& b) { return memcmp(a.key, b.key, sizeof(a.key)) < 0; });
+  // Insertion sort (a few hundred names at most, once per visit): std::sort's ~1 KB is spared.
+  for (size_t i = 1; i < names.size(); ++i) {
+    const NameRow item = names[i];
+    size_t j = i;
+    for (; j > 0 && memcmp(names[j - 1].key, item.key, sizeof(item.key)) > 0; --j) names[j] = names[j - 1];
+    names[j] = item;
+  }
   setRows(View::Names, k, selected);
 }
 
@@ -326,7 +338,11 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
           char when[32] = "-";
           const time_t t = static_cast<time_t>(self->header.updateTime);
           struct tm tm{};
-          if (t > 0 && localtime_r(&t, &tm)) strftime(when, sizeof(when), "%d %b %Y %H:%M", &tm);
+          // Not strftime(): it would link ~9 KB of newlib's integer printf for this one line.
+          if (t > 0 && localtime_r(&t, &tm)) {
+            snprintf(when, sizeof(when), "%04d-%02d-%02d %02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                     tm.tm_hour, tm.tm_min);
+          }
           snprintf(sub, sizeof(subBuf), tr(STR_CATALOG_LAST_UPDATED), when);
           item.subtitle = sub;
           return;

@@ -61,7 +61,34 @@ def _speed(env, node):  # pylint: disable=redefined-outer-name
     )
 
 
+# The other way: the saved catalog and books-while-charging (CP_FEATURE_ORBIT_CATALOG) wait on the
+# network and the card, never on the CPU, so they are built -Oz, the smallest GCC makes.
+COLD_PATTERNS = [
+    "*/src/util/OrbitCatalog*.cpp",
+    "*/src/util/ChargeSession.cpp",
+    "*/src/util/OpdsOnDevice.cpp",
+    "*/src/network/OrbitCatalogSync.cpp",
+    "*/src/ChargeDelivery.cpp",
+    "*/src/activities/browser/OrbitCatalogActivity.cpp",
+    "*/src/activities/browser/CatalogSyncActivity.cpp",
+]
+
+
+def _size(env, node):  # pylint: disable=redefined-outer-name
+    def swap(flags):
+        return [f for f in flags if str(f) != "-Os"] + ["-Oz"]
+
+    return env.Object(
+        node,
+        CCFLAGS=swap(env.get("CCFLAGS", [])),
+        CFLAGS=swap(env.get("CFLAGS", [])),
+        CXXFLAGS=swap(env.get("CXXFLAGS", [])),
+    )
+
+
 if _wants_hot_paths(env):  # noqa: F821
+    for pattern in COLD_PATTERNS:
+        env.AddBuildMiddleware(_size, pattern)  # noqa: F821
     for pattern in HOT_PATTERNS:
         env.AddBuildMiddleware(_speed, pattern)  # noqa: F821
     print("x4-orbit: -O2 for %d hot-path patterns" % len(HOT_PATTERNS))
