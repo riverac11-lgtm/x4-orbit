@@ -71,6 +71,10 @@ class LyraTheme : public BaseTheme {
   bool showsFileIcons() const override { return true; }
 
  protected:
+  // Set by OrbitTheme: hint boxes lose the « » text marks and empty ones are not drawn at all, and
+  // the header's rule is a hairline. One flag here rather than copies of these two drawers.
+  bool refinedChrome_ = false;
+
   static int getRecentBookProgressPercent(const RecentBook& book);
   static const uint8_t* iconForName(UIIcon icon, int size);
 };

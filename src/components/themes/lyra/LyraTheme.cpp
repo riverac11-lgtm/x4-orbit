@@ -38,6 +38,7 @@
 #include "components/themes/CardTextFit.h"
 #include "components/themes/ListTouchBand.h"
 #include "components/themes/TapTargets.h"
+#include "components/themes/orbit/OrbitChrome.h"
 #include "fontIds.h"
 
 // Internal constants
@@ -219,7 +220,14 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     renderer.drawText(UI_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
                       rect.y + LyraMetrics::values.batteryBarHeight + 3, truncatedTitle.c_str(), true,
                       EpdFontFamily::BOLD);
-    renderer.drawLine(rect.x, rect.y + rect.height - 3, rect.x + rect.width - 1, rect.y + rect.height - 3, 3, true);
+    if (refinedChrome_) {
+      // Orbit: a hairline inset to the content, not a 3 px bar across the panel.
+      const int pad = LyraMetrics::values.contentSidePadding;
+      renderer.drawLine(rect.x + pad, rect.y + rect.height - 2, rect.x + rect.width - 1 - pad, rect.y + rect.height - 2,
+                        true);
+    } else {
+      renderer.drawLine(rect.x, rect.y + rect.height - 3, rect.x + rect.width - 1, rect.y + rect.height - 3, 3, true);
+    }
   }
 
   if (subtitle) {
@@ -465,6 +473,20 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   for (int i = 0; i < 4; i++) {
     const int width = boxWidth[i];
     const int x = inverted ? pageWidth - boxX[i] - width : boxX[i];
+    if (refinedChrome_) {
+      // Orbit: a key with nothing to do gets no box at all, and the marks become drawn chevrons
+      // (OrbitChrome::parseHintLabel). The tap strip above is unchanged: an empty label was never
+      // tappable.
+      OrbitChrome::HintLabel label = OrbitChrome::parseHintLabel(labels[i], i == 0);
+      if (label.empty()) continue;
+      const int chevron =
+          label.chevron != 0 ? OrbitChrome::kChevronWidth + (label.text.empty() ? 0 : OrbitChrome::kChevronGap) : 0;
+      const FittedHintLabel fitted =
+          fitHintLabel(renderer, SMALL_FONT_ID, label.text.c_str(), width - HintLayout::BOTTOM_LABEL_PADDING - chevron);
+      label.text = fitted.text;
+      OrbitChrome::drawHintBox(renderer, x, fullY, width, buttonHeight, label, fitted.fontId, inverted);
+      continue;
+    }
     if (labels[i] != nullptr && labels[i][0] != '\0') {
       // Draw the filled background and border for a FULL-sized button
       renderer.fillRoundedRect(x, fullY, width, buttonHeight, cornerRadius, Color::White);

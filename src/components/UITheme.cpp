@@ -18,6 +18,7 @@
 #include "components/themes/lyra/Lyra3CoversTheme.h"
 #include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
+#include "components/themes/orbit/OrbitTheme.h"
 
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
@@ -88,6 +89,14 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Lyra Carousel theme");
       currentTheme = std::make_unique<LyraCarouselTheme>();
       currentMetrics = LyraCarouselMetrics::values;
+      break;
+    case CrossPointSettings::UI_THEME::ORBIT_A:
+    case CrossPointSettings::UI_THEME::ORBIT_B:
+    case CrossPointSettings::UI_THEME::ORBIT_C:
+      LOG_DBG("UI", "Using Orbit theme %d", static_cast<int>(type) - CrossPointSettings::UI_THEME::ORBIT_A + 1);
+      currentTheme = std::make_unique<OrbitTheme>(
+          static_cast<OrbitHomeLayout::Variant>(static_cast<int>(type) - CrossPointSettings::UI_THEME::ORBIT_A + 1));
+      currentMetrics = LyraMetrics::values;
       break;
     default:
       LOG_ERR("UI", "Unknown theme %d, falling back to Classic", static_cast<int>(type));

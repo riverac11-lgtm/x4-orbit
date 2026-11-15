@@ -102,7 +102,11 @@ struct RowSink {
 // range here, so loading turns it into the field's default.
 inline std::vector<StrId> uiThemeChoices() {
   std::vector<StrId> themes = {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED};
-  if (!PanelMetrics::COMPACT) themes.push_back(StrId::STR_THEME_LYRA_CAROUSEL);
+  if (!PanelMetrics::COMPACT) {
+    themes.push_back(StrId::STR_THEME_LYRA_CAROUSEL);
+    // x4-orbit's homes are laid out for a 480 px panel, and must follow Carousel to keep its index.
+    themes.insert(themes.end(), {StrId::STR_THEME_ORBIT_A, StrId::STR_THEME_ORBIT_B, StrId::STR_THEME_ORBIT_C});
+  }
   return themes;
 }
 

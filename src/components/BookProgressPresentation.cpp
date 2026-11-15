@@ -60,6 +60,8 @@ std::string bookEtaSuffix(const RecentBook& book, int progressPercent) {
 
 int readPercent(const RecentBook& book) { return readPercent(book.path); }
 
+std::string etaText(const RecentBook& book, const int progressPercent) { return bookEtaSuffix(book, progressPercent); }
+
 int readPercent(const std::string& bookPath) {
   if (bookPath.empty()) {
     return -1;
