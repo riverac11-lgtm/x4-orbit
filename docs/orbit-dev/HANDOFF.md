@@ -70,12 +70,12 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
 6. Library "Options": no own button/hint. Hold Confirm ("Open") opens the options menu for the selected
    item; short Confirm still opens. Frees that button hint.
 7. Online Library root order: Search first, then All books, then the rest (kRowSearch, kRowAll, ...).
-8. BUG: on the device the new All books row reads "Get now". The code labels it STR_CATALOG_ALL
-   (OrbitCatalogActivity.cpp ~394) and "Get now" is STR_CATALOG_GET_NOW (lead row of Waiting, ~455).
-   Suspect a string-table mismatch: STR_CATALOG_ALL was INSERTED mid-file in english.yaml, and v.4 kept the
-   same web bundle hash (web-0f2e5ecb9f0b) as v.3 -> check whether UI strings come from a flash language
-   partition / web bundle built separately (test/flash_lang_partition, I18n generator) and whether ids
-   shift when keys are inserted; if so, append new keys at the END or force regeneration/versioning.
-   Verify other new labels on the device too.
+8. BUG (cause FOUND): root row kRowAll in OrbitCatalogActivity::provideRow ends with `break;` instead of
+   `return;`, so it falls through to the lead-row code below the switch, which sets "Get now". Fix: return.
+   (Not a string-table issue.)
 9. Tighter spacing in book lists so more titles fit per screen (Online Library lists, Library lists;
    Orbit themes' list row height / padding). Keep tap targets sane; preview with test/orbit_preview.
+10. "Update catalog / Last updated: -" after a full save: the label shows header.updateTime only (set by
+   incremental updates). Show the later of fullTime and updateTime.
+11. Ghost marks were visible on the catalog screen photo (old side-hint boxes / hint outlines left on the
+   panel): check that the catalog screens do a clean refresh when entering from Home.
