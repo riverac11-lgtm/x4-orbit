@@ -11,6 +11,13 @@ void OrbitProfile::apply(CrossPointSettings& s, const uint8_t fromVersion) {
     // over the upstream "off", which is also what a card from before these settings reads as.
     if (s.readingGoal == 0) s.readingGoal = ReadingCalendar::kGoalDefaultChoice;
     s.statusBarChapterMarks = 1;
+    // The marks need a book progress bar to sit on; upstream hides both bars. A thin one at the
+    // bottom, only where the owner has not chosen a bar of their own.
+    if (s.statusBarLowerProgressBar == CrossPointSettings::HIDE_PROGRESS &&
+        s.statusBarUpperProgressBar == CrossPointSettings::HIDE_PROGRESS) {
+      s.statusBarLowerProgressBar = CrossPointSettings::BOOK_PROGRESS;
+      s.statusBarLowerProgressBarThickness = CrossPointSettings::PROGRESS_BAR_THIN;
+    }
   }
   if (fromVersion < 2) {
     // Version 2: the Orbit-A home (a continue-reading card over four large tiles) and the calmer

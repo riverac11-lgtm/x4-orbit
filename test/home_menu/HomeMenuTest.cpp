@@ -243,3 +243,15 @@ TEST_F(HomeMenuTest, OrbitProfileThreeSetsAThirtyMinuteGoalAndChapterMarksButKee
   EXPECT_EQ(SETTINGS.readingGoal, 0);
   EXPECT_EQ(SETTINGS.statusBarChapterMarks, 0);
 }
+
+TEST_F(HomeMenuTest, OrbitProfileV3GivesTheChapterMarksABookBarUnlessOneIsChosen) {
+  SETTINGS.statusBarUpperProgressBar = CrossPointSettings::HIDE_PROGRESS;
+  SETTINGS.statusBarLowerProgressBar = CrossPointSettings::HIDE_PROGRESS;
+  OrbitProfile::apply(SETTINGS, 2);
+  EXPECT_EQ(SETTINGS.statusBarLowerProgressBar, CrossPointSettings::BOOK_PROGRESS);
+
+  SETTINGS.statusBarLowerProgressBar = CrossPointSettings::HIDE_PROGRESS;
+  SETTINGS.statusBarUpperProgressBar = CrossPointSettings::CHAPTER_PROGRESS;  // the owner's own bar
+  OrbitProfile::apply(SETTINGS, 2);
+  EXPECT_EQ(SETTINGS.statusBarLowerProgressBar, CrossPointSettings::HIDE_PROGRESS);
+}
