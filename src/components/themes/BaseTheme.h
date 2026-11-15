@@ -222,6 +222,17 @@ class BaseTheme {
                              int contentStartX = 0, int contentWidth = 0) const;
   virtual bool showsFileIcons() const { return false; }
 
+  // ---- Orbit (x4-orbit) hooks; the upstream themes keep these defaults ----
+
+  // Which Orbit home screen this theme draws (1 = A, 2 = B, 3 = C, OrbitHomeLayout::Variant), or
+  // 0 for the upstream home. A non-zero answer means the theme is an OrbitTheme.
+  virtual uint8_t orbitHomeVariant() const { return 0; }
+  // The refined chrome that comes with it: rounded light selection in the FreeInkUI lists, the
+  // tab bar's pills, hint boxes without the text marks. Read by the screens that build those.
+  virtual bool refinedChrome() const { return false; }
+  // The value a row shows when Confirm opens a further screen (a settings submenu, a folder).
+  virtual const char* submenuMarker() const { return ">>"; }
+
   // ---- Home screen navigation / rendering contract ----
 
   // Return Carousel to opt in to left/right book navigation and tryFastHomeRender().

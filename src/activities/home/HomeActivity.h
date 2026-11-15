@@ -84,6 +84,15 @@ class HomeActivity final : public Activity {
   std::optional<RecentBooksStore::Hold> recentsHold;
   std::vector<HomeMenuEntry> menuEntries;
 
+  // The Orbit homes (GUI.orbitHomeVariant() != 0). recentBooks then holds the book being read
+  // first, when there is one, and after it Orbit-C's shelf; the selector covers both as it does the
+  // Lyra covers, so Confirm, touch and the return focus work unchanged.
+  bool orbitHasCurrent_ = false;
+  bool orbitShelfIsAdded_ = false;
+  void loadOrbitShelf();
+  void loopOrbit(uint8_t variant);
+  void renderOrbit(uint8_t variant);
+
   std::string focusBookPath;
   int focusSelectorIndex = -1;
 

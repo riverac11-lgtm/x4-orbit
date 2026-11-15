@@ -39,6 +39,10 @@ void drawIndicator(const GfxRenderer& renderer, Rect coverRect, int progressPerc
 // string needed). Returns "" when the book has no progress data (progressPercent < 0).
 std::string formatStatus(const RecentBook& book, int progressPercent);
 
+// formatStatus()'s time-to-finish part alone, e.g. "~45m": the Orbit homes set the percentage and
+// the estimate apart. Empty when formatStatus() would drop it.
+std::string etaText(const RecentBook& book, int progressPercent);
+
 // Draws formatStatus()'s content as a filled pill badge inset into the top-right corner of a
 // cover. Used where the cover is large enough to carry an overlaid label (e.g. the carousel
 // centre cover). `history` is an optional extra line underneath -- historyLineCompact() for a

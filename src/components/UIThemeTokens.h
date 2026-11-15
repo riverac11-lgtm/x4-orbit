@@ -3,6 +3,7 @@
 #include <FreeInkUIGfxRenderer.h>
 
 #include "UITheme.h"
+#include "components/themes/orbit/OrbitListStyle.h"
 
 inline freeink::ui::ThemeTokens uiThemeTokens(const freeink::ui::GfxRendererTarget& target) {
   namespace fui = freeink::ui;
@@ -14,5 +15,7 @@ inline freeink::ui::ThemeTokens uiThemeTokens(const freeink::ui::GfxRendererTarg
   tokens.listSidePadding = static_cast<int16_t>(metrics.contentSidePadding);
   tokens.listScrollWidth = static_cast<int16_t>(metrics.scrollBarWidth);
   tokens.listScrollInset = static_cast<int16_t>(metrics.scrollBarRightOffset);
+  // Orbit: see OrbitListStyle.h.
+  if (GUI.refinedChrome()) OrbitListStyle::applyTokens(tokens, metrics.contentSidePadding);
   return tokens;
 }

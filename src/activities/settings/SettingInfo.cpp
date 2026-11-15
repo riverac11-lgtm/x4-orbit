@@ -51,7 +51,7 @@ std::string SettingInfo::getDisplayValue() const {
     }
     case SettingType::ACTION:
       if (stringGetter) return callStringGetter();
-      return std::string(">>");
+      return std::string(GUI.submenuMarker());
     case SettingType::STRING:
       return {};
   }

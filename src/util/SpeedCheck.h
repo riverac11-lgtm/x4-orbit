@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 #include "SpeedCheckLog.h"
 
@@ -12,6 +13,10 @@
 namespace SpeedCheck {
 
 inline constexpr char kReportPath[] = "/speed-report.txt";
+/// The report is for sending in, not for reading: the book lists leave it out (the file browser's
+/// All Files still shows it, to copy or delete).
+inline bool isReport(const std::string_view path) { return path == kReportPath; }
+inline constexpr char kReportName[] = "speed-report.txt";
 /// Room for the whole report (about 2 KB with a full ring of page turns). Heap, taken only while a
 /// report is being written or served; a buffer that is too small still gets whole lines.
 inline constexpr size_t kReportBytes = 3072;

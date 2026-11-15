@@ -12,6 +12,7 @@
 #include "activities/ActivityManager.h"
 #include "activities/SliderPickerActivity.h"
 #include "components/UITheme.h"
+#include "components/themes/orbit/OrbitListStyle.h"
 #include "settings/SliderSettingPicker.h"
 
 namespace fui = freeink::ui;
@@ -160,6 +161,7 @@ fui::ListProps UiListActivity::listProps(UiScreen& screen) const {
   props.inputMask = fui::InputTouch;
   props.labelText = screen.theme().bodyText;
   props.labelText.maxLines = 2;
+  if (GUI.refinedChrome()) OrbitListStyle::applyList(props, screen.theme());  // x4-orbit
   return props;
 }
 

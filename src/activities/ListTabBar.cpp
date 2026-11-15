@@ -1,5 +1,8 @@
 #include "ListTabBar.h"
 
+#include "components/UITheme.h"
+#include "components/themes/orbit/OrbitListStyle.h"
+
 namespace fui = freeink::ui;
 
 namespace ListTabBar {
@@ -23,6 +26,11 @@ fui::TabBarProps props(UiAppHost::UiScreen& screen, const fui::TabItem* tabs, co
   // composition and touch tab routing at commit cd4b122e, which the settings screen and the
   // reader menu had each taken a copy of. The reader menu's icon-tab treatment (commit 60cc4da5)
   // stays with it, in its customizeTabBar().
+  if (GUI.refinedChrome()) {
+    OrbitListStyle::applyTabBar(props, barFocused);  // x4-orbit
+    return props;
+  }
+
   fui::StyleSet tabStyles;
   tabStyles.explicitlySet = true;
   tabStyles.normal.background = fui::Paint::solid(fui::Color::White);

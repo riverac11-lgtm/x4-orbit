@@ -24,6 +24,7 @@
 #include "FolderSearch.h"
 #include "LibraryFreshness.h"
 #include "RecentBooksStore.h"
+#include "util/SpeedCheck.h"
 
 namespace {
 
@@ -246,6 +247,9 @@ bool FileBrowserModel::acceptForBooks(const char* name, const bool isDir) {
   // no book below them. The SD index applies this to its staleness scan too, so a folder that gains
   // a book changes the index's signature and comes back.
   if (isDir) return emptyFolderParent.empty() || folderHasBooks(name);
+  // The Speed check's report lands in the root as a .txt, which made it a "book". Only the root's:
+  // a folder being listed sets emptyFolderParent, and only the root's is "/".
+  if (emptyFolderParent == "/" && strcmp(name, SpeedCheck::kReportName) == 0) return false;
   return isReadableBook(std::string_view{name});
 }
 
@@ -769,7 +773,9 @@ void FileBrowserModel::loadRecents() {
   const auto& books = RECENT_BOOKS.getBooks();
   deepResults.reserve(books.size());
   for (const auto& book : books) {
-    if (book.path.size() > 1 && book.path.front() == '/') deepResults.push_back(book.path.substr(1));
+    if (book.path.size() > 1 && book.path.front() == '/' && !SpeedCheck::isReport(book.path)) {
+      deepResults.push_back(book.path.substr(1));
+    }
   }
 }
 
@@ -805,7 +811,8 @@ void FileBrowserModel::loadAdded() {
         !bookIndex.blobString(record.pathOff, bookPath)) {
       continue;
     }
-    if (bookPath.size() > 1 && bookPath.front() == '/' && Storage.exists(bookPath.c_str()))
+    if (bookPath.size() > 1 && bookPath.front() == '/' && !SpeedCheck::isReport(bookPath) &&
+        Storage.exists(bookPath.c_str()))
       deepResults.push_back(bookPath.substr(1));
   }
 }

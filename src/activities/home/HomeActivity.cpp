@@ -10,6 +10,8 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <JpegToBmpConverter.h>
+#include <LibraryFormat.h>
+#include <LibraryIndexReader.h>
 #include <Logging.h>
 #include <Memory.h>
 #include <PngToBmpConverter.h>
@@ -38,8 +40,11 @@
 #include "components/UITheme.h"
 #include "components/themes/TapTargets.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
+#include "components/themes/orbit/OrbitHomeLayout.h"
+#include "components/themes/orbit/OrbitTheme.h"
 #include "fontIds.h"
 #include "util/SerialCommandGrammar.h"
+#include "util/SpeedCheck.h"
 
 namespace {
 constexpr int CLASSIC_MIN_RECENT_TILE_HEIGHT = 280;
@@ -527,6 +532,9 @@ void HomeActivity::onEnter() {
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
+  orbitHasCurrent_ = !recentBooks.empty();
+  orbitShelfIsAdded_ = false;
+  if (GUI.orbitHomeVariant() == static_cast<uint8_t>(OrbitHomeLayout::Variant::C)) loadOrbitShelf();
   // The themes draw each recent book's history and pace from the stats cache; fill it here, on the
   // loop task, so their render() reads no file. A warm cache makes this free.
   std::vector<std::string> recentDocIds;
@@ -622,6 +630,7 @@ void HomeActivity::loop() {
   if (handleHomeTouch()) return;
 
   const bool isCarousel = (GUI.getHomeNavigation() == HomeNavigation::Carousel);
+  const uint8_t orbit = GUI.orbitHomeVariant();
 
   // A press may be in EITHER place: hasPendingInput() reads the live sampler accumulator
   // (presses arriving this tick), while wasAnyPressed()/wasAnyReleased() read the snapshot
@@ -633,7 +642,13 @@ void HomeActivity::loop() {
   const bool inputWaiting =
       mappedInput.hasPendingInput() || mappedInput.wasAnyPressed() || mappedInput.wasAnyReleased();
 
-  if (isCarousel) {
+  if (orbit != 0) {
+    if (firstRenderDone && !recentsLoaded && !recentsLoading && !inputWaiting) {
+      loadRecentCovers(OrbitHomeLayout::coverHeight(static_cast<OrbitHomeLayout::Variant>(orbit)));
+      return;
+    }
+    loopOrbit(orbit);
+  } else if (isCarousel) {
     if (firstRenderDone && !recentsLoaded && !recentsLoading && !inputWaiting) {
       loadRecentCovers(UITheme::getInstance().getMetrics().homeCoverHeight);
       return;
@@ -737,6 +752,10 @@ void HomeActivity::loop() {
 }
 
 void HomeActivity::render(RenderLock&&) {
+  if (const uint8_t orbit = GUI.orbitHomeVariant()) {
+    renderOrbit(orbit);
+    return;
+  }
   const auto& metrics = UITheme::getInstance().getMetrics();
   const Rect contentRect = UITheme::getContentRect(renderer, true, false);
 
@@ -830,6 +849,109 @@ void HomeActivity::render(RenderLock&&) {
   //   - the _redBaselineAuthoritative one-shot armed by reallocSecondaryBuffer() is state, not a
   //     timer: it survives until whatever paints next, which then diffs against the controller's
   //     retained RED plane exactly as it would have here.
+  firstRenderDone = true;
+}
+
+// Orbit-C's shelf: the books most lately added to the card, from the Library's book index (its New
+// tab), read here once per visit -- a header and a few small records, no folder walk. Without an
+// index (never built, or nothing in it) the shelf shows the books lately read instead, from the
+// recent-books list the Home already holds, and says so. The book being read is never on it.
+void HomeActivity::loadOrbitShelf() {
+  const std::string current = recentBooks.empty() ? std::string() : recentBooks.front().path;
+  std::vector<std::string> paths;
+  paths.reserve(OrbitHomeLayout::kMaxShelf);
+  const auto wanted = [&](const std::string& path) {
+    return path.size() > 1 && path.front() == '/' && path != current && !SpeedCheck::isReport(path) &&
+           std::find(paths.begin(), paths.end(), path) == paths.end();
+  };
+  {
+    LibraryIndexReader index;
+    if (index.open(library::INDEX_PATH)) {
+      std::string path;
+      library::BookRecord record{};
+      for (uint16_t rank = 0; rank < index.header().newCount && paths.size() < OrbitHomeLayout::kMaxShelf; ++rank) {
+        uint16_t recordIndex = 0;
+        if (!index.newBook(rank, recordIndex) || !index.book(recordIndex, record) ||
+            !index.blobString(record.pathOff, path)) {
+          continue;
+        }
+        if (wanted(path) && Storage.exists(path.c_str())) paths.push_back(path);
+      }
+    }
+  }
+  orbitShelfIsAdded_ = !paths.empty();
+  if (paths.empty()) {
+    for (const RecentBook& book : RECENT_BOOKS.getBooks()) {
+      if (paths.size() >= OrbitHomeLayout::kMaxShelf) break;
+      if (wanted(book.path) && !RecentBooksStore::isMissing(book)) paths.push_back(book.path);
+    }
+  }
+  for (const std::string& path : paths) {
+    // A book also on the recent list brings its title and author; one that is only on the card has
+    // its file name, which is all the shelf shows of it without a cover. Either way the cover comes
+    // from the thumbnail the cover pass keeps at the canonical path.
+    RecentBook book = RECENT_BOOKS.getBookByPath(path);
+    book.path = path;
+    book.coverBmpPath = ReaderActivity::coverThumbPlaceholder(path);
+    recentBooks.push_back(std::move(book));
+  }
+}
+
+void HomeActivity::loopOrbit(const uint8_t variant) {
+  const int books = static_cast<int>(recentBooks.size());
+  const int current = orbitHasCurrent_ ? 1 : 0;
+  const OrbitHomeLayout::Rows rows = OrbitHomeLayout::rowsFor(static_cast<OrbitHomeLayout::Variant>(variant), current,
+                                                              books - current, static_cast<int>(menuEntries.size()));
+  using Direction = MappedInputManager::Direction;
+  using OrbitHomeLayout::Move;
+  // One direction per tick, for the reason the carousel gives above: two edges drained in one batch
+  // must not both act on the same starting index.
+  int next = -1;
+  if (mappedInput.wasLogicalPressed(Direction::Right)) {
+    next = OrbitHomeLayout::move(rows, selectorIndex, Move::Next);
+  } else if (mappedInput.wasLogicalPressed(Direction::Left)) {
+    next = OrbitHomeLayout::move(rows, selectorIndex, Move::Prev);
+  } else if (mappedInput.wasLogicalPressed(Direction::Down)) {
+    next = OrbitHomeLayout::move(rows, selectorIndex, Move::Down);
+  } else if (mappedInput.wasLogicalPressed(Direction::Up)) {
+    next = OrbitHomeLayout::move(rows, selectorIndex, Move::Up);
+  }
+  if (next >= 0 && next != selectorIndex) {
+    selectorIndex = next;
+    requestUpdate();
+  }
+}
+
+void HomeActivity::renderOrbit(const uint8_t variant) {
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const Rect contentRect = UITheme::getContentRect(renderer, true, false);
+  const int menuCount = static_cast<int>(menuEntries.size());
+  const int totalItems = static_cast<int>(recentBooks.size()) + menuCount;
+  if (selectorIndex >= totalItems) selectorIndex = std::max(0, totalItems - 1);
+
+  renderer.clearScreen();
+  // The battery line only: the Orbit homes have no title bar.
+  GUI.drawHeader(renderer, Rect{contentRect.x, metrics.topPadding, contentRect.width, 24}, nullptr);
+  const int top = metrics.topPadding + 24;
+  const int bottom = contentRect.y + contentRect.height - 8;
+  static_cast<const OrbitTheme&>(GUI).drawOrbitHome(
+      renderer, top, bottom, recentBooks, orbitHasCurrent_, orbitShelfIsAdded_, selectorIndex, menuCount,
+      [this](int index) { return std::string(I18N.get(menuEntries[index].label)); },
+      [this](int index) { return menuEntries[index].icon; });
+
+  // C is a list, so the front keys read Up/Down as on every list; A and B move across a grid and a
+  // dock, so they read Left/Right. Back does nothing on Home and gets no box.
+  if (static_cast<OrbitHomeLayout::Variant>(variant) == OrbitHomeLayout::Variant::C) {
+    const auto labels = mappedInput.mapLabels("", tr(STR_OPEN), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  } else {
+    const auto labels =
+        mappedInput.mapHints("", tr(STR_OPEN), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT), tr(STR_DIR_UP), tr(STR_DIR_DOWN))
+            .front;
+    GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  }
+  renderer.displayBuffer();
+  // As in render(): opens the cover pass in loop(), and asks for no second frame.
   firstRenderDone = true;
 }
 

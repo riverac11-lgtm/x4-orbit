@@ -1,5 +1,3 @@
-#include "BuildFeatures.h"
-#include "OrbitProfile.h"
 #include "JsonSettingsIO.h"
 
 #include <ArduinoJson.h>
@@ -14,10 +12,12 @@
 #include <cstring>
 #include <string>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
 #include "OpdsServerStore.h"
+#include "OrbitProfile.h"
 #include "RecentBooksStore.h"
 #include "SettingsList.h"
 #include "TouchGestures.h"
@@ -532,8 +532,9 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
 
 #if CP_ORBIT_PROFILE
   // A file from before this profile version (or from stock firmware) gets the profile once.
-  if (doc["orbitProfileV"].as<int>() < static_cast<int>(OrbitProfile::VERSION)) {
-    OrbitProfile::apply(s);
+  const int orbitProfileV = doc["orbitProfileV"].as<int>();
+  if (orbitProfileV < static_cast<int>(OrbitProfile::VERSION)) {
+    OrbitProfile::apply(s, static_cast<uint8_t>(std::max(0, orbitProfileV)));
     if (needsResave) *needsResave = true;
   }
 #endif
