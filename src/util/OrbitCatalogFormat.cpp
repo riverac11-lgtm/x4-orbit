@@ -259,14 +259,16 @@ bool matchesRole(std::string_view title, const RootRole role) {
 }
 
 bool isSendCollection(std::string_view title) {
-  std::string t;
-  fold(title, t);
-  // "Send to X4", "send-to-x4", "Send to x4 " ...: letters and digits only.
-  std::string compact;
-  for (const char c : t) {
-    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) compact += c;
+  // "Send to X4", "send-to-x4", "SEND TO X4 " ...: ASCII letters and digits only, any case.
+  char compact[9];
+  size_t n = 0;
+  for (char c : title) {
+    if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
+    if ((c < 'a' || c > 'z') && (c < '0' || c > '9')) continue;
+    if (n == sizeof(compact)) return false;
+    compact[n++] = c;
   }
-  return compact == "sendtox4";
+  return std::string_view(compact, n) == "sendtox4";
 }
 
 MergeStop::Verdict MergeStop::offer(std::string_view id) {

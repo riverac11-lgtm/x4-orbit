@@ -34,8 +34,8 @@ constexpr uint32_t kMaxSessionMs = 10 * 60 * 1000;
 // The last delivery's outcome when it is worth telling and has not been shown: arrived count and
 // names, failures, a problem (Wi-Fi, server, password, card). Reads one small file on the card.
 bool unseenSummary(ChargeSession::Summary& out);
-// Shown: unseenSummary() is false until the next delivery.
-void markSummarySeen();
+// Shown (`summary` is what unseenSummary() gave): unseenSummary() is false until the next delivery.
+void markSummarySeen(ChargeSession::Summary summary);
 // The summary as one or two plain lines ("New books arrived: 2" ...), for a popup or a home
 // layout. `buf` gets both lines separated by '\n'.
 void describe(const ChargeSession::Summary& summary, char* buf, size_t size);

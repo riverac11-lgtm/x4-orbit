@@ -49,7 +49,7 @@ void CatalogSyncActivity::onEnter() {
   Activity::onEnter();
   if (mode == Mode::Notice) {
     // Seen once: shown now, so not again whatever happens next.
-    ChargeDelivery::markSummarySeen();
+    ChargeDelivery::markSummarySeen(result);
     requestUpdate();
     return;
   }

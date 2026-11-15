@@ -341,20 +341,17 @@ Result OrbitCatalogSync::collectSendToX4(int& added) {
     OrbitCatalogSync* sync;
     std::string href;
   } find{this, {}};
-  std::string pageUrl = root.collections;
-  for (int page = 0; page < 20 && find.href.empty() && !pageUrl.empty(); ++page) {
-    OpdsParser parser;
-    parser.onEntryParsed = [&](const OpdsEntry& entry) {
-      if (find.href.empty() && entry.type == OpdsEntryType::NAVIGATION && OrbitCatalog::isSendCollection(entry.title)) {
-        find.href = resolve(pageUrl, entry.href);
-      }
-    };
-    result = fetchFeed(pageUrl, parser);
-    if (result != Result::Ok) return result;
-    const std::string next =
-        parser.getNextPageUrl().empty() ? std::string{} : resolve(pageUrl, parser.getNextPageUrl());
-    pageUrl = next == pageUrl ? std::string{} : next;
-  }
+  // walkBooks() offers every entry, navigation ones too, and follows the pages.
+  result = walkBooks(
+      root.collections,
+      [](void* p, const OpdsEntry& entry, const std::string& pageUrl) {
+        auto& f = *static_cast<FindCtx*>(p);
+        if (entry.type != OpdsEntryType::NAVIGATION || !OrbitCatalog::isSendCollection(entry.title)) return true;
+        f.href = f.sync->resolve(pageUrl, entry.href);
+        return false;
+      },
+      &find);
+  if (result != Result::Ok) return result;
   if (find.href.empty()) {
     LOG_DBG("OCAT", "No \"Send to X4\" collection");
     return Result::Ok;

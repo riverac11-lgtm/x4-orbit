@@ -134,13 +134,7 @@ bool unseenSummary(ChargeSession::Summary& out) {
   return ChargeSession::decodeSummary(text, out) && !out.shown && out.worthShowing();
 }
 
-void markSummarySeen() {
-  ChargeSession::Summary summary;
-  std::string text;
-  if (!Storage.readFileToString("CHG", OrbitCatalogFiles::kSummaryPath, 512, text) ||
-      !ChargeSession::decodeSummary(text, summary) || summary.shown) {
-    return;
-  }
+void markSummarySeen(ChargeSession::Summary summary) {
   summary.shown = true;
   writeSummary(summary);
 }
