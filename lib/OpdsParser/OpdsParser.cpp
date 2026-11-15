@@ -3,6 +3,7 @@
 #include <FsHelpers.h>
 #include <Logging.h>
 
+#include <cstdlib>
 #include <cstring>
 #include <utility>
 
@@ -116,6 +117,17 @@ OpdsAcquisitionLink supportedAcquisitionLink(const char* type, const char* href,
 
 // Determine if the given OpdsEntry's acquisition link href is already present,
 // to prevent duplicate download targets.
+// The element name without its namespace prefix.
+const char* localName(const char* name) {
+  const char* colon = strrchr(name, ':');
+  return colon ? colon + 1 : name;
+}
+
+bool isSeriesIndexName(const char* local) {
+  return strcmp(local, "series_index") == 0 || strcmp(local, "seriesIndex") == 0 ||
+         strcmp(local, "series_position") == 0;
+}
+
 bool hasEquivalentAcquisitionLink(const OpdsEntry& entry, const OpdsAcquisitionLink& candidate) {
   const std::string_view normalizedCandidateHref = trimmedHrefView(candidate.href.c_str());
   for (const auto& link : entry.acquisitionLinks) {
@@ -165,6 +177,7 @@ void OpdsParser::clear() {
   currentEntry = OpdsEntry{};
   currentText.clear();
   inEntry = inTitle = inAuthor = inAuthorName = inId = inSummary = inContent = false;
+  inUpdated = inSeries = inSeriesIndex = false;
   hrefIsUnsupportedDownload = false;
 }
 
@@ -202,7 +215,10 @@ void OpdsParser::startElement(void* userData, const char* name, const char** att
       if (self->inEntry) {
         if (rel && strstr(rel, "opds-spec.org/acquisition") != nullptr) {
           const bool directDownload = isDirectAcquisitionRel(rel);
-          const auto acquisition = supportedAcquisitionLink(type, href, directDownload);
+          auto acquisition = supportedAcquisitionLink(type, href, directDownload);
+          if (const char* length = findAttribute(atts, "length")) {
+            acquisition.length = static_cast<uint32_t>(strtoul(length, nullptr, 10));
+          }
           if (!acquisition.formatKey.empty() && !hasEquivalentAcquisitionLink(self->currentEntry, acquisition)) {
             self->currentEntry.type = OpdsEntryType::BOOK;
             if (self->currentEntry.acquisitionLinks.empty()) {
@@ -262,6 +278,31 @@ void OpdsParser::startElement(void* userData, const char* name, const char** att
   } else if (strcmp(name, "content") == 0 || strstr(name, ":content") != nullptr) {
     self->inContent = true;
     self->currentText.clear();
+  } else {
+    const char* local = localName(name);
+    if (strcmp(local, "updated") == 0) {
+      self->inUpdated = true;
+      self->currentText.clear();
+    } else if (strcmp(local, "series") == 0) {
+      self->inSeries = true;
+      self->currentText.clear();
+    } else if (isSeriesIndexName(local)) {
+      self->inSeriesIndex = true;
+      self->currentText.clear();
+    } else if (strcmp(local, "meta") == 0) {
+      // calibre's OPF-style metadata: <meta name="calibre:series" content="..."/>.
+      const char* metaName = findAttribute(atts, "name");
+      if (!metaName) metaName = findAttribute(atts, "property");
+      const char* content = findAttribute(atts, "content");
+      if (metaName && content) {
+        const char* key = localName(metaName);
+        if (strcmp(key, "series") == 0 && self->currentEntry.series.empty()) {
+          self->currentEntry.series = content;
+        } else if (isSeriesIndexName(key) && self->currentEntry.seriesIndex.empty()) {
+          self->currentEntry.seriesIndex = content;
+        }
+      }
+    }
   }
 }
 
@@ -311,6 +352,18 @@ void OpdsParser::endElement(void* userData, const char* name) {
         self->currentEntry.summary = self->currentText;
       }
       self->inContent = false;
+    } else if (self->inUpdated || self->inSeries || self->inSeriesIndex) {
+      const char* local = localName(name);
+      if (self->inUpdated && strcmp(local, "updated") == 0) {
+        if (self->currentEntry.updated.empty()) self->currentEntry.updated = self->currentText;
+        self->inUpdated = false;
+      } else if (self->inSeries && strcmp(local, "series") == 0) {
+        if (self->currentEntry.series.empty()) self->currentEntry.series = self->currentText;
+        self->inSeries = false;
+      } else if (self->inSeriesIndex && isSeriesIndexName(local)) {
+        if (self->currentEntry.seriesIndex.empty()) self->currentEntry.seriesIndex = self->currentText;
+        self->inSeriesIndex = false;
+      }
     }
   }
 }
@@ -323,7 +376,11 @@ void OpdsParser::characterData(void* userData, const char* s, const int len) {
     constexpr size_t kSummaryMax = 2048;
     const size_t space = kSummaryMax > self->currentText.size() ? kSummaryMax - self->currentText.size() : 0;
     if (space > 0) self->currentText.append(s, std::min<size_t>(len, space));
-  } else if (self->inTitle || self->inAuthorName || self->inId) {
+  } else if (self->inUpdated || self->inSeriesIndex) {
+    constexpr size_t kShortMax = 40;
+    const size_t space = kShortMax > self->currentText.size() ? kShortMax - self->currentText.size() : 0;
+    if (space > 0) self->currentText.append(s, std::min<size_t>(len, space));
+  } else if (self->inTitle || self->inAuthorName || self->inId || self->inSeries) {
     constexpr size_t kFieldMax = 512;
     const size_t space = kFieldMax > self->currentText.size() ? kFieldMax - self->currentText.size() : 0;
     if (space > 0) self->currentText.append(s, std::min<size_t>(len, space));

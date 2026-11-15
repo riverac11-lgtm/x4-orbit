@@ -622,6 +622,13 @@ inline void buildSettings(const RowSink& emit) {
                            StrId::STR_CAT_SYSTEM));
   emit(SettingInfo::Toggle(StrId::STR_SKIP_HTTPS_VALIDATION, &CrossPointSettings::skipHttpsValidation,
                            "skipHttpsValidation", StrId::STR_CAT_SYSTEM));
+#if CP_FEATURE_ORBIT_CATALOG
+  emit(SettingInfo::Toggle(StrId::STR_DOWNLOAD_WHILE_CHARGING, &CrossPointSettings::chargeDownload, "chargeDownload",
+                           StrId::STR_CAT_SYSTEM));
+  emit(SettingInfo::Enum(StrId::STR_CHARGE_CHECK_EVERY, &CrossPointSettings::chargeCheckEvery,
+                         {StrId::STR_EVERY_HOUR, StrId::STR_EVERY_3_HOURS, StrId::STR_EVERY_6_HOURS},
+                         "chargeCheckEvery", StrId::STR_CAT_SYSTEM));
+#endif
   // Set from the reader menu's picker, so it stays out of the settings screen.
   emit(SettingInfo::Value(StrId::STR_AUTO_TURN_SECONDS, &CrossPointSettings::autoTurnSeconds, {5, 120, 1},
                           "autoTurnSeconds"));

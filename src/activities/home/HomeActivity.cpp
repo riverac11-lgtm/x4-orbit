@@ -38,6 +38,9 @@
 #include "RecentBooksStore.h"
 #include "TouchUi.h"
 #include "activities/reader/ReaderActivity.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "activities/browser/CatalogSyncActivity.h"
+#endif
 #include "components/UITheme.h"
 #include "components/themes/TapTargets.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
@@ -48,6 +51,11 @@
 #include "util/SpeedCheck.h"
 
 namespace {
+#if CP_FEATURE_ORBIT_CATALOG
+// Books that came while charging are told once, over Home, at the first Home of a boot (every
+// charging session ends in a reboot, so a later Home has nothing new to tell).
+bool deliveryNoticeChecked = false;
+#endif
 constexpr int CLASSIC_MIN_RECENT_TILE_HEIGHT = 280;
 constexpr int LYRA_MIN_RECENT_TILE_HEIGHT = 170;
 constexpr int LYRA_3_COVERS_MIN_RECENT_TILE_HEIGHT = 200;
@@ -644,6 +652,15 @@ void HomeActivity::loop() {
   // Defer cover loading whenever input is waiting in either place so the handlers below run.
   const bool inputWaiting =
       mappedInput.hasPendingInput() || mappedInput.wasAnyPressed() || mappedInput.wasAnyReleased();
+
+#if CP_FEATURE_ORBIT_CATALOG
+  // After Home's first paint and its covers, so the notice does not hold up the screen.
+  if (!deliveryNoticeChecked && firstRenderDone && !recentsLoading && !coverLoader.busy() && !inputWaiting &&
+      (recentsLoaded || (orbit == 0 && GUI.getHomeNavigation() != HomeNavigation::Carousel))) {
+    deliveryNoticeChecked = true;
+    if (CatalogSyncActivity::openDeliveryNotice(renderer, mappedInput)) return;
+  }
+#endif
 
   if (orbit != 0) {
     if (firstRenderDone && !recentsLoaded && !recentsLoading && !inputWaiting) {

@@ -50,6 +50,9 @@
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "ChargeDelivery.h"
+#endif
 #include "ReadingSessionTracker.h"
 #include "ReadingStats.h"
 #include "RecentBooksStore.h"
@@ -231,10 +234,12 @@ constexpr uint32_t SILENT_REBOOT_TARGET_SETTINGS = 7;
 // Boot into File Transfer, on its OPDS Browser row, after Back left an OPDS catalog
 // session, so the user lands where they opened the browser instead of on Home.
 constexpr uint32_t SILENT_REBOOT_TARGET_FILE_TRANSFER_OPDS = 8;
+// Boot into the Online Library after its update or download screen left Wi-Fi on.
+constexpr uint32_t SILENT_REBOOT_TARGET_ONLINE_LIBRARY = 9;
 // Upper bound for the cold-boot sanity check on silentRebootTarget (RTC_NOINIT is
 // uninitialized on power-up). Must equal the highest target above — keep it in
 // sync when adding one, or the new target silently reads as HOME.
-constexpr uint32_t SILENT_REBOOT_TARGET_MAX = SILENT_REBOOT_TARGET_FILE_TRANSFER_OPDS;
+constexpr uint32_t SILENT_REBOOT_TARGET_MAX = SILENT_REBOOT_TARGET_ONLINE_LIBRARY;
 constexpr uint32_t HEAP_RECOVERY_RESTART_LATCH_MAGIC = 0x48EA9C01;
 
 // How the device is coming back to life, resolved once at boot. Both resume
@@ -319,6 +324,15 @@ void silentRestartToFileTransferOpds() {
   globalReadingSessionTracker().end();
   armSilentReboot(SILENT_REBOOT_TARGET_FILE_TRANSFER_OPDS);
   LOG_DBG("MAIN", "Silent restart (target=file-transfer-opds)");
+  delay(50);
+  ESP.restart();
+}
+
+void silentRestartToOnlineLibrary() {
+  if (deepSleepInProgress) return;
+  globalReadingSessionTracker().end();
+  armSilentReboot(SILENT_REBOOT_TARGET_ONLINE_LIBRARY);
+  LOG_DBG("MAIN", "Silent restart (target=online-library)");
   delay(50);
   ESP.restart();
 }
@@ -532,6 +546,20 @@ static void serviceBootPowerRelease() {
 // is unchanged (DS3231), so the C3 keeps its existing behaviour byte for byte.
 static bool keepClockAliveForSleep() { return SETTINGS.useClock && !HalCapabilities::hasHardwareRtc(); }
 
+#if CP_FEATURE_ORBIT_CATALOG
+// Back to deep sleep from a boot that books-while-charging woke (ChargeDelivery.h): the display
+// was never touched, so nothing is painted -- the sleep screen stays. Same sleep policy as the
+// early USB-power path below; its timer is armed again so the next look for a charger comes.
+static void sleepAfterChargeWake() {
+  halTiltSensor.deepSleep();
+  const bool keepLpAlive = keepClockAliveForSleep();
+  BootDiag::beginSleep(BootDiag::SleepTrigger::UsbPowerBoot, keepLpAlive, /*fromReader=*/false);
+  HalClock::saveBeforeSleep(keepLpAlive);
+  ChargeDelivery::armTimer(gpio.isUsbConnected());
+  powerManager.startDeepSleep(gpio, keepLpAlive);
+}
+#endif
+
 // Translate HalPowerManager's report of its own last steps into breadcrumb stages. The
 // HAL cannot call BootDiag directly (it must not depend on app code), and startDeepSleep()
 // does not return, so this is the only point at which "we got as far as arming the wake
@@ -676,6 +704,10 @@ void enterDeepSleep(bool fromTimeout = false, BootDiag::SleepTrigger trigger = B
   // the card session, so anything writing afterwards would find no card. Leaves
   // a still-powered card (the T5S3 has no SD rail to cut) idle in a state it
   // defines instead of mid-transaction with a dirty cache.
+#if CP_FEATURE_ORBIT_CATALOG
+  // Reads the settings and the card, so ahead of the card session's end.
+  ChargeDelivery::beforeSleep(gpio.isUsbConnected());
+#endif
   Storage.prepareForSleep();
   // Park the reading light for real. off() only writes a zero duty and leaves
   // the pad owned by LEDC, which sleep entry then floats — what the light does
@@ -1144,7 +1176,9 @@ void setup() {
   // races and the board has to be physically replugged before logs flow (a warm
   // reboot hides this, because USB is already enumerated). Ported from
   // upstream/feat-touch, which carries the same reasoning.
-  delay(250);
+  // Not on a sleep-timer wake: that boot looks for a charger and is usually asleep again within a
+  // few hundred ms (ChargeDelivery.h), so a quarter second here would be most of its battery cost.
+  if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER) delay(250);
   Serial.begin(115200);
 #endif
 #if defined(ENABLE_SERIAL_LOG) && defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
@@ -1284,6 +1318,34 @@ void setup() {
 
   const auto wakeupReason = gpio.getWakeupReason();
 
+#if CP_FEATURE_ORBIT_CATALOG
+  // A wake for books-while-charging: the sleep timer (looking for a charger), or a charger
+  // plugged into an X4 whose battery latch was cut. Decided before anything else starts, so a
+  // wake that finds no charger is asleep again in a few hundred ms without display or card.
+  {
+#if FREEINK_CAP_USB_MSC
+    constexpr bool kUsbBootSleeps = false;  // those boards stay awake on USB power (below)
+#else
+    constexpr bool kUsbBootSleeps = true;
+#endif
+    const bool timerWake = esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER;
+    const bool usbPlugBoot = kUsbBootSleeps && wakeupReason == HalGPIO::WakeupReason::AfterUSBPower;
+    const bool buttonHeld = digitalRead(InputManager::POWER_BUTTON_PIN) == LOW;
+    const auto plan = ChargeDelivery::planBoot(gpio, usbPlugBoot, timerWake, buttonHeld);
+    if (plan == ChargeDelivery::BootPlan::Run && ChargeDelivery::runHeadless(gpio)) {
+      // The power button during the session: a normal wake, through a clean restart (the
+      // session's Wi-Fi heap given back, and setup() taking its usual path).
+      LOG_INF("MAIN", "Power pressed during the charging session: waking");
+      delay(30);
+      esp_restart();
+    }
+    if (plan != ChargeDelivery::BootPlan::Normal) {
+      sleepAfterChargeWake();
+      return;
+    }
+  }
+#endif
+
   if (wakeupReason == HalGPIO::WakeupReason::AfterUSBPower) {
 #if FREEINK_CAP_USB_MSC
     // Boards that can act as a USB drive must stay awake here. Leaving USB Drive
@@ -1305,6 +1367,9 @@ void setup() {
     BootDiag::noteAbortedBoot(BootDiag::SleepTrigger::UsbPowerBoot, BootDiag::wakeCheck().verdict);
     BootDiag::beginSleep(BootDiag::SleepTrigger::UsbPowerBoot, keepLpAlive, /*fromReader=*/false);
     HalClock::saveBeforeSleep(keepLpAlive);
+#if CP_FEATURE_ORBIT_CATALOG
+    ChargeDelivery::armTimer(true);
+#endif
     powerManager.startDeepSleep(gpio, keepLpAlive);
     return;
 #endif  // FREEINK_CAP_USB_MSC
@@ -1328,6 +1393,9 @@ void setup() {
           BootDiag::wakeCheck().heldMs, BootDiag::wakeCheck().requiredMs);
   LOG_DBG("MAIN", "Wakeup reason: %d, millis=%lu, rawPowerPin=%d", static_cast<int>(wakeupReason), millis(),
           digitalRead(InputManager::POWER_BUTTON_PIN) == LOW);
+#if CP_FEATURE_ORBIT_CATALOG
+  ChargeDelivery::logWakeStats();
+#endif
 #ifdef ENABLE_BOOT_HEAP_DIAGNOSTICS
   // Re-log the boot-time heap integrity results now that serial is open. The three
   // probes bracket the boot phases: preCtors CORRUPT ⇒ IDF/Arduino SDK init;
@@ -1383,6 +1451,9 @@ void setup() {
     BootDiag::noteAbortedBoot(BootDiag::SleepTrigger::WakeGateRejected, BootDiag::wakeCheck().verdict);
     BootDiag::beginSleep(BootDiag::SleepTrigger::WakeGateRejected, keepLpAlive, /*fromReader=*/false);
     HalClock::saveBeforeSleep(keepLpAlive);
+#if CP_FEATURE_ORBIT_CATALOG
+    ChargeDelivery::armTimer(gpio.isUsbConnected());
+#endif
     powerManager.startDeepSleep(gpio, keepLpAlive);
     return;
   }
@@ -1656,6 +1727,9 @@ void setup() {
     activityManager.goToSettings();
   } else if (resume == BootResume::Silent && silentRebootTargetSnapshot == SILENT_REBOOT_TARGET_FILE_TRANSFER_OPDS) {
     activityManager.goToFileTransfer(NetworkMode::OPDS_BROWSER);
+  } else if (resume == BootResume::Silent && silentRebootTargetSnapshot == SILENT_REBOOT_TARGET_ONLINE_LIBRARY &&
+             OPDS_STORE.hasServers()) {
+    activityManager.goToOnlineLibrary();
   } else if (resume == BootResume::Silent) {
     // target == home (or reader with no open book): land on home — don't fall
     // through to the sleep-wake "resume reader" logic, which fires on stale

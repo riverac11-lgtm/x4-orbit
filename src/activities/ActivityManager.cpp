@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include "BuildFeatures.h"
 #include "CrossPointState.h"
 #include "OpdsServerStore.h"
 #include "SdCardFontGlobals.h"
@@ -22,6 +23,9 @@
 #include "boot_sleep/BootActivity.h"
 #include "boot_sleep/SleepActivity.h"
 #include "browser/OpdsBookBrowserActivity.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "browser/OrbitCatalogActivity.h"
+#endif
 #include "components/UITheme.h"
 #include "components/themes/ButtonHintStrip.h"
 #include "components/themes/ListTouchBand.h"
@@ -576,7 +580,12 @@ void ActivityManager::goToOnlineLibrary() {
     // Pushed, not replaced: the settings-mode list finishes on Back, and Home is what it returns to.
     pushActivity(std::make_unique<OpdsServerListActivity>(renderer, mappedInput));
   } else if (servers.size() == 1) {
+#if CP_FEATURE_ORBIT_CATALOG
+    // The saved catalog: opens at once, no network (it offers the live browser too).
+    replaceActivity(std::make_unique<OrbitCatalogActivity>(renderer, mappedInput, servers[0]));
+#else
     replaceActivity(std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, servers[0], OpdsBackTo::Home));
+#endif
   } else {
     replaceActivity(std::make_unique<OpdsServerListActivity>(renderer, mappedInput, true, OpdsBackTo::Home));
   }

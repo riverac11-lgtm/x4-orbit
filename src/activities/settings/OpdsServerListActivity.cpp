@@ -8,12 +8,16 @@
 #include <memory>
 #include <utility>
 
+#include "BuildFeatures.h"
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "OpdsSettingsActivity.h"
 #include "activities/ActivityManager.h"
 #include "activities/browser/OpdsBookBrowserActivity.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "activities/browser/OrbitCatalogActivity.h"
+#endif
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
 #include "util/OpdsFilename.h"
@@ -154,6 +158,13 @@ void OpdsServerListActivity::handleSelection(const int index) {
     if (index < serverCount) {
       const auto* server = OPDS_STORE.getServer(static_cast<size_t>(index));
       if (server) {
+#if CP_FEATURE_ORBIT_CATALOG
+        // From Home, the saved catalog; from File Transfer or a search, the live browser as before.
+        if (backTo == OpdsBackTo::Home && initialQuery_.empty()) {
+          activityManager.replaceActivity(std::make_unique<OrbitCatalogActivity>(renderer, mappedInput, *server));
+          return;
+        }
+#endif
         activityManager.replaceActivity(
             std::make_unique<OpdsBookBrowserActivity>(renderer, mappedInput, *server, backTo, initialQuery_));
       }
