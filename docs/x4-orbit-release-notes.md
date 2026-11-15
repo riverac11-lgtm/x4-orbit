@@ -137,7 +137,7 @@ A Speed check report (Settings > System > Speed check > Confirm) after a few day
 
 ## Install
 
-1. Copy the `v…-orbit.….bin` file below to the SD card. Keep your current one as a fallback.
+1. Copy the `x4-orbit-v….bin` file below to the SD card. Keep your current one as a fallback.
 2. On the reader: **Settings > System > SD Card Firmware Update**, then pick the file.
 3. Open the reader's web page once on Wi-Fi; it fetches the matching `web-….bin` from this release by itself.
 

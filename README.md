@@ -69,7 +69,7 @@ all kept.
 
 ## Install
 
-1. Download the `v…-orbit.….bin` file from the [latest release](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
+1. Download the `x4-orbit-v….bin` file from the [latest release](https://github.com/riverac11-lgtm/x4-orbit/releases/tag/x4-orbit-latest)
    and copy it to the SD card, **together with a fallback** (stock
    [CrossPoint](https://github.com/daveallie/crosspoint-reader/releases) or
    [Witch(hunt)](https://github.com/jpirnay/witchhunt-reader/releases)).
