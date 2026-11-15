@@ -23,6 +23,7 @@ enum class FinishedBookAction {
   GoHome = 1,
   OpenNextBook = 2,
   SearchOpdsForAuthor = 3,
+  GetNextFromCatalog = 4,  // x4-orbit: the sequel is in the saved catalog, not on the card
 };
 
 // Launches the finished-book menu on top of `host` and handles its result:
@@ -70,12 +71,23 @@ class FinishedBookActivity final : public UiListActivity {
                        std::string nextBookPath, std::string currentBookAuthor = {},
                        bool koReaderSyncAvailable = false);
 
+  // x4-orbit: offer the series' next book from the saved catalog (it is not on the card). Called
+  // before the screen opens.
+  void setCatalogNext(std::string label) { catalogNextLabel_ = std::move(label); }
   void onEnter() override;
 
  private:
   // The rows that can appear, in display order. Which ones do depends on the book and the settings;
   // rebuildRows() keeps those that apply in actions_.
-  enum class Row : uint8_t { GoHome, OpenNext, SearchOpds, ToggleMoveToCompleted, ToggleForget, ToggleSyncToKOReader };
+  enum class Row : uint8_t {
+    GoHome,
+    OpenNext,
+    GetNextFromCatalog,
+    SearchOpds,
+    ToggleMoveToCompleted,
+    ToggleForget,
+    ToggleSyncToKOReader
+  };
   static constexpr int kMaxRows = 6;
 
   int listCount() const override { return actionCount_; }
@@ -104,6 +116,7 @@ class FinishedBookActivity final : public UiListActivity {
   // Read by the render task (the next-book row and the panel above the list); written on the loop
   // task, under RenderLock, once the preview has loaded.
   std::string nextBookTitle_;
+  std::string catalogNextLabel_;  // non-empty: the sequel can be fetched from the saved catalog
   std::string nextBookAuthor_;
   std::string nextBookSeries_;
   std::string nextBookCoverPath_;

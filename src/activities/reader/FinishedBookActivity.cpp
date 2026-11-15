@@ -26,6 +26,12 @@
 #include <vector>
 
 #include "BookRelocation.h"
+#include "BuildFeatures.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "util/OpdsOnDevice.h"
+#include "util/OrbitCatalogFiles.h"
+#include "util/OrbitCatalogFormat.h"
+#endif
 #include "KOReaderCredentialStore.h"
 #include "OpdsServerStore.h"
 #include "ReaderActivity.h"
@@ -556,6 +562,61 @@ std::string applyFinishedBookSettings(const std::string& bookPath, const bool op
   return bookPath;
 }
 
+namespace {
+struct OrbitCatalogNext {
+  bool found = false;
+#if CP_FEATURE_ORBIT_CATALOG
+  OrbitCatalog::Book book;
+#endif
+};
+}  // namespace
+
+#if CP_FEATURE_ORBIT_CATALOG
+namespace {
+// The series' next book in the saved catalog of the first OPDS server: same series (folded), the
+// smallest number above this book's. Only asked when the card has no sequel, so it is the book the
+// reader does not have yet. Streams the catalog file once; nothing found -> false.
+bool findNextInCatalog(const std::string& series, const std::string& seriesIndex, OrbitCatalog::Book& out) {
+  if (series.empty() || !OPDS_STORE.hasServers()) return false;
+  const int32_t currentKey = OrbitCatalog::seriesOrderKey(seriesIndex);
+  if (currentKey == INT32_MAX) return false;
+  auto lineBuf = makeUniqueNoThrow<char[]>(OrbitCatalog::kMaxLine);
+  if (!lineBuf) return false;
+  struct Ctx {
+    std::string folded;
+    std::string scratch;
+    int32_t currentKey;
+    int32_t bestKey = INT32_MAX;
+    uint32_t bestOffset = 0;
+  } ctx;
+  OrbitCatalog::fold(series, ctx.folded);
+  ctx.currentKey = currentKey;
+  const std::string path = OrbitCatalogFiles::catalogPath(OPDS_STORE.getServers()[0].url);
+  OrbitCatalogFiles::forEach(
+      path, OrbitCatalog::kCatalogKind, lineBuf.get(),
+      [](void* p, const uint32_t offset, const OrbitCatalog::RecordView& v) {
+        auto& c = *static_cast<Ctx*>(p);
+        const int32_t key = OrbitCatalog::seriesOrderKey(v.f[OrbitCatalog::kSeriesIndex]);
+        if (key <= c.currentKey || key >= c.bestKey) return true;
+        OrbitCatalog::fold(v.f[OrbitCatalog::kSeries], c.scratch);
+        if (c.scratch == c.folded) {
+          c.bestKey = key;
+          c.bestOffset = offset;
+        }
+        return true;
+      },
+      &ctx);
+  if (ctx.bestKey == INT32_MAX) return false;
+  OrbitCatalog::RecordView view;
+  if (!OrbitCatalogFiles::readAt(path, ctx.bestOffset, lineBuf.get(), view)) return false;
+  OrbitCatalog::toBook(view, out);
+  std::vector<uint32_t> onDevice;
+  OpdsOnDevice::scan(onDevice);
+  return !OpdsOnDevice::contains(onDevice, out.author, out.title);
+}
+}  // namespace
+#endif
+
 void launchFinishedBookFlow(Activity& host, GfxRenderer& renderer, MappedInputManager& mappedInput,
                             const std::string& bookPath, const std::string& series, const std::string& seriesIndex,
                             const std::string& author, void (*onMenuClosed)(void*), void* onMenuClosedCtx,
@@ -565,11 +626,22 @@ void launchFinishedBookFlow(Activity& host, GfxRenderer& renderer, MappedInputMa
   const std::string nextBookPath = findNextBookInDirectory(bookPath, series, seriesIndex);
   const bool koReaderSyncAvailable = onSyncToKOReader != nullptr && KOREADER_STORE.hasCredentials();
   Activity* hostPtr = &host;
+  auto screen = std::make_unique<FinishedBookActivity>(renderer, mappedInput, bookPath, nextBookPath, author,
+                                                       koReaderSyncAvailable);
+  OrbitCatalogNext catalogNext;
+#if CP_FEATURE_ORBIT_CATALOG
+  if (nextBookPath.empty() && findNextInCatalog(series, seriesIndex, catalogNext.book)) {
+    catalogNext.found = true;
+    std::string label = tr(STR_GET_NEXT_WHEN_CHARGING);
+    label += ' ';
+    label += catalogNext.book.title;
+    if (!catalogNext.book.seriesIndex.empty()) label += " (#" + catalogNext.book.seriesIndex + ")";
+    screen->setCatalogNext(std::move(label));
+  }
+#endif
   host.startActivityForResult(
-      std::make_unique<FinishedBookActivity>(renderer, mappedInput, bookPath, nextBookPath, author,
-                                             koReaderSyncAvailable),
-      [hostPtr, bookPath, nextBookPath, author, onMenuClosed, onMenuClosedCtx, onSyncToKOReader,
-       onSyncToKOReaderCtx](const ActivityResult& result) {
+      std::move(screen), [hostPtr, bookPath, nextBookPath, author, onMenuClosed, onMenuClosedCtx, onSyncToKOReader,
+                          onSyncToKOReaderCtx, catalogNext](const ActivityResult& result) {
         if (onMenuClosed) {
           onMenuClosed(onMenuClosedCtx);
         }
@@ -586,7 +658,16 @@ void launchFinishedBookFlow(Activity& host, GfxRenderer& renderer, MappedInputMa
             menuResult.action == static_cast<int>(FinishedBookAction::OpenNextBook) && !nextBookPath.empty();
         const bool searchOpds =
             menuResult.action == static_cast<int>(FinishedBookAction::SearchOpdsForAuthor) && !author.empty();
-        if (!goHome && !openNext && !searchOpds) {
+        const bool getNext =
+            menuResult.action == static_cast<int>(FinishedBookAction::GetNextFromCatalog) && catalogNext.found;
+#if CP_FEATURE_ORBIT_CATALOG
+        // Queued for the next charge (or Online Library > Waiting > Get now); then Home, like GoHome.
+        if (getNext && OPDS_STORE.hasServers()) {
+          auto lineBuf = makeUniqueNoThrow<char[]>(OrbitCatalog::kMaxLine);
+          if (lineBuf) OrbitCatalogFiles::addWaiting(OPDS_STORE.getServers()[0].url, catalogNext.book, lineBuf.get());
+        }
+#endif
+        if (!goHome && !openNext && !searchOpds && !getNext) {
           hostPtr->requestUpdate();
           return;
         }
@@ -616,7 +697,7 @@ void launchFinishedBookFlow(Activity& host, GfxRenderer& renderer, MappedInputMa
             return;
           }
         }
-        if (goHome) {
+        if (goHome || getNext) {
           activityManager.goHome();
         } else if (openNext) {
           activityManager.openBook(nextBookPath);
@@ -655,6 +736,7 @@ void FinishedBookActivity::rebuildRows() {
   int count = 0;
   actions_[count++] = Row::GoHome;
   if (nextBookAvailable_) actions_[count++] = Row::OpenNext;
+  if (!catalogNextLabel_.empty()) actions_[count++] = Row::GetNextFromCatalog;
   if (!currentBookAuthor_.empty() && OPDS_STORE.hasServers()) {
     opdsLabel_.assign(tr(STR_SEARCH_OPDS_FOR_AUTHOR));
     opdsLabel_ += ": ";
@@ -684,6 +766,10 @@ void FinishedBookActivity::provideRow(void* ctx, const uint16_t index, fui::List
       // The panel above shows the next book's author, series and cover; the row names the book.
       item.label = self->nextBookTitle_.empty() ? tr(STR_OPEN_NEXT_BOOK) : self->nextBookTitle_.c_str();
       item.value = tr(STR_OPEN);
+      break;
+    case Row::GetNextFromCatalog:
+      item.label = self->catalogNextLabel_.c_str();
+      item.value = tr(STR_GET);
       break;
     case Row::SearchOpds:
       item.label = self->opdsLabel_.c_str();
@@ -715,6 +801,9 @@ void FinishedBookActivity::activateIndex(const int index) {
       return;
     case Row::OpenNext:
       finishWith(BookFinished::FinishedBookAction::OpenNextBook);
+      return;
+    case Row::GetNextFromCatalog:
+      finishWith(BookFinished::FinishedBookAction::GetNextFromCatalog);
       return;
     case Row::SearchOpds:
       finishWith(BookFinished::FinishedBookAction::SearchOpdsForAuthor);
