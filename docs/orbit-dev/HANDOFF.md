@@ -74,7 +74,11 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
    `return;`, so it falls through to the lead-row code below the switch, which sets "Get now". Fix: return.
    (Not a string-table issue.)
 9. Tighter spacing in book lists so more titles fit per screen (Online Library lists, Library lists;
-   Orbit themes' list row height / padding). Keep tap targets sane; preview with test/orbit_preview.
+   Orbit themes' list row height / padding). Photo ui-reference/device-11-all-books.jpg: All books shows
+   only 9 two-line rows (title + author) with ~20 px of padding between rows and empty space at the bottom.
+   Target ~12-13 rows: trim row padding, tighter title/author line gap, smaller pill inset; consider an
+   option for one-line rows "Title · Author". Keep the selection pill readable; preview with orbit_preview.
+   (All books sorting itself looks right on the device: numbers first, then A-Z.)
 10. "Update catalog / Last updated: -" after a full save: the label shows header.updateTime only (set by
    incremental updates). Show the later of fullTime and updateTime.
 11. Ghost marks were visible on the catalog screen photo (old side-hint boxes / hint outlines left on the
