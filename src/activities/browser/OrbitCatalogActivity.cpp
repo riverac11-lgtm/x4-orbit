@@ -245,10 +245,12 @@ void OrbitCatalogActivity::showActions(const int bookRow, const bool wholeSet) {
   booksSelected = nav.selected.load();
   actionRow = wholeSet ? -1 : bookRow;
   actionTitle.clear();
+  actionWaiting = false;
   RecordView v;
   if (!wholeSet && bookRow >= 0 && bookRow < static_cast<int>(rows.size()) &&
       bookAt(rows[static_cast<size_t>(bookRow)], v)) {
     actionTitle.assign(v[OrbitCatalog::kTitle]);
+    actionWaiting = isWaiting(v[OrbitCatalog::kId]);
   } else if (wholeSet) {
     actionTitle = nameTitle;
   }
@@ -350,15 +352,8 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
       }
     }
     case View::Actions: {
-      const bool waiting = self->actionRow >= 0 && self->kind != Kind::Waiting && [&] {
-        RecordView v;
-        return self->actionRow < static_cast<int>(self->rows.size()) &&
-               OrbitCatalogFiles::readAt(self->listPath(), self->rows[static_cast<size_t>(self->actionRow)],
-                                         self->rowBuf.get(), v) &&
-               self->isWaiting(v[OrbitCatalog::kId]);
-      }();
-      item.label =
-          index == 0 ? tr(STR_CATALOG_GET_NOW) : (waiting ? tr(STR_CATALOG_DONT_GET) : tr(STR_CATALOG_GET_CHARGING));
+      item.label = index == 0 ? tr(STR_CATALOG_GET_NOW)
+                              : (self->actionWaiting ? tr(STR_CATALOG_DONT_GET) : tr(STR_CATALOG_GET_CHARGING));
       return;
     }
     case View::Names: {

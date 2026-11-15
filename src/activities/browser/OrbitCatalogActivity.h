@@ -89,6 +89,7 @@ class OrbitCatalogActivity final : public UiListActivity {
   std::vector<uint32_t> onDeviceSet;
   std::vector<uint32_t> waitingSet;
   std::string actionTitle;
+  bool actionWaiting = false;  // the book the actions are for is on the waiting list
 
   // Render-task scratch for the row being drawn.
   char labelBuf[128] = {};

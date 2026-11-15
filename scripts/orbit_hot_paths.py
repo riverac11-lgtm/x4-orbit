@@ -61,8 +61,9 @@ def _speed(env, node):  # pylint: disable=redefined-outer-name
     )
 
 
-# The other way: the saved catalog and books-while-charging (CP_FEATURE_ORBIT_CATALOG) wait on the
-# network and the card, never on the CPU. -msave-restore shares one prologue/epilogue routine in
+# The other way: the Online Library -- the saved catalog, books-while-charging
+# (CP_FEATURE_ORBIT_CATALOG) and the live OPDS browser -- waits on the network and the card,
+# never on the CPU. -msave-restore shares one prologue/epilogue routine in
 # libgcc instead of inlining the register saves into every function: ~4% smaller, a few cycles
 # slower per call. Safe here because none of these files has IRAM code (the shared routine lives
 # in flash). -Oz was tried: identical to -Os on this toolchain.
@@ -74,6 +75,9 @@ SMALL_PATTERNS = [
     "*src/ChargeDelivery.cpp",
     "*src/activities/browser/OrbitCatalogActivity.cpp",
     "*src/activities/browser/CatalogSyncActivity.cpp",
+    # The live OPDS browser it sits beside: list screens waiting on TLS, ~45 KB of code.
+    "*src/activities/browser/OpdsBookBrowserActivity.cpp",
+    "*src/activities/settings/OpdsServerListActivity.cpp",
 ]
 
 
