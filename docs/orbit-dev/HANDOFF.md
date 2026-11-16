@@ -87,3 +87,9 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
    real time, show something useful instead of "-" (e.g. "today", or "N books, updated this session").
 11. Ghost marks were visible on the catalog screen photo (old side-hint boxes / hint outlines left on the
    panel): check that the catalog screens do a clean refresh when entering from Home.
+
+## Keyboard lag outcome (orbit-kbd merged)
+Per key the cost is ~500 ms of panel FAST refresh (92-95% of the time); windowed refresh was already
+measured upstream (docs/future_work/display-and-refresh.md) as saving ~4% with ghosting, so not done.
+Shipped: Up/Down/Confirm act on press (saves the 80-150 ms of finger-down time). Remaining big lever:
+a faster custom waveform (LUT / direct-update mode) for keyboard screens - needs on-device tuning.
