@@ -64,8 +64,17 @@ bool isAvailable(const Requires requirement, const HomeMenuAvailability& availab
   return false;
 }
 
-HomeMenuPlacement placementOf(const HomeMenuRow& row) {
+bool listed(const HomeMenuRow& row, const HomeMenuAvailability& availability) {
+  if (availability.orbitHome &&
+      (row.entry.action == HomeMenuAction::GlobalBookmarks || row.entry.action == HomeMenuAction::FileTransfer)) {
+    return false;
+  }
+  return isAvailable(row.requirement, availability);
+}
+
+HomeMenuPlacement placementOf(const HomeMenuRow& row, const HomeMenuAvailability& availability) {
   if (row.shownOnHome == nullptr || SETTINGS.*row.shownOnHome) return HomeMenuPlacement::Home;
+  if (availability.orbitHome && row.entry.action == HomeMenuAction::ReadingStats) return HomeMenuPlacement::Home;
   return HomeMenuPlacement::More;
 }
 
@@ -75,19 +84,19 @@ void collectHomeMenuEntries(const HomeMenuPlacement placement, const HomeMenuAva
                             std::vector<HomeMenuEntry>& out) {
   bool anyMovedToMore = false;
   for (const HomeMenuRow& row : kRows) {
-    if (isAvailable(row.requirement, availability) && placementOf(row) == HomeMenuPlacement::More) {
+    if (listed(row, availability) && placementOf(row, availability) == HomeMenuPlacement::More) {
       anyMovedToMore = true;
       break;
     }
   }
 
   for (const HomeMenuRow& row : kRows) {
-    if (!isAvailable(row.requirement, availability)) continue;
+    if (!listed(row, availability)) continue;
     // More goes directly above the pinned entry (Settings), the one that can never move to it.
     if (placement == HomeMenuPlacement::Home && anyMovedToMore && row.shownOnHome == nullptr) {
       out.push_back(kMoreEntry);
     }
-    if (placementOf(row) == placement) out.push_back(row.entry);
+    if (placementOf(row, availability) == placement) out.push_back(row.entry);
   }
 }
 

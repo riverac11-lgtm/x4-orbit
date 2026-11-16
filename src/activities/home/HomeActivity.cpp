@@ -142,7 +142,8 @@ void HomeActivity::rebuildMenuEntries() {
   menuEntries.clear();
   menuEntries.reserve(6);  // all six shown, or five plus More
   const HomeMenuAvailability availability{.hasBookmarks = GLOBAL_BOOKMARKS.hasAny(),
-                                          .hasOnlineLibrary = CP_FEATURE_HOME_OPDS != 0};
+                                          .hasOnlineLibrary = CP_FEATURE_HOME_OPDS != 0,
+                                          .orbitHome = CP_ORBIT_PROFILE != 0};
   collectHomeMenuEntries(HomeMenuPlacement::Home, availability, menuEntries);
 }
 

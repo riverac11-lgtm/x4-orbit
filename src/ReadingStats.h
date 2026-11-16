@@ -119,6 +119,13 @@ class ReadingStatsStore {
   // the last two weeks (ReadingCalendar::averageDailyMinutes; 0 when unknown).
   uint32_t recentTodaySeconds() const { return todaySeconds_; }
   uint16_t recentDailyMinutes() const { return dailyMinutes_; }
+  // Also from that read, for the Orbit homes' Reading Stats graphic: the current streak, the minutes
+  // of the last seven days (oldest first, [6] = today; all 0 without a clock), and whether any
+  // reading is recorded at all.
+  static constexpr int kRecentWeekDays = 7;
+  uint16_t recentStreak() const { return streak_; }
+  const uint16_t* recentWeekMinutes() const { return week_; }
+  bool recentHasHistory() const { return hasHistory_; }
 
   // ---- The web ----------------------------------------------------------------------------------
   //
@@ -209,6 +216,9 @@ class ReadingStatsStore {
   float pooledPace_ = 0.0f;
   uint32_t todaySeconds_ = 0;
   uint16_t dailyMinutes_ = 0;
+  uint16_t streak_ = 0;
+  uint16_t week_[kRecentWeekDays] = {};
+  bool hasHistory_ = false;
 };
 
 static_assert(ReadingStatsStore::kMaxBooks == ReadingStatsSlotFile::kEntryCount, "the directory holds the cap");

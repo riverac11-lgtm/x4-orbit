@@ -145,6 +145,8 @@ void FileBrowserActivity::onEnter() {
   UiListActivity::onEnter();
   if (libraryTabs()) app.on(ACTION_USER, &FileBrowserActivity::tabActionTrampoline, this);
   resetNavigation(selectedIndex);
+  if (tabBarOnEnter && libraryTabs()) nav.reset(-1);
+  tabBarOnEnter = false;
 }
 
 // Reads the rows of the list showing. Recent Books first brings the home screen's snapshot of each
@@ -690,16 +692,31 @@ bool FileBrowserActivity::handleCustomInput() {
   if (coversView() && handleCoverTouch()) return true;
   ButtonEventManager::ButtonEvent ev;
   while (buttonEvents.consumeEvent(ev)) {
-    // A long Up/Down switches the Library's tab, as it does in Settings.
     using Direction = MappedInputManager::Direction;
-    const bool vertical = MappedInputManager::isDirection(ev.button, Direction::Up) ||
-                          MappedInputManager::isDirection(ev.button, Direction::Down);
-    if (libraryTabs() && vertical && ev.type == ButtonEventManager::PressType::Long) {
-      // Put back the row this very press stepped on its way down -- not one an older press stepped.
-      if (!coversView() && stepAtMs >= ev.pressMs) nav.selected = stepOrigin;
-      tabHold = true;
-      const int direction = MappedInputManager::isDirection(ev.button, Direction::Down) ? 1 : -1;
-      showLibraryTab(libraryTabStep(currentTab(), direction));
+    const bool shortPress = ev.type == ButtonEventManager::PressType::Short;
+    // The tab bar holds the focus: Left/Right change tab, Down or Confirm go back to the list. Back
+    // does what it does in the list (up a folder, or Home).
+    if (barFocused() && ev.button != MappedInputManager::Button::Back) {
+      if (!shortPress) continue;
+      const LibraryBarMove move = libraryBarMove(MappedInputManager::isDirection(ev.button, Direction::Left),
+                                                 MappedInputManager::isDirection(ev.button, Direction::Right),
+                                                 MappedInputManager::isDirection(ev.button, Direction::Down),
+                                                 ev.button == MappedInputManager::Button::Confirm);
+      if (move == LibraryBarMove::PrevTab || move == LibraryBarMove::NextTab) {
+        showLibraryTab(libraryTabStep(currentTab(), move == LibraryBarMove::NextTab ? 1 : -1), /*barFocus=*/true);
+        return true;
+      }
+      if (move == LibraryBarMove::ToList) {
+        focusTabBar(false);
+        return true;
+      }
+      continue;
+    }
+    // Up from the first row goes to the tab bar. The list's Up is the navigator's (navigateButtons);
+    // here only an empty list, which it does not step, and the cover grid, which moves by events.
+    if (libraryTabs() && shortPress && MappedInputManager::isDirection(ev.button, Direction::Up) &&
+        (listCount() == 0 || (coversView() && nav.selected < coverGrid().cells.cols))) {
+      focusTabBar(true);
       return true;
     }
 
@@ -776,11 +793,16 @@ bool FileBrowserActivity::handleCustomInput() {
 
     if (ev.button == MappedInputManager::Button::Confirm &&
         (ev.type == ButtonEventManager::PressType::Short || ev.type == ButtonEventManager::PressType::Long)) {
-      if (confirmOpensOptions()) {
+      // A hold of Confirm opens the item's options (what Open would open it with, sort, remove, ...);
+      // a short press opens it. Long fires while the key is still down and its release makes no Short
+      // (ButtonEventManager), so a hold never opens the item as well. The folder picker has no
+      // options; a board without the keys opens them on Confirm (confirmOpensOptions).
+      const bool hold = ev.type == ButtonEventManager::PressType::Long && model.getMode() != Mode::PickFolder;
+      if (confirmOpensOptions() || hold) {
         openContextMenu();
         return true;
       }
-      activateSelected(ev.type == ButtonEventManager::PressType::Long);
+      activateSelected(false);
       return true;
     }
 
@@ -826,32 +848,23 @@ bool FileBrowserActivity::handleCustomInput() {
       return true;
     }
 
-    // Options: a long press on the page-forward button, and a short press when the folder fits on
-    // one screen and there is nothing to page. Either way the button hint says which one it is —
-    // and it rides the same logical button, so rotating the device never separates the two.
-    const bool optionsPress = (ev.type == ButtonEventManager::PressType::Long) ||
-                              (ev.type == ButtonEventManager::PressType::Short && !listPages() && !coversView());
-    if (model.getMode() != Mode::PickFolder &&
-        MappedInputManager::isDirection(ev.button, MappedInputManager::Direction::Right) && optionsPress) {
-      // Open the context menu for any selection. openContextMenu() shows
-      // file-specific actions for supported files and the browser display
-      // options (sort + visibility) for directories / unsupported types.
-      openContextMenu();
-      return true;
-    }
+    // Options used to be a press of Right here; they are a hold of Confirm now (above).
   }
   return false;
 }
 
 void FileBrowserActivity::navigateButtons() {
-  if (tabHold) {
-    const bool held = mappedInput.isPressed(MappedInputManager::buttonFor(MappedInputManager::Direction::Up)) ||
-                      mappedInput.isPressed(MappedInputManager::buttonFor(MappedInputManager::Direction::Down));
-    if (held) return;
-    tabHold = false;
-  }
   if (coversView()) return;  // the grid moves by rows and covers, from handleCustomInput()
+  if (barFocused()) {
+    // The navigator still sees every press while the bar has the focus -- it counts them, and one it
+    // missed would step the list later -- but its steps are dropped: the bar's keys are events.
+    int ignored = 0;
+    buttonNavigator.onNextList(ButtonNavigator::getStepNextButtons(), ignored, listCount(), [] {});
+    buttonNavigator.onPreviousList(ButtonNavigator::getStepPreviousButtons(), ignored, listCount(), [] {});
+    return;
+  }
   bool changed = false;
+  bool toBar = false;
   {
     RenderLock lock(*this);
     const int previous = nav.selected;
@@ -859,10 +872,16 @@ void FileBrowserActivity::navigateButtons() {
     buttonNavigator.onNextList(
         ButtonNavigator::getStepNextButtons(), nav.selected, listCount(), [&changed] { changed = true; }, pageSize);
     buttonNavigator.onPreviousList(
-        ButtonNavigator::getStepPreviousButtons(), nav.selected, listCount(), [&changed] { changed = true; }, pageSize);
-    if (changed) {
-      stepOrigin = previous;
-      stepAtMs = millis();
+        ButtonNavigator::getStepPreviousButtons(), nav.selected, listCount(),
+        [&] {
+          changed = true;
+          // Up from the first row: the tab bar, rather than round to the last row.
+          toBar = libraryTabs() && libraryUpToBar(previous, 0);
+        },
+        pageSize);
+    if (toBar) {
+      nav.reset(-1);
+      changed = false;
     }
     // The grid shows whichever page holds the selection; only the list keeps a viewport to follow.
     if (changed && !coversView()) {
@@ -873,7 +892,7 @@ void FileBrowserActivity::navigateButtons() {
       }
     }
   }
-  if (changed) requestUpdate();
+  if (changed || toBar) requestUpdate();
 }
 
 void FileBrowserActivity::activateSelected(const bool longPress) {
@@ -1083,7 +1102,7 @@ void FileBrowserActivity::materializeListWindow() {
 void FileBrowserActivity::buildScreen(UiScreen& screen) {
   if (libraryTabs()) {
     layoutListArea(screen, 0, 0, /*spacer=*/false, indexingSubtitle());
-    composeLibraryTabBar(screen);
+    composeLibraryTabBar(screen, currentTab(), barFocused(), ACTION_USER);
     screen.spacer(static_cast<int16_t>(UITheme::getInstance().getMetrics().verticalSpacing));
   } else {
     layoutListArea(screen, 0, 0, /*spacer=*/true, indexingSubtitle());
@@ -1182,43 +1201,32 @@ void FileBrowserActivity::drawFooter() {
                              : selectingFirmwareFile ? tr(STR_SELECT)
                              : confirmOpensOptions() ? tr(STR_OPTIONS)
                                                      : tr(STR_OPEN);
-  // The Options menu is available for every entry in Books mode and in the firmware picker, where
-  // it is the only place a .bin can be removed (Books mode never lists one). The menu always
-  // offers the browser display options (sort + visibility); supported files get
-  // extra file-specific actions appended. So the hint shows for files and dirs alike.
-  // Same gate as the Right press in handleCustomInput(), so the label and the key never disagree.
-  const bool showOptionsHint = model.getMode() != Mode::PickFolder && hasEntries;
-  // In a folder worth paging through, Left/Right are the page buttons and the hints say so —
-  // Options is then the long press on Right. In a folder that fits on one screen there is nothing
-  // to page, so the strip looks exactly as it always did.
+  // Options are a hold of Confirm (handleCustomInput), so no box names them: the Right box pages, or,
+  // in a folder that fits one screen, is left empty.
   const bool pages = listPages();
   const char* prevLabel = (model.getMode() == Mode::PickFolder) ? tr(STR_NEW) : pages ? tr(STR_LIST_PAGE_PREV) : "";
-  // In a folder small enough not to page, this slot carries Options. Where Confirm already
-  // carries it that would draw the same word twice on one strip, and the second copy would sit on
-  // a slot such a board has no key for.
-  // Where it pages, the same key still opens Options on a hold, so the label says both rather
-  // than hiding the menu.
-  const bool optionsOnRight = showOptionsHint && !confirmOpensOptions();
   const char* nextLabel = (model.getMode() == Mode::PickFolder) ? tr(STR_MOVE_HERE)
-                          : pages ? (optionsOnRight ? tr(STR_LIST_PAGE_NEXT_OR_OPTIONS) : tr(STR_LIST_PAGE_NEXT))
-                          : optionsOnRight ? tr(STR_OPTIONS)
-                                           : "";
-  // The cover grid steps a cover on Left and Right (moveInCoverGrid), short press first and the
-  // long one after the slash, as the Recent Books grid names them. Always labelled: on the T5S3 the
-  // boxes are the only Left and Right there are, and an unlabelled box is not tappable.
-  std::string gridRight;
+                          : pages                               ? tr(STR_LIST_PAGE_NEXT)
+                                                                : "";
+  // The cover grid steps a cover on Left and Right (moveInCoverGrid). Always labelled: on the T5S3
+  // the boxes are the only Left and Right there are, and an unlabelled box is not tappable.
   if (coversView() && hasEntries) {
     prevLabel = tr(STR_DIR_LEFT);
-    gridRight = optionsOnRight ? std::string(tr(STR_DIR_RIGHT)) + " / " + tr(STR_OPTIONS) : tr(STR_DIR_RIGHT);
-    nextLabel = gridRight.c_str();
+    nextLabel = tr(STR_DIR_RIGHT);
   }
   // Paging is bound to logical Left/Right and stepping to logical Up/Down, so which physical pair
   // carries which — and therefore which hint strip each label belongs on — is the orientation's
   // business, not this screen's.
-  // In the Library a hold of Up/Down changes tab: the side strip says so, in the strip's own
-  // "press / hold" form ("» / Options").
-  const char* upLabel = libraryTabs() ? tr(STR_DIR_UP_OR_TAB) : tr(STR_DIR_UP);
-  const char* downLabel = libraryTabs() ? tr(STR_DIR_DOWN_OR_TAB) : tr(STR_DIR_DOWN);
+  const char* upLabel = tr(STR_DIR_UP);
+  const char* downLabel = tr(STR_DIR_DOWN);
+  // On the tab bar: Left/Right name the tabs they go to, Confirm (or Down) goes into the list.
+  if (barFocused()) {
+    confirmLabel = hasEntries ? tr(STR_SELECT) : "";
+    prevLabel = libraryTabLabel(libraryTabStep(currentTab(), -1));
+    nextLabel = libraryTabLabel(libraryTabStep(currentTab(), 1));
+    upLabel = "";
+    if (!hasEntries) downLabel = "";
+  }
   const auto hints = mappedInput.mapHints(backLabel, confirmLabel, prevLabel, nextLabel, upLabel, downLabel);
   GUI.drawButtonHints(renderer, hints.front.btn1, hints.front.btn2, hints.front.btn3, hints.front.btn4);
   GUI.drawSideButtonHints(renderer, hints.side.up, hints.side.down);
@@ -1485,7 +1493,7 @@ void FileBrowserActivity::goToResultFolder() {
   // selected in it.
   if (model.getMode() != Mode::Books && libraryTabs()) {
     booksPath = folder;
-    tabRows[static_cast<size_t>(LibraryTab::Books)] = 0;
+    tabRows[static_cast<size_t>(libraryTabSlot(LibraryTab::Books))] = 0;
     showLibraryTab(LibraryTab::Books);
     const std::string name = slash == std::string::npos ? full : full.substr(slash + 1);
     {
@@ -1956,8 +1964,6 @@ FileBrowserActivity::Mode FileBrowserActivity::modeFor(const LibraryTab tab) {
   switch (tab) {
     case LibraryTab::Recent:
       return Mode::Recents;
-    case LibraryTab::New:
-      return Mode::Added;
     case LibraryTab::Authors:
       return Mode::Authors;
     default:
@@ -1973,9 +1979,8 @@ bool FileBrowserActivity::libraryTabs() const {
 LibraryTab FileBrowserActivity::currentTab() const {
   switch (model.getMode()) {
     case Mode::Recents:
+    case Mode::Added:  // no tab of its own any more
       return LibraryTab::Recent;
-    case Mode::Added:
-      return LibraryTab::New;
     case Mode::Authors:
       return LibraryTab::Authors;
     default:
@@ -1989,11 +1994,28 @@ void FileBrowserActivity::tabActionTrampoline(const fui::ActionEvent& event, voi
   self->showLibraryTab(libraryTabFrom(static_cast<uint8_t>(event.value)));
 }
 
-// Leaves the tab showing where it is and opens `tab` where it was left.
-void FileBrowserActivity::showLibraryTab(const LibraryTab tab) {
+void FileBrowserActivity::focusTabBar(const bool onBar) {
+  {
+    RenderLock lock(*this);
+    if (onBar) {
+      nav.reset(-1);
+    } else {
+      resetNavigation(0);  // back into the list at its first row, as Settings does
+    }
+  }
+  requestUpdate();
+}
+
+// Leaves the tab showing where it is and opens `tab` where it was left -- or, changed from the bar
+// (`barFocus`), with the focus staying on the bar. Bookmarks is another screen.
+void FileBrowserActivity::showLibraryTab(const LibraryTab tab, const bool barFocus) {
   const LibraryTab current = currentTab();
   if (tab == current) return;
-  tabRows[static_cast<size_t>(current)] = nav.selected;
+  if (tab == LibraryTab::Bookmarks) {
+    activityManager.goToLibrary(tab, {}, {}, std::nullopt, barFocus);
+    return;
+  }
+  tabRows[static_cast<size_t>(libraryTabSlot(current))] = std::max(0, static_cast<int>(nav.selected));
   if (current == LibraryTab::Books) booksPath = model.path();
   if (current == LibraryTab::Authors) {
     authorToOpen = !model.atAuthorList();
@@ -2010,23 +2032,43 @@ void FileBrowserActivity::showLibraryTab(const LibraryTab tab) {
       if (authorToOpen) model.openAuthorByHash(authorToOpenHash);
       authorToOpen = false;
     }
-    resetNavigation(tabRows[static_cast<size_t>(tab)]);
+    resetNavigation(tabRows[static_cast<size_t>(libraryTabSlot(tab))]);
+    if (barFocus) nav.reset(-1);
   }
   startLibraryBuildIfStale();
   requestUpdate();
 }
 
-void FileBrowserActivity::composeLibraryTabBar(UiScreen& screen) {
-  static constexpr StrId kLabels[LIBRARY_TAB_COUNT] = {StrId::STR_TAB_BOOKS, StrId::STR_TAB_RECENT, StrId::STR_TAB_NEW,
-                                                       StrId::STR_TAB_AUTHORS};
+const char* FileBrowserActivity::libraryTabLabel(const LibraryTab tab) {
+  switch (tab) {
+    case LibraryTab::Recent:
+      return tr(STR_TAB_RECENT);
+    case LibraryTab::Authors:
+      return tr(STR_TAB_AUTHORS);
+    case LibraryTab::Bookmarks:
+      return tr(STR_GLOBAL_BOOKMARKS);
+    default:
+      return tr(STR_TAB_BOOKS);
+  }
+}
+
+void FileBrowserActivity::composeLibraryTabBar(UiScreen& screen, const LibraryTab current, const bool focused,
+                                               const fui::ActionId action) {
   fui::TabItem tabs[LIBRARY_TAB_COUNT]{};
   for (uint8_t slot = 0; slot < LIBRARY_TAB_COUNT; ++slot) {
-    tabs[slot].label = I18n::getInstance().get(kLabels[slot]);
-    tabs[slot].value = static_cast<int16_t>(slot);
-    tabs[slot].selected = slot == static_cast<uint8_t>(currentTab());
+    const LibraryTab tab = kLibraryTabOrder[slot];
+    tabs[slot].label = libraryTabLabel(tab);
+    tabs[slot].value = static_cast<int16_t>(tab);
+    tabs[slot].selected = tab == current;
   }
-  // Never focused: the browser keeps its own keys, and a long Up/Down or a tap is how a tab changes.
-  const auto props = ListTabBar::props(screen, tabs, LIBRARY_TAB_COUNT, ACTION_USER, /*barFocused=*/false);
+  // Filled while the bar holds the focus, a lighter pill once it is in the list (ListTabBar).
+  auto props = ListTabBar::props(screen, tabs, LIBRARY_TAB_COUNT, action, focused);
+  // Tabs as wide as their words, so "Bookmarks" is not cut short in an equal quarter; where they do
+  // not fit (a compact panel, a large UI font) FreeInkUI falls back to equal widths.
+  props.layout = fui::TabBarLayout::ContentWidth;
+  props.contentInset = fui::Insets{4, 6, 4, 6};
+  props.leadingInset = 8;
+  props.gap = 4;
   fui::tabBar(screen.frame(), screen.takeTop(ListTabBar::HEIGHT), props);
 }
 

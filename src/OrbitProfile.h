@@ -7,9 +7,9 @@ class CrossPointSettings;
 // x4-orbit's own first-run choices, laid over Witch(hunt)'s defaults (CP_ORBIT_PROFILE builds only).
 //
 // The aim is a reader someone can pick up without a manual: the home screen shows the book being
-// read, the Library, the Online Library and Settings, and everything else sits one step away
-// behind "More". Nothing is removed -- every choice here is an ordinary setting the owner can
-// change back under Settings.
+// read, the Library, the Online Library, a small Reading Stats graphic and Settings. Bookmarks are
+// a Library tab and File Transfer is in Settings > System. Nothing is removed -- every choice here is an ordinary
+// setting the owner can change back under Settings.
 //
 // Front-button page turns are also made immediate (no double-press wait).
 //
@@ -20,8 +20,9 @@ class CrossPointSettings;
 namespace OrbitProfile {
 
 // 1: the home menu, page turns, sleep screen.  2: the Orbit-A theme.  3: a 30-minute daily reading
-// goal and chapter marks on the progress bar.
-inline constexpr uint8_t VERSION = 3;
+// goal and chapter marks on the progress bar.  4: no "More" on the home screen (Library and Online
+// Library back on it; Reading Stats takes More's place as a graphic, see HomeMenuAvailability).
+inline constexpr uint8_t VERSION = 4;
 
 // Applies the steps a file stamped `fromVersion` has not had yet (0: none, a new card or a stock
 // file). A step runs once: a file already on version 1 does not get its home entries reset to

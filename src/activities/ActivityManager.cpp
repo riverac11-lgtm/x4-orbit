@@ -543,13 +543,18 @@ void ActivityManager::goToKOReaderSettings() {
   replaceActivity(std::make_unique<KOReaderSettingsActivity>(renderer, mappedInput));
 }
 
-// The Library is the file browser in one of its four tab modes; every tab has the same views, keys
-// and Options.
+// The Library is the file browser in one of its tab modes (every one has the same views, keys and
+// Options), and on its Bookmarks tab the bookmarks screen.
 void ActivityManager::goToLibrary(const LibraryTab tab, std::string path, std::string focusName,
-                                  const std::optional<uint32_t> author) {
+                                  const std::optional<uint32_t> author, const bool tabBarFocus) {
+  if (tab == LibraryTab::Bookmarks) {
+    replaceActivity(std::make_unique<GlobalBookmarksActivity>(renderer, mappedInput, ReturnHint{}, tabBarFocus));
+    return;
+  }
   auto library = std::make_unique<FileBrowserActivity>(renderer, mappedInput, std::move(path), std::move(focusName),
                                                        FileBrowserActivity::modeFor(tab));
   if (author) library->openAuthorOnEnter(*author);
+  if (tabBarFocus) library->focusTabBarOnEnter();
   replaceActivity(std::move(library));
 }
 

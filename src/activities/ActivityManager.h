@@ -174,9 +174,10 @@ class ActivityManager {
   void goToClockSettings();
   void goToKOReaderSettings();
   // The Library on `tab`: Books in `path` (the root when empty); `focusName` selected; on Authors,
-  // `author` (a hash) open.
+  // `author` (a hash) open. Bookmarks is its own screen (GlobalBookmarksActivity). `tabBarFocus`
+  // opens with the focus on the tab bar: the tab was changed from there.
   void goToLibrary(LibraryTab tab, std::string path = {}, std::string focusName = {},
-                   std::optional<uint32_t> author = std::nullopt);
+                   std::optional<uint32_t> author = std::nullopt, bool tabBarFocus = false);
   void goToGlobalBookmarks();
   void goToGlobalBookmarks(ReturnHint hint);
   // The OPDS catalog, or the server picker first when more than one server is configured. Opened

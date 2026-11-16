@@ -34,6 +34,12 @@ struct HomeMenuAvailability {
   bool hasBookmarks = false;
   // Whether this build offers the OPDS catalog from the home screen (CP_FEATURE_HOME_OPDS).
   bool hasOnlineLibrary = false;
+  // x4-orbit (CP_ORBIT_PROFILE): Bookmarks and File Transfer have homes of their own (the Library's
+  // Bookmarks tab, Settings > System), so they are on neither list; Reading Stats is always on the
+  // home screen, where the Orbit themes draw it as a small graphic. With the profile's settings that
+  // leaves nothing to hide, so there is no "More" -- it comes back only as the safety net for an
+  // entry the owner hid himself (Library, Online Library).
+  bool orbitHome = false;
 };
 
 enum class HomeMenuPlacement : uint8_t { Home, More };

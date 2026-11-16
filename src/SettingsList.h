@@ -249,6 +249,9 @@ inline void buildSettings(const RowSink& emit) {
                            "showOnlineLibraryOnHome", StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));
 #endif
+#if !CP_ORBIT_PROFILE
+  // x4-orbit keeps these three off the home menu's choices: Reading Stats is always on its home screen
+  // (as a graphic), Bookmarks are a Library tab and File Transfer is in System (HomeMenuAvailability).
   emit(SettingInfo::Toggle(StrId::STR_READING_STATS, &CrossPointSettings::showReadingStatsOnHome,
                            "showReadingStatsOnHome", StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));
@@ -258,6 +261,7 @@ inline void buildSettings(const RowSink& emit) {
   emit(SettingInfo::Toggle(StrId::STR_FILE_TRANSFER, &CrossPointSettings::showFileTransferOnHome,
                            "showFileTransferOnHome", StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));
+#endif
   emit(SettingInfo::Toggle(StrId::STR_WEATHER, &CrossPointSettings::showWeatherOnHome, "showWeatherOnHome",
                            StrId::STR_CAT_DISPLAY)
            .withSubmenu(StrId::STR_MENU_DISP_HOME));

@@ -24,11 +24,13 @@
 #include "components/themes/TapTargets.h"
 #include "components/themes/orbit/OrbitHomeDraw.h"
 #include "fontIds.h"
+#include "util/ReadingCalendar.h"
 
 namespace {
 
 using OrbitHomeLayout::Box;
 using OrbitHomeLayout::Variant;
+using View = OrbitHomeDraw::View;
 
 // A recent book's title, or its file name when the book never gave one (a .txt).
 std::string displayTitle(const RecentBook& book) {
@@ -139,6 +141,36 @@ void OrbitTheme::drawOrbitHome(GfxRenderer& renderer, const int top, const int b
     view.menuIcon[i] = menuIcon(i);
     view.menuBitmap[i] = iconForName(view.menuIcon[i], 32);
     if (view.menuBitmap[i] == nullptr) view.menuBitmap[i] = iconForName(view.menuIcon[i], 24);
+  }
+  // The Reading Stats graphic, from the stats Home prefetched on entry (no file read here).
+  char statsCaption[24], statsToday[40], statsCompact[24], statsStreak[32];
+  {
+    View::Stats& st = view.stats;
+    st.hasHistory = READING_STATS.recentHasHistory();
+    st.minutes = static_cast<int>(READING_STATS.recentTodaySeconds() / 60);
+    st.goalMinutes = ReadingCalendar::goalMinutes(SETTINGS.readingGoal);
+    std::copy(READING_STATS.recentWeekMinutes(), READING_STATS.recentWeekMinutes() + 7, st.week);
+    if (st.goalMinutes > 0) {
+      snprintf(statsCaption, sizeof(statsCaption), tr(STR_GOAL_OF), st.goalMinutes);
+      snprintf(statsToday, sizeof(statsToday), tr(STR_ORBIT_STATS_OF_GOAL), st.minutes, st.goalMinutes);
+      snprintf(statsCompact, sizeof(statsCompact), tr(STR_ORBIT_STATS_SHORT), st.minutes, st.goalMinutes);
+    } else {
+      snprintf(statsCaption, sizeof(statsCaption), "%s", tr(STR_GOAL_MIN));
+      snprintf(statsToday, sizeof(statsToday), tr(STR_ORBIT_READ_TODAY), st.minutes);
+      snprintf(statsCompact, sizeof(statsCompact), "%d%s", st.minutes, tr(STR_MIN_SUFFIX));
+    }
+    const int streak = READING_STATS.recentStreak();
+    if (streak > 0) {
+      snprintf(statsStreak, sizeof(statsStreak), tr(STR_GOAL_STREAK), streak);
+    } else {
+      snprintf(statsStreak, sizeof(statsStreak), "%s", tr(STR_GOAL_NO_STREAK));
+    }
+    st.caption = statsCaption;
+    st.today = statsToday;
+    st.compact = statsCompact;
+    st.streak = statsStreak;
+    st.heading = tr(STR_GOAL_TODAY);
+    st.empty = tr(STR_ORBIT_STATS_EMPTY);
   }
   view.selected = selector;
   view.caption = variant_ == Variant::C ? greeting() : tr(STR_ORBIT_CONTINUE);

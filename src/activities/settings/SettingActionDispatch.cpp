@@ -105,6 +105,7 @@ std::unique_ptr<Activity> createActivityForAction(SettingAction action, GfxRende
 #else
       return nullptr;
 #endif
+    case SettingAction::FileTransfer:  // replaces Settings rather than opening over it: SettingsActivity
     case SettingAction::Submenu:
     case SettingAction::None:
       return nullptr;

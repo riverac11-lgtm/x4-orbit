@@ -158,6 +158,11 @@ void SettingsActivity::onEnter() {
   addToMoved(systemSettings, SettingInfo::Action(StrId::STR_KEYBOARD_LAYOUTS, SettingAction::KeyboardLayouts));
   addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network)
                                            .withSubcategory(StrId::STR_MENU_SYS_NETWORK)));
+#if CP_ORBIT_PROFILE
+  // x4-orbit has no "More" on its home screen; File Transfer (send books from a computer) lives here.
+  addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_FILE_TRANSFER, SettingAction::FileTransfer)
+                                           .withSubcategory(StrId::STR_MENU_SYS_NETWORK)));
+#endif
 #if CP_FEATURE_KOSYNC
   addToMoved(systemSettings, std::move(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync)
                                            .withSubcategory(StrId::STR_MENU_SYS_NETWORK)));
@@ -316,6 +321,11 @@ void SettingsActivity::activateIndex(const int index) {
             std::make_unique<SettingsSubmenuActivity>(renderer, mappedInput, setting.nameId, it->items),
             [this](const ActivityResult&) { needsHalfRefresh = true; });
       }
+    } else if (setting.action == SettingAction::FileTransfer) {
+      // The same flow Home opened, the same way: it replaces this screen, because the web server
+      // wants the heap a screen kept underneath would hold, and it ends on Home as it always has.
+      SETTINGS.saveToFile();
+      activityManager.goToFileTransfer();
     } else {
       auto activity = createActivityForAction(setting.action, renderer, mappedInput);
       if (activity) {
