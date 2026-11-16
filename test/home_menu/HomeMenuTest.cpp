@@ -131,15 +131,48 @@ TEST(HomeMenuMigration, LibraryShownWhereEitherOldEntryWas) {
 }
 
 TEST(LibraryTabs, StoredValueOutOfRangeOpensBooks) {
-  EXPECT_EQ(libraryTabFrom(2), LibraryTab::New);
-  EXPECT_EQ(libraryTabFrom(LIBRARY_TAB_COUNT), LibraryTab::Books);
+  EXPECT_EQ(libraryTabFrom(LIBRARY_TAB_COUNT + 1), LibraryTab::Books);
   EXPECT_EQ(libraryTabFrom(255), LibraryTab::Books);
+}
+
+// The stored value keeps its meaning across the change: a card left on Authors (3) reopens Authors,
+// and one left on the retired New tab (2) opens Recent, its nearest neighbour.
+TEST(LibraryTabs, StoredValuesKeepTheirMeaningAndNewOpensRecent) {
+  EXPECT_EQ(libraryTabFrom(0), LibraryTab::Books);
+  EXPECT_EQ(libraryTabFrom(1), LibraryTab::Recent);
+  EXPECT_EQ(libraryTabFrom(2), LibraryTab::Recent);
+  EXPECT_EQ(libraryTabFrom(3), LibraryTab::Authors);
+  EXPECT_EQ(libraryTabFrom(4), LibraryTab::Bookmarks);
+  for (const LibraryTab tab : kLibraryTabOrder) EXPECT_EQ(libraryTabFrom(static_cast<uint8_t>(tab)), tab);
+}
+
+TEST(LibraryTabs, BarOrderIsBooksRecentAuthorsBookmarks) {
+  EXPECT_EQ(libraryTabSlot(LibraryTab::Books), 0);
+  EXPECT_EQ(libraryTabSlot(LibraryTab::Recent), 1);
+  EXPECT_EQ(libraryTabSlot(LibraryTab::Authors), 2);
+  EXPECT_EQ(libraryTabSlot(LibraryTab::Bookmarks), 3);
 }
 
 TEST(LibraryTabs, StepWrapsAtBothEnds) {
   EXPECT_EQ(libraryTabStep(LibraryTab::Books, 1), LibraryTab::Recent);
-  EXPECT_EQ(libraryTabStep(LibraryTab::Authors, 1), LibraryTab::Books);
-  EXPECT_EQ(libraryTabStep(LibraryTab::Books, -1), LibraryTab::Authors);
+  EXPECT_EQ(libraryTabStep(LibraryTab::Recent, 1), LibraryTab::Authors);
+  EXPECT_EQ(libraryTabStep(LibraryTab::Authors, 1), LibraryTab::Bookmarks);
+  EXPECT_EQ(libraryTabStep(LibraryTab::Bookmarks, 1), LibraryTab::Books);
+  EXPECT_EQ(libraryTabStep(LibraryTab::Books, -1), LibraryTab::Bookmarks);
+}
+
+// The bar's focus, as in Settings: Left/Right change tab, Down or Confirm go back to the list, Up
+// stays; Up leaves the list for the bar only from its first row.
+TEST(LibraryTabs, TabBarFocus) {
+  EXPECT_EQ(libraryBarMove(true, false, false, false), LibraryBarMove::PrevTab);
+  EXPECT_EQ(libraryBarMove(false, true, false, false), LibraryBarMove::NextTab);
+  EXPECT_EQ(libraryBarMove(false, false, true, false), LibraryBarMove::ToList);
+  EXPECT_EQ(libraryBarMove(false, false, false, true), LibraryBarMove::ToList);
+  EXPECT_EQ(libraryBarMove(false, false, false, false), LibraryBarMove::Stay);
+  EXPECT_TRUE(libraryUpToBar(0, 0));
+  EXPECT_FALSE(libraryUpToBar(3, 0));
+  EXPECT_TRUE(libraryUpToBar(1, 1));  // Bookmarks: row 0 is a book's title, not a stop
+  EXPECT_FALSE(libraryUpToBar(2, 1));
 }
 
 }  // namespace

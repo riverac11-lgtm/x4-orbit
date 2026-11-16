@@ -93,15 +93,27 @@ OrbitHomeDraw::View baseView(const OrbitHomeLayout::Variant v, const bool hasBoo
   view.bottom = 800 - 40 - 8;
   view.hasBook = hasBook;
   view.book = {"Black House", "Stephen King", "The Talisman #2", 41, "~1h 03m", "Read 43m 58s over 1 day"};
-  static const char* labels[] = {"Library", "Online Library", "More", "Settings", "Reading Stats", "Bookmarks"};
-  static const UIIcon icons[] = {UIIcon::Folder,   UIIcon::Library, UIIcon::Ellipsis,
-                                 UIIcon::Settings, UIIcon::Stats,   UIIcon::Book};
+  // x4-orbit's home menu: no More; Reading Stats in its place, drawn as the stats graphic.
+  static const char* labels[] = {"Library", "Online Library", "Reading Stats", "Settings", "Weather", "Bookmarks"};
+  static const UIIcon icons[] = {UIIcon::Folder,   UIIcon::Library, UIIcon::Stats,
+                                 UIIcon::Settings, UIIcon::Weather, UIIcon::Book};
   view.menuCount = 4;
   for (int i = 0; i < 6; i++) {
     view.menuLabel[i] = labels[i];
     view.menuIcon[i] = icons[i];
     view.menuBitmap[i] = StatsIcon;
   }
+  view.stats.hasHistory = true;
+  view.stats.minutes = 18;
+  view.stats.goalMinutes = 30;
+  const uint16_t week[7] = {12, 0, 35, 31, 0, 22, 18};
+  for (int i = 0; i < 7; i++) view.stats.week[i] = week[i];
+  view.stats.caption = "of 30 min";
+  view.stats.today = "18 of 30 min today";
+  view.stats.compact = "18/30 min";
+  view.stats.streak = "2-day streak";
+  view.stats.heading = "Today";
+  view.stats.empty = "Start reading to see your stats";
   view.selected = selected;
   view.caption = v == OrbitHomeLayout::Variant::C ? "Good morning" : "Continue reading";
   view.shelfLabel = "Recently added";
@@ -129,14 +141,15 @@ void render(const std::string& dir, const std::string& name, OrbitHomeDraw::View
 // Settings > Reader as the device composes it: the theme's header (a title and its rule), the
 // FreeInkUI tab bar and list with the tokens UIThemeTokens.h builds, and the hint strip. Lyra's
 // metrics (header 84, tab bar 54, padding 20) as OrbitTheme keeps them.
-void renderList(const std::string& dir, const std::string& name, const bool orbit) {
+void renderList(const std::string& dir, const std::string& name, const bool orbit, const bool library = false,
+                const bool barFocused = false) {
   namespace fui = freeink::ui;
   GfxRenderer r;
   r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
   battery(r);
-  r.drawText(UI_12_FONT_ID, 20, 5 + 40 + 3, "Settings", true, EpdFontFamily::BOLD);
+  r.drawText(UI_12_FONT_ID, 20, 5 + 40 + 3, library ? "Library" : "Settings", true, EpdFontFamily::BOLD);
   const char* version = "2.41-orbit.3";
-  r.drawText(SMALL_FONT_ID, 460 - r.getTextWidth(SMALL_FONT_ID, version), 5 + 40 + 10, version);
+  if (!library) r.drawText(SMALL_FONT_ID, 460 - r.getTextWidth(SMALL_FONT_ID, version), 5 + 40 + 10, version);
   if (orbit) {
     r.drawLine(20, 5 + 84 - 2, 459, 5 + 84 - 2, true);
   } else {
@@ -166,6 +179,13 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
                           {"Reader", {}, {}, 1, true},
                           {"Controls", {}, {}, 2, false},
                           {"System", {}, {}, 3, false}};
+  // The Library's bar (Books, Recent, Authors, Bookmarks), on Authors.
+  if (library) {
+    tabs[0] = {"Books", {}, {}, 0, false};
+    tabs[1] = {"Recent", {}, {}, 1, false};
+    tabs[2] = {"Authors", {}, {}, 3, true};
+    tabs[3] = {"Bookmarks", {}, {}, 4, false};
+  }
   fui::TabBarProps tabProps;
   tabProps.tabs = tabs;
   tabProps.count = 4;
@@ -174,7 +194,7 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
   tabProps.tabInset = fui::Insets{};
   tabProps.contentInset = fui::Insets{};
   if (orbit) {
-    OrbitListStyle::applyTabBar(tabProps, false);
+    OrbitListStyle::applyTabBar(tabProps, barFocused);
   } else {  // ListTabBar's boxed bar, list focused
     fui::StyleSet st;
     st.explicitlySet = true;
@@ -185,6 +205,13 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
     st.selected.background = fui::Paint::dither(fui::Color::LightGray);
     st.focused = st.active = st.selected;
     tabProps.tabStyles = st;
+  }
+  // FileBrowserActivity::composeLibraryTabBar: natural widths, so "Bookmarks" is not cut short.
+  if (library) {
+    tabProps.layout = fui::TabBarLayout::ContentWidth;
+    tabProps.contentInset = fui::Insets{4, 6, 4, 6};
+    tabProps.leadingInset = 8;
+    tabProps.gap = 4;
   }
   fui::tabBar(frame, fui::Rect{0, 5 + 84, 480 - 40, 54}, tabProps);
 
@@ -206,7 +233,7 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
   fui::ListProps list;
   list.items = items;
   list.count = sizeof(items) / sizeof(items[0]);
-  list.selectedIndex = 3;
+  list.selectedIndex = barFocused ? -1 : 3;
   list.action = 2;
   list.labelText = tokens.bodyText;
   list.labelText.maxLines = 2;
@@ -214,7 +241,13 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
   const fui::ListProps resolved = screen.resolveListProps(list);
   fui::list(frame, fui::Rect{0, 5 + 84 + 54 + 16, 480 - 40, 800 - 40 - 8 - (5 + 84 + 54 + 16)}, resolved);
 
-  hints(r, "\xC2\xAB Back", "Select", "\xC2\xAB Up", "\xC2\xBB Down");
+  if (library && barFocused) {
+    hints(r, "\xC2\xAB Home", "Select", "\xC2\xAB Recent", "\xC2\xBB Bookmarks");
+  } else if (library) {
+    hints(r, "\xC2\xAB Home", "Open", "\xC2\xAB", "\xC2\xBB");
+  } else {
+    hints(r, "\xC2\xAB Back", "Select", "\xC2\xAB Up", "\xC2\xBB Down");
+  }
   writePgm(r, dir + "/" + name + ".pgm");
 }
 
@@ -335,6 +368,22 @@ int main(int argc, char** argv) {
   cNoBook.shelfCount = 2;
   render(dir, "home-c-nobook", cNoBook);
   renderList(dir, "list-orbit", true);
+  renderList(dir, "library-tabs", true, true, false);
+  renderList(dir, "library-tabs-bar-focus", true, true, true);
+
+  // The Reading Stats graphic in its three places, selected, and before any reading.
+  render(dir, "home-a-stats", baseView(Variant::A, true, 3));
+  auto aEmpty = baseView(Variant::A, false, 0);
+  aEmpty.stats.hasHistory = false;
+  render(dir, "home-a-stats-empty", aEmpty);
+  render(dir, "home-b-stats", baseView(Variant::B, true, 3));
+  auto cStats = baseView(Variant::C, true, 7);
+  cStats.shelfCount = 4;
+  render(dir, "home-c-stats", cStats);
+  auto cEmpty = baseView(Variant::C, false, 0);
+  cEmpty.shelfCount = 2;
+  cEmpty.stats.hasHistory = false;
+  render(dir, "home-c-stats-empty", cEmpty);
 
   // x4-orbit stats: the Orbit-B line and the battery estimate, Reading Stats, the reader's bar.
   auto bToday = baseView(Variant::B, true, 1);

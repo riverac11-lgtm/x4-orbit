@@ -127,25 +127,23 @@ class FileBrowserActivity final : public UiListActivity {
   static BuildArena* orderScratch(void* user);
   void lendForAuthorOrder(bool authors);
 
-  // The Library: Books, Recent, New and Authors as tabs of one screen. Each tab is left where it
-  // was: its row, Books its folder, Authors the author open in it.
+  // The Library: Books, Recent and Authors as tabs of one screen (Bookmarks, the fourth, is its own
+  // screen). Each tab is left where it was: its row, Books its folder, Authors the author open in it.
+  // Up from the first row puts the focus on the tab bar (nav.selected -1, as Settings has it); there
+  // Left/Right change tab and Down or Confirm return to the list (LibraryTab.h).
   [[nodiscard]] bool libraryTabs() const;
   [[nodiscard]] LibraryTab currentTab() const;
-  void showLibraryTab(LibraryTab tab);
-  void composeLibraryTabBar(UiScreen& screen);
+  [[nodiscard]] bool barFocused() const { return libraryTabs() && nav.selected < 0; }
+  void focusTabBar(bool onBar);
+  void showLibraryTab(LibraryTab tab, bool barFocus = false);
   static void tabActionTrampoline(const freeink::ui::ActionEvent& event, void* user);
   void loadRows();
   [[nodiscard]] ReturnHint returnHint(std::string selectName) const;
-  std::array<int, LIBRARY_TAB_COUNT> tabRows{};
+  std::array<int, LIBRARY_TAB_COUNT> tabRows{};  // by bar slot
   std::string booksPath = "/";
   bool authorToOpen = false;
   uint32_t authorToOpenHash = 0;
-  // A long Up/Down switches tab. In a list the press stepped a row on its way down: stepOrigin is the
-  // row it left, put back first. The key still held must not reach the navigator, whose 1.5 s hold
-  // jumps to the list's end: tabHold, until it is let go.
-  int stepOrigin = 0;
-  unsigned long stepAtMs = 0;  // when that step was taken: it belongs to a press begun before it
-  bool tabHold = false;
+  bool tabBarOnEnter = false;
 
   [[nodiscard]] int listPageSize() const;
   [[nodiscard]] bool listPages() const;
@@ -183,6 +181,12 @@ class FileBrowserActivity final : public UiListActivity {
     authorToOpen = true;
     authorToOpenHash = hash;
   }
+  // Open with the focus on the tab bar (the tab was changed from there).
+  void focusTabBarOnEnter() { tabBarOnEnter = true; }
+  // The Library's tab bar, `current` selected; `focused` while the bar holds the focus. A tap on a tab
+  // fires `action` with the tab's LibraryTab value. Shared with the Bookmarks tab's screen.
+  static void composeLibraryTabBar(UiScreen& screen, LibraryTab current, bool focused, freeink::ui::ActionId action);
+  static const char* libraryTabLabel(LibraryTab tab);
 
  private:
   int listCount() const override;

@@ -501,13 +501,13 @@ void cmdActivity(const std::string_view arg) {
       break;
     case 5: {
       // LibraryTab's order.
-      static constexpr const char* kTabs[] = {"BOOKS", "RECENT", "NEW", "AUTHORS"};
-      const int tab = rest.empty() ? 0 : indexOf(rest, kTabs, 4);
+      static constexpr const char* kTabs[] = {"BOOKS", "RECENT", "NEW", "AUTHORS", "BOOKMARKS"};
+      const int tab = rest.empty() ? 0 : indexOf(rest, kTabs, 5);
       if (tab < 0) {
         reply("ACT_ERROR:unknown library tab ", rest);
         return;
       }
-      activityManager.goToLibrary(static_cast<LibraryTab>(tab));
+      activityManager.goToLibrary(libraryTabFrom(static_cast<uint8_t>(tab)));
       break;
     }
 #if SERIAL_TEST_API
