@@ -47,6 +47,10 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
 ## Released: v3.0 (x4-orbit = orbit-next) — the whole backlog below is DONE (merged orbit-lib, orbit-kbd,
 orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only: custom fast keyboard waveform.
 
+## NEXT TO-DO — the user asked to WAIT until he says to implement
+1. Online Library > All books: Left/Right = page up/down, moving the list by one whole screen of items
+   (12 rows on Orbit two-line lists). Labels on the Left/Right hints. (Requested 2026-11-15 after v3.0.)
+
 ## BACKLOG (DONE in v3.0, kept for reference)
 1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
    More tile/row with a Reading Stats GRAPHIC (e.g. today ring vs goal + streak + mini week bars, from
