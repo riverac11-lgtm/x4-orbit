@@ -1219,11 +1219,11 @@ void FileBrowserActivity::drawFooter() {
   // business, not this screen's.
   const char* upLabel = tr(STR_DIR_UP);
   const char* downLabel = tr(STR_DIR_DOWN);
-  // On the tab bar: Left/Right name the tabs they go to, Confirm (or Down) goes into the list.
+  // On the tab bar: Left/Right are bare arrows (the bar names the tabs), Confirm (or Down) goes into the list.
   if (barFocused()) {
     confirmLabel = hasEntries ? tr(STR_SELECT) : "";
-    prevLabel = libraryTabLabel(libraryTabStep(currentTab(), -1));
-    nextLabel = libraryTabLabel(libraryTabStep(currentTab(), 1));
+    prevLabel = "\xC2\xAB";  // « : a chevron on the Orbit themes
+    nextLabel = "\xC2\xBB";  // »
     upLabel = "";
     if (!hasEntries) downLabel = "";
   }

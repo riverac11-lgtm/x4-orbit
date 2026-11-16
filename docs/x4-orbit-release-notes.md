@@ -1,17 +1,56 @@
-# x4-orbit v2.41-orbit.4
+# x4-orbit v3.0
 
 Custom firmware for the **Xteink X4 and X3**, built for reading EPUBs and pulling books from a home OPDS library
 (BookOrbit). Based on [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader) 2.41-dev. Personal,
 unofficial build: not supported by the Witch(hunt) or CrossPoint projects. Use at your own risk.
 
-**After updating:** each book lays its pages out once more the first time you open it (the new progress bar at the
-bottom takes a few pixels), so the first open of each book is slower.
+From this release the file is called `x4-orbit-v3.0.bin`, and the version shows as **3.0** on the boot screen and in
+Settings.
 
 ---
 
-## What's new and how it works
+## New in v3.0
 
-### 1. Orbit themes (Settings > Display > UI Theme)
+### 1. Home: "More" is gone, a reading-stats tile takes its place
+On Orbit-A, B and C the **More** tile is replaced by a small **reading stats picture**: a ring showing today's reading
+against your daily goal, your streak, and seven little bars for the last seven days. Confirm on it opens **Reading
+Stats** (today card, month calendar; Left/Right change month).
+
+**File Transfer** moved to **Settings > System > Network > File Transfer**. It works exactly as before.
+
+### 2. Library: Bookmarks tab, no New tab, easier tab switching
+- The tabs are now **Books, Recent, Authors, Bookmarks**. *New* is gone; Bookmarks (all your bookmarks across books)
+  is its own tab. Confirm on a bookmark jumps into the book at that spot; Left renames it, Right deletes it.
+- **Switching tabs works like Settings:** press **Up** on the first row to move onto the tab bar, then **Left/Right**
+  to change tab. **Down** or **Confirm** goes back into the list. Holding Up/Down no longer switches tabs.
+- **Hold Confirm** on a book for its **Options** (it used to be the Right button). A short press still opens the book.
+
+### 3. Online Library: tidier order, fixes
+- The list now starts with **Search**, then **All books**, then Waiting, New, Series, Authors, Browse live server and
+  Update catalog.
+- **All books** opened with a "Get now" label by mistake; it now opens the A–Z list properly.
+- **"Last updated"** was always blank because the reader's clock wasn't set during charging runs. The reader now sets
+  its clock over Wi-Fi during an update, and the row shows the date and time of the last update. Until the next
+  update runs, it shows **"N books saved"** instead.
+- Leftover outlines from the previous screen ("ghosts") are cleared when the Online Library opens.
+
+### 4. More titles per screen
+Two-line lists (book title + author) are tighter on the Orbit themes: **12 books per screen instead of 9**. This applies
+to the Library, All books, search results, series and authors lists.
+
+### 5. Keyboard: quicker to respond
+Keys now act the moment you **press** a button rather than when you let go, which removes about 0.1 s per key. Holds
+still work: **hold Confirm** types the key's alternate character (e.g. capital/symbol), **hold Up** moves the text
+cursor, **hold Delete** clears the field.
+
+To be honest about it: each key still waits on the e-ink screen redraw (about half a second), and that part is set by
+the panel, so typing feels better but not instant.
+
+---
+
+## Already in this build (from v2.41-orbit.3 and .4)
+
+#### 1. Orbit themes (Settings > Display > UI Theme)
 Three new looks: **Orbit-A**, **Orbit-B** and **Orbit-C**. **Orbit-A** is switched on for you if you were still on the
 standard Lyra theme; the old themes are still in the list.
 
@@ -27,16 +66,16 @@ Every other screen is restyled when an Orbit theme is on:
 - Cleaner tabs and headers.
 - Button labels without `«` `»`, and no more empty label boxes.
 
-### 2. Online Library: your whole catalog, saved on the reader
+#### 2. Online Library: your whole catalog, saved on the reader
 Online Library now opens a **saved copy of your BookOrbit catalog** instantly, without Wi-Fi.
 
 **The first time**, choose **Save the book list**. On Wi-Fi it walks through *All Books* once, which takes under a
 minute for a few hundred books.
 
 **The rows:**
+- **Search**: type a few letters of a title, author or series. Results come straight away.
 - **All books** *(new in .4)*: every book in the catalog, A to Z by title (a leading "The", "A" or "An"
   is ignored), up to 1,500 books.
-- **Search**: type a few letters of a title, author or series. Results come straight away.
 - **Waiting to download (N)**: books queued for the next charge. Confirm on one takes it off the list; the **Get now**
   row at the top downloads them all now.
 - **New since last update (N)**: what was added to BookOrbit at the last update.
@@ -49,7 +88,7 @@ Books show **On device** or **Waiting** on the right. Confirm on a book offers:
 - **Get now**: downloads straight away on Wi-Fi.
 - **Get when charging**: adds it to the waiting list. If it's already waiting, this option is **Don't get it**.
 
-### 3. Downloads while charging, even while asleep
+#### 3. Downloads while charging, even while asleep
 When the reader is on a charger, it updates the saved catalog and downloads everything waiting:
 1. Turns Wi-Fi on.
 2. Updates the saved catalog.
@@ -79,12 +118,12 @@ arrived ("2 new books arrived") with their titles; Confirm fetches anything stil
 
 Books downloaded while charging use the cover inside the EPUB.
 
-### 4. Next in series
+#### 4. Next in series
 When you finish a book and the next one in the series isn't on the reader, the **Book finished** screen offers
 **Get next when charging: Title (#n)**, using your saved catalog. It goes on the waiting list. (If the next book is
 already on the reader, the existing **Open the next book** row shows instead.)
 
-### 5. Daily goal and reading calendar (Home > More > Reading Stats)
+#### 5. Daily goal and reading calendar (Home > stats tile > Reading Stats)
 - **Today card:** a ring filling toward your daily goal ("18 of 30 min"), how much is left, and your streak.
 - **Month calendar:** each day is shaded by how much you read, from light grey to black when you met your goal.
   **Left/Right** change the month.
@@ -92,7 +131,7 @@ already on the reader, the existing **Open the next book** row shows instead.)
 - **Orbit-B home** also shows **Read N min today** under the progress bar.
 - **No clock set:** the calendar and today card need the clock. Without it the screen shows the usual stats.
 
-### 6. Battery in days, and chapter marks
+#### 6. Battery in days, and chapter marks
 - **Days of battery:** the Orbit home screens show **~N days** next to the battery %. It's worked out from how fast
   your battery drains while you read and your usual reading time per day.
   - It appears after the battery has dropped a few percent, and is hidden while charging.
@@ -101,7 +140,7 @@ already on the reader, the existing **Open the next book** row shows instead.)
   chapters start.
   - Turn the marks off under Customise Status Bar > **Chapter Marks**; the bar itself is under Lower Progress Bar.
 
-### 7. Smaller fixes
+#### 7. Smaller fixes
 - **Search keyboard:** now centred.
 - **Library folders:** names show without brackets and capitals, so `[COMPLETED]` shows as **Completed**. Nothing
   is renamed on the card.
@@ -109,27 +148,30 @@ already on the reader, the existing **Open the next book** row shows instead.)
 
 ---
 
-## Test checklist
+## Test checklist (v3.0)
 
 | Try this | You should see |
 | --- | --- |
-| Turn the reader on | Orbit-A home with your book card and four tiles; "~N days" appears near the battery after some use |
-| Settings > Display > UI Theme > Orbit-B, then Orbit-C | The other two home layouts; Back/Left/Right/Up/Down move as in the table above |
-| Online Library (first time) | "Save the book list"; on Wi-Fi it finishes in under a minute |
-| Online Library > Search > a few letters | Matching books instantly, with On device / Waiting marks |
-| Confirm on a book > Get when charging | It appears under Waiting to download |
-| Put a book in your BookOrbit **Send to X4** collection, then put the reader to sleep on the charger | Within about a minute, nothing changes on screen. Wake it later: Home says the books arrived, and they're in the Library |
-| Plug in a sleeping reader (not already on the charger) | Downloads happen at the next check (immediately on an X4 with the clock off) |
-| Unplug during a charging run | It stops; the next charge picks up the rest |
-| Finish a series book whose sequel isn't on the reader | Book finished offers "Get next when charging: …" |
-| Read for a few minutes, then More > Reading Stats | Today ring, streak and this month's calendar |
-| Any page in a book | Thin bar at the bottom with chapter ticks |
-| Search keyboard | Centred on screen |
+| Boot the reader | "3.0" under the orbit picture; Settings shows version 3.0 |
+| Home (Orbit-A/B/C) | No More tile; a stats tile with a ring, streak and 7 bars. Confirm opens Reading Stats |
+| Settings > System > Network | **File Transfer** is there and starts the web server as before |
+| Library | Tabs Books, Recent, Authors, Bookmarks (no New) |
+| Library: Up on the first row, then Left/Right | Focus moves onto the tabs; Left/Right change tab; Down/Confirm go back to the list |
+| Library: hold Confirm on a book | Options menu opens. A short press opens the book |
+| Library > Bookmarks tab | All bookmarks; Confirm opens the book at that place |
+| Online Library | Search first, All books second; no stray outlines from the previous screen |
+| Online Library > All books | The A–Z list (not "Get now") |
+| Online Library > Update catalog (on Wi-Fi), then back | The row shows today's date and time; before that it shows "N books saved" |
+| Any two-line book list | 12 books per screen |
+| Search keyboard | Keys react on press; hold Confirm for the alternate character, hold Up for the cursor, hold Delete to clear |
+
+**Earlier features to re-check:** downloads while charging, next in series on the Book finished screen, chapter marks
+on the bottom bar, and the "~N days" battery estimate.
 
 **Please tell me:**
+- Anything that looks crowded with the tighter lists.
+- Whether "Last updated" shows a sensible time after a charging run.
 - Whether the reader ever wakes or redraws when it shouldn't.
-- Whether downloads while charging arrive.
-- How the battery-days figure compares with real life.
 
 A Speed check report (Settings > System > Speed check > Confirm) after a few days helps too.
 

@@ -403,10 +403,10 @@ void GlobalBookmarksActivity::drawFooter() {
   const bool onBar = nav.selected < 0;
   const bool onBookmark = !onBar && nav.selected < listCount() && !isSeparatorRow(nav.selected);
   const char* confirm = onBar ? (rows.empty() ? "" : tr(STR_SELECT)) : onBookmark ? tr(STR_OPEN) : "";
-  const char* left = onBar        ? FileBrowserActivity::libraryTabLabel(libraryTabStep(LibraryTab::Bookmarks, -1))
+  const char* left = onBar        ? "\xC2\xAB"
                      : onBookmark ? tr(STR_RENAME)
                                   : "";
-  const char* right = onBar        ? FileBrowserActivity::libraryTabLabel(libraryTabStep(LibraryTab::Bookmarks, 1))
+  const char* right = onBar        ? "\xC2\xBB"
                       : onBookmark ? tr(STR_DELETE)
                                    : "";
   const auto hints = mappedInput.mapHints(tr(STR_HOME), confirm, left, right, onBar ? "" : tr(STR_DIR_UP),

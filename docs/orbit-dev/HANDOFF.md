@@ -1,4 +1,4 @@
-# x4-orbit handoff — updated 2026-11-15 (stats merged; catalog still running). Read this INSTEAD of re-exploring.
+# x4-orbit handoff — updated 2026-11-15: backlog 1-11 DONE and released as v3.0. Read this INSTEAD of re-exploring.
 
 Repo ~/witchhunt (fork riverac11-lgtm/x4-orbit). Released: `x4-orbit` = 4baf26e = v2.41-orbit.2
 (release x4-orbit-latest). Integration branch: `orbit-next` (pushed). Never force-push; fast-forward
@@ -44,7 +44,10 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
 
 ## Released: v2.41-orbit.4 (x4-orbit = 6e8a196) — All books A-Z (<=1500) added after .3.
 
-## BACKLOG — the user asked to WAIT until he says to implement these
+## Released: v3.0 (x4-orbit = orbit-next) — the whole backlog below is DONE (merged orbit-lib, orbit-kbd,
+orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only: custom fast keyboard waveform.
+
+## BACKLOG (DONE in v3.0, kept for reference)
 1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
    More tile/row with a Reading Stats GRAPHIC (e.g. today ring vs goal + streak + mini week bars, from
    ReadingCalendar/StatsDraw) on all three Orbit homes; Confirm opens Reading Stats (deeper view).
