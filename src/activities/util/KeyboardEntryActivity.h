@@ -24,6 +24,7 @@
 #include <utility>
 
 #include "../Activity.h"
+#include "KeyboardPressUndo.h"
 #include "util/ButtonNavigator.h"
 
 enum class InputType { Text, Password, Url };
@@ -89,6 +90,14 @@ class KeyboardEntryActivity : public Activity {
   int selCol = 0;
   bool confirmHeld = false;
   bool confirmLongHandled = false;
+  // Keys act when their button goes down (see KeyboardPressUndo.h for why). The key Confirm
+  // acted on at press, so a hold reads that key and not whatever the press left selected
+  // (a mode key re-clamps the selection onto another layer). 0 = nothing to follow up.
+  int16_t confirmValue = 0;
+  KeyboardPressUndo pressUndo;
+  // Up moves the selection on press; holding it on into cursor mode puts the selection back.
+  int upFromRow = 0;
+  int upFromCol = 0;
 
   bool cursorMode = false;
   bool togglePos = false;
@@ -99,8 +108,6 @@ class KeyboardEntryActivity : public Activity {
   size_t typedEnd = std::string::npos;
   bool upHeld = false;
   bool upLongHandled = false;
-  bool downHeld = false;
-  bool downLongHandled = false;
   bool rightHeld = false;
   bool rightLongHandled = false;
   size_t savedCursorPos = 0;
@@ -134,7 +141,6 @@ class KeyboardEntryActivity : public Activity {
   // Handles one key activation by stable key id. Returns true when the screen
   // needs a repaint; OK and cancel finish the activity instead.
   bool activateValue(int16_t value, bool longPress);
-  bool clearAllOrAltOnSelected();
   void insertUtf8(const char* out);
   bool backspaceUtf8();
   static size_t utf8Prev(const std::string& s, size_t pos);

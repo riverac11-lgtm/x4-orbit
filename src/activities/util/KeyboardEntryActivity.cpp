@@ -337,24 +337,6 @@ bool KeyboardEntryActivity::activateValue(const int16_t value, const bool longPr
   }
 }
 
-bool KeyboardEntryActivity::clearAllOrAltOnSelected() {
-  const fui::KeyboardKey* key = selectedKey();
-  if (!key) return false;
-  if (key->value == fui::QWERTY_KEY_BACKSPACE) {
-    text.clear();
-    cursorPos = 0;
-    typedEnd = std::string::npos;
-    return true;
-  }
-  // Explicit alternates and the letter case flip, same as a touch long-press.
-  const char* alt = fui::keyboardAltOutputFor(currentLayout(), key->value);
-  if (alt) {
-    insertUtf8(alt);
-    return true;
-  }
-  return false;
-}
-
 std::string KeyboardEntryActivity::displayTextForCurrentState() const {
   if (inputType != InputType::Password || passwordVisible) {
     return text;
@@ -548,9 +530,15 @@ void KeyboardEntryActivity::loop() {
 
   using Direction = MappedInputManager::Direction;
 
+  // Up and Down move on the press, like Left and Right: a refresh costs half a second, and
+  // waiting for the release added the whole time the finger was down on top of it.
   if (!cursorMode && mappedInput.wasLogicalPressed(Direction::Up)) {
     upHeld = true;
     upLongHandled = false;
+    upFromRow = selRow;
+    upFromCol = selCol;
+    moveSelectionRow(-1);
+    requestUpdate();
   }
 
   if (upHeld && !upLongHandled && mappedInput.isLogicalPressed(Direction::Up) &&
@@ -558,39 +546,29 @@ void KeyboardEntryActivity::loop() {
     cursorMode = true;
     upLongHandled = true;
     hintVisible = true;
+    // The press moved the selection, but the hold meant "edit the entry": cursor mode hides the
+    // selection, and the way back should find it where the hold began.
+    selRow = upFromRow;
+    selCol = upFromCol;
+    clampSelection();
     requestUpdate();
   }
 
   if (mappedInput.wasLogicalReleased(Direction::Up)) {
-    if (upHeld && !upLongHandled && !cursorMode) {
-      moveSelectionRow(-1);
-      requestUpdate();
-    }
     upHeld = false;
     upLongHandled = false;
   }
 
   if (mappedInput.wasLogicalPressed(Direction::Down)) {
-    downHeld = true;
     if (cursorMode) {
       togglePos = false;
       passwordVisible = false;
       cursorMode = false;
       hintVisible = false;
-      downLongHandled = true;
-      requestUpdate();
     } else {
-      downLongHandled = false;
-    }
-  }
-
-  if (mappedInput.wasLogicalReleased(Direction::Down)) {
-    if (downHeld && !downLongHandled && !cursorMode) {
       moveSelectionRow(1);
-      requestUpdate();
     }
-    downHeld = false;
-    downLongHandled = false;
+    requestUpdate();
   }
 
   buttonNavigator.onPressAndContinuous({MappedInputManager::buttonFor(Direction::Left)}, [this] {
@@ -650,40 +628,74 @@ void KeyboardEntryActivity::loop() {
     rightLongHandled = false;
   }
 
+  // Confirm acts on the press too. A hold still means something on two kinds of key: on a
+  // character it is the other character (case flip, accent), which replaces the one the press
+  // typed; on Del, held long, it clears the field. The keys that switch layers or finish have
+  // no hold, so the press is all they need.
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     confirmHeld = true;
     confirmLongHandled = false;
+    confirmValue = 0;
+    pressUndo.disarm();
+    const fui::KeyboardKey* key = cursorMode ? nullptr : selectedKey();
+    if (key) {
+      confirmValue = key->value;
+      switch (confirmValue) {
+        case fui::QWERTY_KEY_SHIFT:
+        case fui::QWERTY_KEY_MODE:
+        case fui::QWERTY_KEY_LANG:
+        case fui::QWERTY_KEY_ENTER:
+        case fui::QWERTY_KEY_BACKSPACE:
+        case URL_PANEL_KEY:
+          break;
+        default:
+          pressUndo.arm(text, cursorPos, typedEnd, shifted);
+          break;
+      }
+      if (activateValue(confirmValue, false)) {
+        requestUpdate();
+      }
+    }
   }
 
-  const fui::KeyboardKey* selKey = selectedKey();
-  const bool selectedDel = selKey && selKey->value == fui::QWERTY_KEY_BACKSPACE;
-
-  if (confirmHeld && !confirmLongHandled && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
-      mappedInput.getHeldTime() > DEL_LONG_PRESS_MS && selectedDel) {
-    clearAllOrAltOnSelected();
-    confirmLongHandled = true;
-    requestUpdate();
-  }
-
-  if (confirmHeld && !confirmLongHandled && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
-      mappedInput.getHeldTime() > LONG_PRESS_MS) {
-    if (!selectedDel && clearAllOrAltOnSelected()) {
-      requestUpdate();
+  if (confirmHeld && !confirmLongHandled && mappedInput.isPressed(MappedInputManager::Button::Confirm)) {
+    const unsigned long held = mappedInput.getHeldTime();
+    if (confirmValue == fui::QWERTY_KEY_BACKSPACE) {
+      if (held > DEL_LONG_PRESS_MS) {
+        text.clear();
+        cursorPos = 0;
+        typedEnd = std::string::npos;
+        confirmLongHandled = true;
+        requestUpdate();
+      }
+    } else if (pressUndo.armed && held > LONG_PRESS_MS) {
       confirmLongHandled = true;
+      // On the layer the press typed on: a typed letter releases Shift, and the case flip has to
+      // come from the shifted layer it was pressed on, exactly as before keys acted on press.
+      if (pressUndo.revert(text, cursorPos, typedEnd, shifted)) {
+        clampSelection();
+        const char* alt = fui::keyboardAltOutputFor(currentLayout(), confirmValue);
+        if (alt) {
+          insertUtf8(alt);
+          requestUpdate();
+        } else {
+          // No other character: type the plain one again, which leaves the field exactly as the
+          // press did, so there is nothing new to put on the panel.
+          activateValue(confirmValue, false);
+        }
+      }
     }
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    if (confirmHeld && !confirmLongHandled && !cursorMode) {
-      if (selKey && activateValue(selKey->value, false)) {
-        requestUpdate();
-      }
-    } else if (confirmHeld && !confirmLongHandled && cursorMode && inputType == InputType::Password && togglePos) {
+    if (confirmHeld && !confirmLongHandled && cursorMode && inputType == InputType::Password && togglePos) {
       passwordVisible = !passwordVisible;
       requestUpdate();
     }
     confirmHeld = false;
     confirmLongHandled = false;
+    confirmValue = 0;
+    pressUndo.disarm();
   }
 
   if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
