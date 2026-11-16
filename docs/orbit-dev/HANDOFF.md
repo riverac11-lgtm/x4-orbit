@@ -50,6 +50,15 @@ orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only:
 ## NEXT TO-DO — the user asked to WAIT until he says to implement
 1. Online Library > All books: Left/Right = page up/down, moving the list by one whole screen of items
    (12 rows on Orbit two-line lists). Labels on the Left/Right hints. (Requested 2026-11-15 after v3.0.)
+2. Large images: drop "Large Image / Press Confirm to load" (ImageBlock::renderPlaceholder Placeholder::Large,
+   >256 KB, setting largeImagePlaceholder; Confirm handler EpubReaderActivity.cpp ~1067). Instead draw a
+   "Loading image..." box, decode in the background (existing warm lane already forceLoads), and redraw the
+   page by itself when the cache lands. Confirm always opens the reader menu. (2026-11-16)
+3. Prepare books while charging: after ChargeDelivery downloads, pre-decode every image (BW + grey caches as the
+   reader would) for newly downloaded books AND the book currently being read, so first visits are cache hits.
+   Respect the 10-min run cap / unplug abort; resume next charge. (2026-11-16)
+4. Speed check report: add per-image timings (entry, bytes, format incl. progressive/baseline/PNG, source WxH,
+   decode ms, cache hit/miss) so image speed work targets the real slow case. (2026-11-16)
 
 ## BACKLOG (DONE in v3.0, kept for reference)
 1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
