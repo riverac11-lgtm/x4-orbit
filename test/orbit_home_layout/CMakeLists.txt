@@ -4,6 +4,10 @@ add_executable(OrbitHomeLayoutTest
   FolderDisplayNameTest.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitChrome.cpp
   ${REPO_ROOT}/src/components/themes/orbit/OrbitHomeDraw.cpp
+  # The Reading Stats graphic on the home screens draws its ring with StatsDraw.
+  ${REPO_ROOT}/src/components/StatsDraw.cpp
+  ${REPO_ROOT}/src/util/ChapterMarks.cpp
+  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
   ${REPO_ROOT}/lib/GfxRenderer/TextTruncation.cpp
   ${REPO_ROOT}/lib/EpdFont/EpdFont.cpp
   ${BIDI_MARK_SOURCES}
