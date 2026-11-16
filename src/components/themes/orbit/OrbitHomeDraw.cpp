@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "components/StatsDraw.h"
 #include "fontIds.h"
 
 namespace OrbitHomeDraw {
@@ -92,6 +93,124 @@ void cover(GfxRenderer& r, const View& v, const int index, const Box& slot) {
   if (v.drawCover != nullptr) v.drawCover(v.coverCtx, r, index, slot);
 }
 
+// ---- The Reading Stats graphic -----------------------------------------------------------------
+
+int statsPermille(const View::Stats& s) {
+  if (s.goalMinutes <= 0 || s.minutes <= 0) return 0;
+  return std::min(1000, s.minutes * 1000 / s.goalMinutes);
+}
+
+// The day's ring on a white disc (it stays readable on a selected tile's grey), the minutes in it when
+// there is room.
+void statsRing(const GfxRenderer& r, const View::Stats& s, const int cx, const int cy, const int radius,
+               const int fontId, const bool number) {
+  disc(r, cx, cy, radius + 2, false);
+  StatsDraw::drawRing(r, cx, cy, radius, std::max(3, radius / 5), statsPermille(s));
+  if (!number) return;
+  char minutes[8];
+  snprintf(minutes, sizeof(minutes), "%d", std::clamp(s.minutes, 0, 999));
+  const int w = r.getTextWidth(fontId, minutes, EpdFontFamily::BOLD);
+  r.drawText(fontId, cx - w / 2, cy - r.getLineHeight(fontId) / 2, minutes, true, EpdFontFamily::BOLD);
+}
+
+// The last seven days as bars, oldest first, scaled to the larger of the goal and the week's best day,
+// with the goal as a dotted line; a day without reading is a short stroke on the baseline.
+void weekBars(const GfxRenderer& r, const View::Stats& s, const Box& b) {
+  if (b.empty()) return;
+  int top = s.goalMinutes;
+  for (const uint16_t m : s.week) top = std::max<int>(top, m);
+  if (top <= 0) top = 1;
+  const int gap = std::max(2, b.w / 20);
+  const int barW = std::max(2, (b.w - 6 * gap) / 7);
+  for (int i = 0; i < 7; ++i) {
+    const int x = b.x + i * (barW + gap);
+    const int h = s.week[i] == 0 ? 1 : std::max(3, b.h * std::min<int>(s.week[i], top) / top);
+    r.fillRect(x, b.y + b.h - h, barW, h, true);
+  }
+  if (s.goalMinutes > 0) {
+    const int gy = b.y + b.h - b.h * s.goalMinutes / top;
+    for (int x = b.x; x < b.x + 7 * (barW + gap) - gap; x += 3) r.drawPixel(x, gy, true);
+  }
+}
+
+bool isStats(const View& v, const int i) { return v.menuIcon[i] == UIIcon::Stats; }
+
+// A's tile: the ring with the minutes in it, "Today / of 30 min / 6-day streak" beside it, the week's
+// bars across the bottom. A short tile (many entries) keeps the ring and one line.
+void statsTile(const GfxRenderer& r, const View& v, const Box& t, const bool selected,
+               const OrbitHomeLayout::Fonts& fonts) {
+  const View::Stats& s = v.stats;
+  const auto style = selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
+  if (!s.hasHistory) {
+    const int iconY = t.h >= 100 ? t.y + t.h * 2 / 5 : t.y + t.h / 2;
+    if (t.h >= 100) {
+      drawLineIcon(r, UIIcon::Stats, t.x + t.w / 2, t.y + t.h / 3, 40);
+      const auto lines = r.wrappedText(SMALL_FONT_ID, s.empty, t.w - 24, 2);
+      int y = t.y + t.h * 3 / 5;
+      for (const auto& line : lines) {
+        centredText(r, SMALL_FONT_ID, Box{t.x + 12, 0, t.w - 24, 0}, y, line.c_str());
+        y += fonts.small;
+      }
+    } else {
+      drawLineIcon(r, UIIcon::Stats, t.x + 20 + 16, iconY, 32);
+      leftText(r, SMALL_FONT_ID, t.x + 64, t.y + (t.h - fonts.small) / 2, t.w - 72, s.empty);
+    }
+    return;
+  }
+  if (t.h < 100) {
+    const int radius = std::min(18, t.h / 2 - 6);
+    statsRing(r, s, t.x + 16 + radius, t.y + t.h / 2, radius, UI_10_FONT_ID, false);
+    const int tx = t.x + 32 + 2 * radius;
+    leftText(r, UI_10_FONT_ID, tx, t.y + (t.h - fonts.body) / 2, t.x + t.w - 8 - tx, s.compact, style);
+    return;
+  }
+  const int barsH = std::clamp(t.h / 6, 14, 26);
+  const Box bars{t.x + 18, t.y + t.h - 16 - barsH, t.w - 36, barsH};
+  const int ringTop = t.y + 14;
+  const int radius = std::clamp((bars.y - 12 - ringTop) / 2, 16, 34);
+  const int cx = t.x + 18 + radius;
+  const int cy = ringTop + radius;
+  statsRing(r, s, cx, cy, radius, radius >= 26 ? UI_12_FONT_ID : UI_10_FONT_ID, true);
+  const int tx = cx + radius + 12;
+  const int tw = t.x + t.w - 10 - tx;
+  int y = cy - (fonts.small + fonts.body + fonts.small + 4) / 2;
+  leftText(r, SMALL_FONT_ID, tx, y, tw, s.heading);
+  y += fonts.small + 2;
+  leftText(r, UI_10_FONT_ID, tx, y, tw, s.caption, style);
+  y += fonts.body + 2;
+  leftText(r, SMALL_FONT_ID, tx, y, tw, s.streak);
+  weekBars(r, s, bars);
+}
+
+// C's row: the ring, the day and the streak on two lines, the week's bars before the chevron.
+void statsRow(const GfxRenderer& r, const View& v, const Box& row, const bool selected,
+              const OrbitHomeLayout::Fonts& fonts) {
+  const View::Stats& s = v.stats;
+  const int cy = row.y + row.h / 2;
+  const int tx = row.x + 72;
+  const auto style = selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
+  if (!s.hasHistory) {
+    drawLineIcon(r, UIIcon::Stats, row.x + 36, cy, 32);
+    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, row.x + row.w - 40 - tx, s.empty, style);
+    return;
+  }
+  const int radius = std::min(22, row.h / 2 - 3);
+  statsRing(r, s, row.x + 36, cy, radius, UI_10_FONT_ID, radius >= 18);
+  const int barsW = 62;
+  const int barsH = std::min(28, row.h - 20);
+  const Box bars{row.x + row.w - 40 - barsW, cy - barsH / 2, barsW, barsH};
+  const int tw = bars.x - 12 - tx;
+  const bool twoLines = row.h >= fonts.body + fonts.small + 6;
+  if (twoLines) {
+    const int y = cy - (fonts.body + fonts.small + 2) / 2;
+    leftText(r, UI_10_FONT_ID, tx, y, tw, s.today, style);
+    leftText(r, SMALL_FONT_ID, tx, y + fonts.body + 2, tw, s.streak);
+  } else {
+    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, tw, s.today, style);
+  }
+  weekBars(r, s, bars);
+}
+
 // ---- A: card + tiles ---------------------------------------------------------------------------
 
 void drawA(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout::Fonts& fonts) {
@@ -137,6 +256,10 @@ void drawA(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
     const bool selected = v.selected == bookCount + i;
     if (selected) r.fillRoundedRect(t.x, t.y, t.w, t.h, kTileRadius, Color::LightGray);
     r.drawRoundedRect(t.x, t.y, t.w, t.h, selected ? 3 : 2, kTileRadius, true);
+    if (isStats(v, i)) {
+      statsTile(r, v, t, selected, fonts);
+      continue;
+    }
     const auto style = selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
     if (t.h >= 100) {
       drawIcon(r, v, i, t.x + t.w / 2, t.y + t.h * 2 / 5, f.iconSize);
@@ -194,12 +317,19 @@ void drawB(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
     const Box& t = f.menu[i];
     const bool selected = v.selected == bookCount + i;
     if (selected) r.fillRoundedRect(t.x, t.y, t.w, t.h, kTileRadius, Color::LightGray);
-    drawIcon(r, v, i, t.x + t.w / 2, t.y + t.h * 9 / 25, f.iconSize);
+    // Reading Stats: an icon-size ring of the day over "18/30 min" (with no reading yet, its icon and
+    // name as any other entry).
+    const bool stats = isStats(v, i) && v.stats.hasHistory;
+    if (stats) {
+      statsRing(r, v.stats, t.x + t.w / 2, t.y + t.h * 9 / 25, f.iconSize / 2, UI_10_FONT_ID, false);
+    } else {
+      drawIcon(r, v, i, t.x + t.w / 2, t.y + t.h * 9 / 25, f.iconSize);
+    }
     // A dock slot is narrow: a two-word label ("Online Library") takes a second line rather than
     // losing its second word.
     const auto style = selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
     const Box labelBox{t.x - 4, 0, t.w + 8, 0};
-    const auto lines = r.wrappedText(UI_10_FONT_ID, v.menuLabel[i], labelBox.w, 2, style);
+    const auto lines = r.wrappedText(UI_10_FONT_ID, stats ? v.stats.compact : v.menuLabel[i], labelBox.w, 2, style);
     int ly = t.y + t.h * 7 / 10 - fonts.body / 2 - (static_cast<int>(lines.size()) - 1) * fonts.body / 2;
     for (const auto& line : lines) {
       centredText(r, UI_10_FONT_ID, labelBox, ly, line.c_str(), style);
@@ -251,12 +381,16 @@ void drawC(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
     const bool selected = v.selected == bookCount + i;
     if (selected) r.fillRoundedRect(row.x, row.y, row.w, row.h, kRowRadius, Color::LightGray);
     const int cy = row.y + row.h / 2;
-    drawIcon(r, v, i, row.x + 36, cy, f.iconSize);
     const int tx = row.x + 72;
-    const int fontId = row.h >= 44 ? UI_12_FONT_ID : UI_10_FONT_ID;
-    const int lh = row.h >= 44 ? fonts.title : fonts.body;
-    leftText(r, fontId, tx, cy - lh / 2, row.x + row.w - 40 - tx, v.menuLabel[i],
-             selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
+    if (isStats(v, i)) {
+      statsRow(r, v, row, selected, fonts);
+    } else {
+      drawIcon(r, v, i, row.x + 36, cy, f.iconSize);
+      const int fontId = row.h >= 44 ? UI_12_FONT_ID : UI_10_FONT_ID;
+      const int lh = row.h >= 44 ? fonts.title : fonts.body;
+      leftText(r, fontId, tx, cy - lh / 2, row.x + row.w - 40 - tx, v.menuLabel[i],
+               selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
+    }
     drawChevron(r, row.x + row.w - 20, cy, 14, true);
     // A hairline between rows; none against the selection, whose fill already separates it.
     const bool nextSelected = v.selected == bookCount + i + 1;

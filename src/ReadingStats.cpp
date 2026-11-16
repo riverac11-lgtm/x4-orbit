@@ -725,6 +725,9 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   float pace = 0.0f;
   uint32_t todaySeconds = 0;
   uint16_t dailyMinutes = 0;
+  uint16_t streak = 0;
+  uint16_t week[kRecentWeekDays] = {};
+  bool hasHistory = false;
   ReadResult result = prepare();
   if (result == ReadResult::Ok) {
     auto meta = Meta::create();
@@ -752,6 +755,11 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
       meta->readTotals(totals);
       todaySeconds = secondsOn(totals.globalDays, today);
       dailyMinutes = ReadingCalendar::averageDailyMinutes(totals.globalDays, today);
+      streak = currentStreakIn(totals.globalDays, today);
+      hasHistory = totals.totalSeconds > 0 || !totals.globalDays.empty();
+      for (int i = 0; i < kRecentWeekDays && today > kRecentWeekDays; ++i) {
+        week[i] = static_cast<uint16_t>(secondsOn(totals.globalDays, today - (kRecentWeekDays - 1 - i)) / 60);
+      }
     }
   }
   if (result != ReadResult::Ok) {
@@ -761,6 +769,9 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   pooledPace_ = pace;
   todaySeconds_ = todaySeconds;
   dailyMinutes_ = dailyMinutes;
+  streak_ = streak;
+  std::copy(week, week + kRecentWeekDays, week_);
+  hasHistory_ = hasHistory;
 }
 
 const ReadingStatsStore::RecentSnapshot* ReadingStatsStore::recent(const std::string& docId) const {
