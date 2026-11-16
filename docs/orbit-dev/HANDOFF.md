@@ -59,6 +59,12 @@ orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only:
    Respect the 10-min run cap / unplug abort; resume next charge. (2026-11-16)
 4. Speed check report: add per-image timings (entry, bytes, format incl. progressive/baseline/PNG, source WxH,
    decode ms, cache hit/miss) so image speed work targets the real slow case. (2026-11-16)
+5. Completed books free their space: when a book lands in /COMPLETED, delete its heavy cache
+   (/.crosspoint/epub_<hash of path>/ : laid-out sections, image pixel caches, extracted images, covers?)
+   but KEEP finished status, progress, bookmarks, reading stats, and the Library/recents row + a cover thumb.
+   Today moveFinishedBookToCompleted (FinishedBookActivity.cpp ~510) calls BookRelocation::bookMoved, which
+   MOVES the cache along. Also cover books moved into /COMPLETED by hand (file browser / web transfer) --
+   e.g. a sweep at boot or on Library open. Reopening a completed book just rebuilds the cache. (2026-11-16)
 
 ## BACKLOG (DONE in v3.0, kept for reference)
 1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
