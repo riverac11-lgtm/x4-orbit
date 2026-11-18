@@ -54,7 +54,7 @@ Agents on branches orbit-lists (items 1,6), orbit-imgui (2,4), orbit-predecode (
 Then: merge --no-ff into orbit-next, combined build+tests, set [orbit] version = 3.1, release notes, push
 orbit-next:refs/heads/x4-orbit (push URL https://github.com/riverac11-lgtm/x4-orbit), verify + send bin.
 
-## v3.2 IN PROGRESS (user said "Implement" 2026-11-18): agents orbit-stats (item 1), orbit-clock (item 2);
+## v3.2 RELEASED (stats rework + clock fix; flash 98.7% = 6471673; 5357 host tests pass). Was: IN PROGRESS (user said "Implement" 2026-11-18): agents orbit-stats (item 1), orbit-clock (item 2);
 ## worktrees ~/wt-stats, ~/wt-clock; briefs docs/orbit-dev/briefs/v32-*.md. Then merge, build (<=98.8%), tests,
 ## [orbit] version = 3.2, release notes, push orbit-next:refs/heads/x4-orbit, verify + send bin.
 ## NEXT TO-DO (v3.2)

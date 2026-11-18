@@ -1,29 +1,62 @@
-# x4-orbit v3.1
+# x4-orbit v3.2
 
 Custom firmware for the **Xteink X4 and X3**, built for reading EPUBs and pulling books from a home OPDS library
 (BookOrbit). Based on [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader) 2.41-dev. Personal,
 unofficial build: not supported by the Witch(hunt) or CrossPoint projects. Use at your own risk.
 
-The file is called `x4-orbit-v3.1.bin`, and the version shows as **3.1** on the boot screen and in Settings.
+The file is called `x4-orbit-v3.2.bin`, and the version shows as **3.2** on the boot screen and in Settings.
 
 ---
 
-## New in v3.1
+## New in v3.2
 
-### 1. Page through long lists with Left/Right (Online Library)
+### 1. Reading Stats, reworked: no more calendar
+The X4's clock stops while it sleeps (with **Use Clock** off), so anything based on days was often wrong. The
+new screen doesn't use the date at all. Open it from the stats tile on Home (Confirm). Top to bottom:
+- **Your book:** a ring with how far you are (e.g. 41%), **"About 3 h 7 min left"** and **"~6 sessions at your
+  pace"**, worked out from how fast you've read this book and your usual session length. It appears once you've
+  read the book for 10 minutes and 2%; until then it says "Keep reading to see time left". Under it, **"Last
+  session: 42 min, 42 pages"**.
+- **Recent sessions:** bars for your last 14 sittings (newest on the right) with your average and longest.
+  Sittings under a minute don't count. After updating this starts empty and fills as you read.
+- **Milestones:** hours read, pages turned and books finished, each with a bar to the next mark
+  (e.g. "Next: 50 hours · 12 h 40 min to go"). Marks: 10, 25, 50, 100, 250, 500... hours; 1,000, 2,500, 5,000,
+  10,000... pages; 5, 10, 15, 25, 50, 100... books.
+- **Top books:** your most-read books. The same book saved twice (e.g. two copies) is now one line with the
+  times added together.
+- **Confirm** still opens All books. Left/Right do nothing now.
+
+**Home stats tile:** a small ring for your current book and the milestone you're closest to ("Next milestone ·
+50 hours · 13 h to go").
+
+**Removed:** the month calendar, the daily streak, "today", the **Daily Reading Goal** setting, and Orbit-B's
+"Read N min today" line.
+
+### 2. The clock fixes itself whenever the reader is online
+With Use Clock off, the date falls behind while the reader sleeps. Now, every time it connects to Wi-Fi (a
+charging run, Online Library, Get now, File Transfer, Sync Time...), it fetches the correct time if its clock
+might be off. If that lookup fails, it takes the time from your BookOrbit server's reply instead. No extra
+battery use: it only happens when Wi-Fi is already on. "Last updated" and file dates are right after each
+charge.
+
+---
+
+## From v3.1
+
+#### 1. Page through long lists with Left/Right (Online Library)
 In **All books**, search results, a series, an author's books, Waiting and New (and the Series / Authors name
 lists), **Left/Right now jump a whole screen** (12 books) back or forward. The button labels say "« Page" /
 "Page »". At the ends it stops on the first or last book. Up/Down still move one book. The Online Library's
 first menu and the Get now / Get when charging menu are unchanged.
 
-### 2. Big pictures load by themselves
+#### 2. Big pictures load by themselves
 Pictures over 256 KB used to show a box saying **"Large Image / Press Confirm to load"**. Now the box says
 **"Loading image..."**, the reader decodes it in the background, and the page redraws itself once when it's
 ready. You don't press anything, and **Confirm always opens the reader menu**. If you turn the page before it
 finishes, nothing redraws. If memory is very tight, the page decodes it directly instead (or shows the existing
 "not enough memory" box).
 
-### 3. Pictures prepared while charging
+#### 3. Pictures prepared while charging
 When the reader is charging (the same run that downloads books, and only with **Download while charging** on),
 it now also prepares the pictures for **the book you were reading**: the rest of the current chapter and the
 next 2 chapters, so those image pages open quickly the first time.
@@ -35,13 +68,13 @@ next 2 chapters, so those image pages open quickly the first time.
   (over 256 KB), are left for the reader to do when you get there. Change font or margins after closing the book
   and the prepared pictures are simply redone.
 
-### 4. Picture timings in the Speed check report
+#### 4. Picture timings in the Speed check report
 **Settings > System > Speed check** now has an **IMAGES** section: the last 16 pictures shown, each with its file
 size, type (baseline JPEG, progressive JPEG, PNG, GIF), size in pixels, how long it took, and whether it was
 decoded on the page turn, in the background, or came from the saved copy. Totals at the end. Send me one after
 reading a picture-heavy book.
 
-### 5. Finished books free their space
+#### 5. Finished books free their space
 When a book goes into **/COMPLETED**, the reader deletes the files it built for reading it (laid-out chapters,
 decoded pictures, fonts and styles copied out of the book). It keeps the book, that it's finished, your place,
 bookmarks, stats, its Library entry and its cover. Reopening it later is slower the first time, as it lays the
@@ -51,7 +84,7 @@ book out again.
 - **First time after updating:** books already in /COMPLETED are cleaned up a few at a time, so the first few
   Library opens can pause for up to about 1.5 s.
 
-### 6. "On device" is accurate, finished books show "Read"
+#### 6. "On device" is accurate, finished books show "Read"
 - Books in **/COMPLETED** (and in folders one level inside the download folder) now count as on the reader.
   They show **Read** in the Online Library, and **Get all missing**, the **Send to X4** collection and the
   waiting list no longer download them again.
@@ -63,7 +96,7 @@ book out again.
 
 ## From v3.0
 
-#### 1. Home: "More" is gone, a reading-stats tile takes its place
+#### 1. Home: "More" is gone, a reading-stats tile takes its place (its contents changed in v3.2)
 On Orbit-A, B and C the **More** tile is replaced by a small **reading stats picture**: a ring showing today's reading
 against your daily goal, your streak, and seven little bars for the last seven days. Confirm on it opens **Reading
 Stats** (today card, month calendar; Left/Right change month).
@@ -175,7 +208,7 @@ When you finish a book and the next one in the series isn't on the reader, the *
 **Get next when charging: Title (#n)**, using your saved catalog. It goes on the waiting list. (If the next book is
 already on the reader, the existing **Open the next book** row shows instead.)
 
-#### 5. Daily goal and reading calendar (Home > stats tile > Reading Stats)
+#### 5. Daily goal and reading calendar (replaced in v3.2)
 - **Today card:** a ring filling toward your daily goal ("18 of 30 min"), how much is left, and your streak.
 - **Month calendar:** each day is shaded by how much you read, from light grey to black when you met your goal.
   **Left/Right** change the month.
@@ -200,11 +233,25 @@ already on the reader, the existing **Open the next book** row shows instead.)
 
 ---
 
-## Test checklist (v3.1)
+## Test checklist (v3.2)
 
 | Try this | You should see |
 | --- | --- |
-| Boot the reader | "3.1" under the orbit picture |
+| Boot the reader | "3.2" under the orbit picture |
+| Home stats tile | A small ring and "Next milestone ..." |
+| Confirm on it | Your book's ring with time left (after 10 min / 2% of reading), Recent sessions, Milestones, Top books |
+| Read for a few minutes, back to Reading Stats | A new bar on the right; "Last session" shows it |
+| Top books | "The Talisman" only once |
+| Settings > Reader | No Daily Reading Goal |
+| Put the reader on the charger for a run, or open the Online Library | The date and time are right afterwards (status bar clock, "Last updated") |
+
+**Please tell me:** whether the time-left estimate looks believable after a few sessions, and whether the date ever
+stays wrong after a charge.
+
+### v3.1 checklist
+
+| Try this | You should see |
+| --- | --- |
 | Online Library > All books > Right, Right, Left | Jumps 12 books forward each press, back one screen; hints "« Page" / "Page »" |
 | Same in Search results, a series, an author | Same paging |
 | A book page with a big picture | "Loading image..." box, then the picture appears by itself. Confirm opens the menu |
