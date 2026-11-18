@@ -443,11 +443,6 @@ inline void buildSettings(const RowSink& emit) {
            .withSubmenu(StrId::STR_READING_AIDS));
   emit(SettingInfo::Toggle(StrId::STR_INLINE_FOOTNOTE_PREVIEWS, &CrossPointSettings::inlineFootnotePreviews,
                            "inlineFootnotePreviews", StrId::STR_CAT_READER));
-  // The order is ReadingCalendar::kGoalMinutes'.
-  emit(SettingInfo::Enum(StrId::STR_DAILY_GOAL, &CrossPointSettings::readingGoal,
-                         {StrId::STR_GOAL_OFF, StrId::STR_GOAL_10, StrId::STR_GOAL_15, StrId::STR_GOAL_20,
-                          StrId::STR_GOAL_30, StrId::STR_GOAL_45, StrId::STR_GOAL_60},
-                         "readingGoal", StrId::STR_CAT_READER));
 
   // --- Controls ---
   // --- Button Actions (short / double / long press per logical button) ---

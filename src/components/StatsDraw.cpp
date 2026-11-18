@@ -2,12 +2,12 @@
 
 #include <GfxRenderer.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
 #include "fontIds.h"
 #include "util/ChapterMarks.h"
-#include "util/ReadingCalendar.h"
 
 namespace StatsDraw {
 
@@ -16,16 +16,6 @@ namespace {
 void centred(const GfxRenderer& r, const int font, const int cx, const int y, const char* text,
              const EpdFontFamily::Style style = EpdFontFamily::REGULAR, const bool black = true) {
   r.drawText(font, cx - r.getTextWidth(font, text, style) / 2, y, text, black, style);
-}
-
-// A thin chevron, `size` px tall, centred on (cx, cy).
-void chevron(const GfxRenderer& r, const int cx, const int cy, const int size, const bool right) {
-  const int half = size / 2;
-  const int dx = right ? -half / 2 : half / 2;
-  for (int t = 0; t < 2; ++t) {
-    r.drawLine(cx + dx + t, cy - half, cx - dx + t, cy, true);
-    r.drawLine(cx - dx + t, cy, cx + dx + t, cy + half, true);
-  }
 }
 
 }  // namespace
@@ -66,102 +56,96 @@ void drawRing(const GfxRenderer& r, const int cx, const int cy, const int radius
   }
 }
 
-int drawToday(const GfxRenderer& r, const int x, const int y, const int width, const Today& today) {
-  constexpr int kRadius = 56;
-  constexpr int kThickness = 10;
+int drawBook(const GfxRenderer& r, const int x, const int y, const int width, const Book& book) {
+  constexpr int kRadius = 50;
+  constexpr int kThickness = 9;
   const int cx = x + kRadius + 4;
-  const int cy = y + kRadius + 2;
-  int permille = 1000;
-  if (today.goalMinutes > 0) {
-    permille = today.minutes >= today.goalMinutes ? 1000 : today.minutes * 1000 / today.goalMinutes;
-  }
-  if (today.goalMinutes > 0) {
-    drawRing(r, cx, cy, kRadius, kThickness, permille);
-  } else {
-    drawRing(r, cx, cy, kRadius, 2, 1000);  // no goal: a plain circle round the figure
-  }
-
-  const int bigH = r.getLineHeight(UI_12_FONT_ID);
-  const int smallH = r.getLineHeight(SMALL_FONT_ID);
-  char number[8];
-  snprintf(number, sizeof(number), "%d", today.minutes);
-  const int blockTop = cy - (bigH + smallH) / 2;
-  centred(r, UI_12_FONT_ID, cx, blockTop, number, EpdFontFamily::BOLD);
-  centred(r, SMALL_FONT_ID, cx, blockTop + bigH, today.ringCaption);
-
-  const int tx = cx + kRadius + 24;
-  const int tw = x + width - tx;
+  const int ringH = kRadius * 2 + 6;
   const int bodyH = r.getLineHeight(UI_10_FONT_ID);
-  int ty = cy - (bodyH * 3 + 10) / 2;
-  r.drawText(UI_10_FONT_ID, tx, ty, r.truncatedText(UI_10_FONT_ID, today.heading, tw, EpdFontFamily::BOLD).c_str(),
-             true, EpdFontFamily::BOLD);
-  ty += bodyH;
-  r.drawText(UI_10_FONT_ID, tx, ty, r.truncatedText(UI_10_FONT_ID, today.line, tw).c_str());
-  ty += bodyH + 10;
-  if (today.streak && *today.streak) {
-    r.drawText(UI_10_FONT_ID, tx, ty, r.truncatedText(UI_10_FONT_ID, today.streak, tw, EpdFontFamily::BOLD).c_str(),
-               true, EpdFontFamily::BOLD);
+  const int smallH = r.getLineHeight(SMALL_FONT_ID);
+
+  // The text beside the ring, measured first so the two centre on each other.
+  const int tx = cx + kRadius + 22;
+  const int tw = x + width - tx;
+  const auto title = r.wrappedText(UI_10_FONT_ID, book.title, tw, 2, EpdFontFamily::BOLD);
+  const bool hasLine = book.line && *book.line;
+  const bool hasNote = book.note && *book.note;
+  const bool hasLast = book.last && *book.last;
+  const int textH = static_cast<int>(title.size()) * bodyH + (hasLine ? bodyH + 6 : 0) + (hasNote ? smallH : 0) +
+                    (hasLast ? smallH + 6 : 0);
+  const int height = std::max(ringH, textH);
+
+  const int cy = y + height / 2;
+  drawRing(r, cx, cy, kRadius, kThickness, std::clamp(book.percent, 0, 100) * 10);
+  char pct[8];
+  snprintf(pct, sizeof(pct), "%d%%", std::clamp(book.percent, 0, 100));
+  // "100%" in the large face would touch the ring.
+  const int pctFont = book.percent >= 100 ? UI_10_FONT_ID : UI_12_FONT_ID;
+  centred(r, pctFont, cx, cy - r.getLineHeight(pctFont) / 2, pct, EpdFontFamily::BOLD);
+
+  int ty = y + (height - textH) / 2;
+  for (const auto& line : title) {
+    r.drawText(UI_10_FONT_ID, tx, ty, line.c_str(), true, EpdFontFamily::BOLD);
+    ty += bodyH;
   }
-  return kRadius * 2 + 6;
+  if (hasLine) {
+    ty += 6;
+    r.drawText(UI_10_FONT_ID, tx, ty, r.truncatedText(UI_10_FONT_ID, book.line, tw).c_str());
+    ty += bodyH;
+  }
+  if (hasNote) {
+    r.drawText(SMALL_FONT_ID, tx, ty, r.truncatedText(SMALL_FONT_ID, book.note, tw).c_str());
+    ty += smallH;
+  }
+  if (hasLast) {
+    ty += 6;
+    r.drawText(SMALL_FONT_ID, tx, ty, r.truncatedText(SMALL_FONT_ID, book.last, tw).c_str());
+  }
+  return height;
 }
 
-int drawMonth(const GfxRenderer& r, const int x, const int y, const int width, const Month& month) {
-  const int titleH = r.getLineHeight(UI_10_FONT_ID);
+int drawSessionBars(const GfxRenderer& r, const int x, const int y, const int width, const int height,
+                    const uint32_t* seconds, const int count, const int capacity) {
+  if (capacity <= 0) return 0;
+  uint32_t longest = 1;
+  for (int i = 0; i < count; ++i) longest = std::max(longest, seconds[i]);
+  const int gap = std::max(3, width / (capacity * 5));
+  const int barW = std::max(2, (width - (capacity - 1) * gap) / capacity);
+  const int span = capacity * barW + (capacity - 1) * gap;
+  const int left = x + (width - span) / 2;
+  const int base = y + height;
+  r.drawLine(left, base, left + span - 1, base, true);
+  // The newest session takes the right-hand slot; the empty slots wait on the left.
+  const int empty = capacity - std::min(count, capacity);
+  for (int slot = 0; slot < capacity; ++slot) {
+    const int bx = left + slot * (barW + gap);
+    if (slot < empty) {
+      r.drawLine(bx + barW / 2, base - 3, bx + barW / 2, base, true);
+      continue;
+    }
+    const uint32_t s = seconds[slot - empty];
+    const int h = std::max<int>(3, static_cast<int>(static_cast<uint64_t>(s) * height / longest));
+    r.fillRect(bx, base - h, barW, h, true);
+  }
+  return height + 1;
+}
+
+int drawMilestone(const GfxRenderer& r, const int x, const int y, const int width, const Milestone& milestone) {
+  const int bodyH = r.getLineHeight(UI_10_FONT_ID);
   const int smallH = r.getLineHeight(SMALL_FONT_ID);
-  const int cx = x + width / 2;
-  centred(r, UI_10_FONT_ID, cx, y, month.title, EpdFontFamily::BOLD);
-  const int titleW = r.getTextWidth(UI_10_FONT_ID, month.title, EpdFontFamily::BOLD);
-  if (month.canGoBack) chevron(r, cx - titleW / 2 - 22, y + titleH / 2, 12, false);
-  if (month.canGoForward) chevron(r, cx + titleW / 2 + 22, y + titleH / 2, 12, true);
-
-  const int colW = width / 7;
-  const int left = x + (width - colW * 7) / 2;
-  int cy = y + titleH + 6;
-
-  char letter[12];
-  for (int col = 0; col < 7 && ReadingCalendar::listItem(month.weekdays, col, letter, sizeof(letter)); ++col) {
-    centred(r, SMALL_FONT_ID, left + col * colW + colW / 2, cy, letter);
-  }
-  cy += smallH + 4;
-
-  const int cellW = colW - 10 < 40 ? colW - 10 : 40;
-  const int cellH = 30;
-  constexpr int kRowStep = 36;
-  int row = 0;
-  for (int day = 1; day <= month.dayCount; ++day) {
-    const int col = (month.firstWeekday + day - 1) % 7;
-    row = (month.firstWeekday + day - 1) / 7;
-    const int bx = left + col * colW + (colW - cellW) / 2;
-    const int by = cy + row * kRowStep;
-    const uint8_t shade = month.shade[day - 1];
-    bool whiteText = false;
-    if (shade == 1) {
-      r.fillRectDither(bx, by, cellW, cellH, Color::LightGray);
-    } else if (shade == 2) {
-      r.fillRectDither(bx, by, cellW, cellH, Color::DarkGray);
-      whiteText = true;
-    } else if (shade >= 3) {
-      r.fillRect(bx, by, cellW, cellH, true);
-      whiteText = true;
-    }
-    if (day <= month.lastDay) r.drawRect(bx, by, cellW, cellH, true);
-    if (day == month.today) {
-      r.drawRect(bx - 3, by - 3, cellW + 6, cellH + 6, true);
-      r.drawRect(bx - 2, by - 2, cellW + 4, cellH + 4, true);
-    }
-    char label[4];
-    snprintf(label, sizeof(label), "%d", day);
-    const int lw = r.getTextWidth(SMALL_FONT_ID, label, EpdFontFamily::BOLD);
-    const int ly = by + (cellH - smallH) / 2;
-    if (whiteText && shade == 2) {
-      // Text on the 50% dither would break up: a small white plate keeps the number readable.
-      r.fillRect(bx + (cellW - lw) / 2 - 3, ly + 1, lw + 6, smallH - 2, false);
-      whiteText = false;
-    }
-    r.drawText(SMALL_FONT_ID, bx + (cellW - lw) / 2, ly, label, !whiteText,
-               whiteText || day == month.today ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
-  }
-  return cy - y + (row + 1) * kRowStep;
+  const int valueW = r.getTextWidth(UI_10_FONT_ID, milestone.value, EpdFontFamily::BOLD);
+  r.drawText(UI_10_FONT_ID, x + width - valueW, y, milestone.value, true, EpdFontFamily::BOLD);
+  r.drawText(UI_10_FONT_ID, x, y,
+             r.truncatedText(UI_10_FONT_ID, milestone.label, width - valueW - 12, EpdFontFamily::BOLD).c_str(), true,
+             EpdFontFamily::BOLD);
+  constexpr int kBarH = 6;
+  const int barY = y + bodyH + 2;
+  r.drawRect(x, barY, width, kBarH, true);
+  const int filled = static_cast<int>(static_cast<int64_t>(width) * std::clamp(milestone.permille, 0, 1000) / 1000);
+  if (filled > 0) r.fillRect(x, barY, filled, kBarH, true);
+  const int ny = barY + kBarH + 2;
+  r.drawText(SMALL_FONT_ID, x, ny, r.truncatedText(SMALL_FONT_ID, milestone.next, width).c_str());
+  return ny + smallH - y;
 }
 
 void drawQuietText(const GfxRenderer& r, const int right, const int y, const char* text) {

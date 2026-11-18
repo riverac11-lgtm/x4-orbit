@@ -443,8 +443,6 @@ class CrossPointSettings {
   uint8_t statusBarBatteryDays = 0;
   // Ticks where the chapters start, on a progress bar showing the whole book.
   uint8_t statusBarChapterMarks = 0;
-  // Reading Stats' daily goal: an index into ReadingCalendar::kGoalMinutes (0 = off).
-  uint8_t readingGoal = 0;
   // Text rendering settings
   uint8_t extraParagraphSpacing = 1;
   // The interval Auto Turn last ran at, in seconds: where its picker opens. The reader starts it from the menu.

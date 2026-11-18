@@ -95,48 +95,27 @@ void cover(GfxRenderer& r, const View& v, const int index, const Box& slot) {
 
 // ---- The Reading Stats graphic -----------------------------------------------------------------
 
-int statsPermille(const View::Stats& s) {
-  if (s.goalMinutes <= 0 || s.minutes <= 0) return 0;
-  return std::min(1000, s.minutes * 1000 / s.goalMinutes);
-}
-
-// The day's ring on a white disc (it stays readable on a selected tile's grey), the minutes in it when
-// there is room.
+// The current book's ring on a white disc (it stays readable on a selected tile's grey), the percent in
+// it when there is room; with no book, a plain circle.
 void statsRing(const GfxRenderer& r, const View::Stats& s, const int cx, const int cy, const int radius,
                const int fontId, const bool number) {
   disc(r, cx, cy, radius + 2, false);
-  StatsDraw::drawRing(r, cx, cy, radius, std::max(3, radius / 5), statsPermille(s));
+  if (s.percent < 0) {
+    StatsDraw::drawRing(r, cx, cy, radius, 2, 1000);
+    return;
+  }
+  StatsDraw::drawRing(r, cx, cy, radius, std::max(3, radius / 5), std::clamp(s.percent, 0, 100) * 10);
   if (!number) return;
-  char minutes[8];
-  snprintf(minutes, sizeof(minutes), "%d", std::clamp(s.minutes, 0, 999));
-  const int w = r.getTextWidth(fontId, minutes, EpdFontFamily::BOLD);
-  r.drawText(fontId, cx - w / 2, cy - r.getLineHeight(fontId) / 2, minutes, true, EpdFontFamily::BOLD);
-}
-
-// The last seven days as bars, oldest first, scaled to the larger of the goal and the week's best day,
-// with the goal as a dotted line; a day without reading is a short stroke on the baseline.
-void weekBars(const GfxRenderer& r, const View::Stats& s, const Box& b) {
-  if (b.empty()) return;
-  int top = s.goalMinutes;
-  for (const uint16_t m : s.week) top = std::max<int>(top, m);
-  if (top <= 0) top = 1;
-  const int gap = std::max(2, b.w / 20);
-  const int barW = std::max(2, (b.w - 6 * gap) / 7);
-  for (int i = 0; i < 7; ++i) {
-    const int x = b.x + i * (barW + gap);
-    const int h = s.week[i] == 0 ? 1 : std::max(3, b.h * std::min<int>(s.week[i], top) / top);
-    r.fillRect(x, b.y + b.h - h, barW, h, true);
-  }
-  if (s.goalMinutes > 0) {
-    const int gy = b.y + b.h - b.h * s.goalMinutes / top;
-    for (int x = b.x; x < b.x + 7 * (barW + gap) - gap; x += 3) r.drawPixel(x, gy, true);
-  }
+  char pct[8];
+  snprintf(pct, sizeof(pct), "%d%%", std::clamp(s.percent, 0, 100));
+  const int w = r.getTextWidth(fontId, pct, EpdFontFamily::BOLD);
+  r.drawText(fontId, cx - w / 2, cy - r.getLineHeight(fontId) / 2, pct, true, EpdFontFamily::BOLD);
 }
 
 bool isStats(const View& v, const int i) { return v.menuIcon[i] == UIIcon::Stats; }
 
-// A's tile: the ring with the minutes in it, "Today / of 30 min / 6-day streak" beside it, the week's
-// bars across the bottom. A short tile (many entries) keeps the ring and one line.
+// A tile: the ring with the percent in it, "Next milestone / 50 hours / 13 h to go" beside it. A short
+// tile (many entries) keeps the ring and one line.
 void statsTile(const GfxRenderer& r, const View& v, const Box& t, const bool selected,
                const OrbitHomeLayout::Fonts& fonts) {
   const View::Stats& s = v.stats;
@@ -164,51 +143,45 @@ void statsTile(const GfxRenderer& r, const View& v, const Box& t, const bool sel
     leftText(r, UI_10_FONT_ID, tx, t.y + (t.h - fonts.body) / 2, t.x + t.w - 8 - tx, s.compact, style);
     return;
   }
-  const int barsH = std::clamp(t.h / 6, 14, 26);
-  const Box bars{t.x + 18, t.y + t.h - 16 - barsH, t.w - 36, barsH};
-  const int ringTop = t.y + 14;
-  const int radius = std::clamp((bars.y - 12 - ringTop) / 2, 16, 34);
+  // The ring gives way to the lines beside it: a half-width tile keeps "12 h 40 min to go" whole.
+  const int textW = std::max({r.getTextWidth(SMALL_FONT_ID, s.heading), r.getTextWidth(UI_10_FONT_ID, s.goal, style),
+                              r.getTextWidth(SMALL_FONT_ID, s.toGo)});
+  const int radius = std::clamp(std::min((t.h - 28) / 2, (t.w - 40 - textW) / 2), 16, 40);
   const int cx = t.x + 18 + radius;
-  const int cy = ringTop + radius;
-  statsRing(r, s, cx, cy, radius, radius >= 26 ? UI_12_FONT_ID : UI_10_FONT_ID, true);
+  const int cy = t.y + t.h / 2;
+  statsRing(r, s, cx, cy, radius, radius >= 34 ? UI_12_FONT_ID : UI_10_FONT_ID, radius >= 24);
   const int tx = cx + radius + 12;
   const int tw = t.x + t.w - 10 - tx;
   int y = cy - (fonts.small + fonts.body + fonts.small + 4) / 2;
   leftText(r, SMALL_FONT_ID, tx, y, tw, s.heading);
   y += fonts.small + 2;
-  leftText(r, UI_10_FONT_ID, tx, y, tw, s.caption, style);
+  leftText(r, UI_10_FONT_ID, tx, y, tw, s.goal, style);
   y += fonts.body + 2;
-  leftText(r, SMALL_FONT_ID, tx, y, tw, s.streak);
-  weekBars(r, s, bars);
+  leftText(r, SMALL_FONT_ID, tx, y, tw, s.toGo);
 }
 
-// C's row: the ring, the day and the streak on two lines, the week's bars before the chevron.
+// C's row: the ring, then "Next: 50 hours" over "13 h to go".
 void statsRow(const GfxRenderer& r, const View& v, const Box& row, const bool selected,
               const OrbitHomeLayout::Fonts& fonts) {
   const View::Stats& s = v.stats;
   const int cy = row.y + row.h / 2;
   const int tx = row.x + 72;
+  const int tw = row.x + row.w - 40 - tx;
   const auto style = selected ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
   if (!s.hasHistory) {
     drawLineIcon(r, UIIcon::Stats, row.x + 36, cy, 32);
-    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, row.x + row.w - 40 - tx, s.empty, style);
+    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, tw, s.empty, style);
     return;
   }
   const int radius = std::min(22, row.h / 2 - 3);
-  statsRing(r, s, row.x + 36, cy, radius, UI_10_FONT_ID, radius >= 18);
-  const int barsW = 62;
-  const int barsH = std::min(28, row.h - 20);
-  const Box bars{row.x + row.w - 40 - barsW, cy - barsH / 2, barsW, barsH};
-  const int tw = bars.x - 12 - tx;
-  const bool twoLines = row.h >= fonts.body + fonts.small + 6;
-  if (twoLines) {
+  statsRing(r, s, row.x + 36, cy, radius, SMALL_FONT_ID, radius >= 18);
+  if (row.h >= fonts.body + fonts.small + 6) {
     const int y = cy - (fonts.body + fonts.small + 2) / 2;
-    leftText(r, UI_10_FONT_ID, tx, y, tw, s.today, style);
-    leftText(r, SMALL_FONT_ID, tx, y + fonts.body + 2, tw, s.streak);
+    leftText(r, UI_10_FONT_ID, tx, y, tw, s.compact, style);
+    leftText(r, SMALL_FONT_ID, tx, y + fonts.body + 2, tw, s.toGo);
   } else {
-    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, tw, s.today, style);
+    leftText(r, UI_10_FONT_ID, tx, cy - fonts.body / 2, tw, s.compact, style);
   }
-  weekBars(r, s, bars);
 }
 
 // ---- A: card + tiles ---------------------------------------------------------------------------
@@ -297,13 +270,7 @@ void drawB(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
         r.drawText(SMALL_FONT_ID, f.status.x + f.status.w - w, f.status.y + 2, eta.c_str());
       }
     }
-    // The book's history and the day's reading share the line; the day's alone when both do not fit.
-    std::string line = v.book.history;
-    if (!v.today.empty()) {
-      line = line.empty() ? v.today : line + "  \xC2\xB7  " + v.today;
-      if (r.getTextWidth(SMALL_FONT_ID, line.c_str()) > f.history.w) line = v.today;
-    }
-    if (!line.empty()) centredText(r, SMALL_FONT_ID, f.history, f.history.y, line.c_str());
+    if (!v.book.history.empty()) centredText(r, SMALL_FONT_ID, f.history, f.history.y, v.book.history.c_str());
   } else {
     // An empty cover outline holds the place of the book, so the dock sits where it always does.
     r.drawRoundedRect(f.cover.x, f.cover.y, f.cover.w, f.cover.h, 2, 8, true);
@@ -317,8 +284,8 @@ void drawB(GfxRenderer& r, const View& v, const Frame& f, const OrbitHomeLayout:
     const Box& t = f.menu[i];
     const bool selected = v.selected == bookCount + i;
     if (selected) r.fillRoundedRect(t.x, t.y, t.w, t.h, kTileRadius, Color::LightGray);
-    // Reading Stats: an icon-size ring of the day over "18/30 min" (with no reading yet, its icon and
-    // name as any other entry).
+    // Reading Stats: an icon-size ring of the current book over "Next: 50 hours" (with no reading yet,
+    // its icon and name as any other entry).
     const bool stats = isStats(v, i) && v.stats.hasHistory;
     if (stats) {
       statsRing(r, v.stats, t.x + t.w / 2, t.y + t.h * 9 / 25, f.iconSize / 2, UI_10_FONT_ID, false);

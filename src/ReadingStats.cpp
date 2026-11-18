@@ -723,10 +723,8 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   std::vector<RecentSnapshot> snapshots(docIds.size());
   for (size_t i = 0; i < docIds.size(); ++i) snapshots[i].docId = docIds[i];
   float pace = 0.0f;
-  uint32_t todaySeconds = 0;
   uint16_t dailyMinutes = 0;
-  uint16_t streak = 0;
-  uint16_t week[kRecentWeekDays] = {};
+  Summary summary;
   bool hasHistory = false;
   ReadResult result = prepare();
   if (result == ReadResult::Ok) {
@@ -748,18 +746,12 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
         snapshot.progress = entry.progress;
       }
       pace = pooledPaceOf(*meta);
-      // Today's minutes and the daily habit, from the day buckets the meta carries (transient: the
+      // The daily habit and the lifetime figures, from the totals the meta carries (transient: the
       // snapshots above are already placed).
-      const uint16_t today = currentLocalDayIndex();
-      ReadingTotals totals;
-      meta->readTotals(totals);
-      todaySeconds = secondsOn(totals.globalDays, today);
-      dailyMinutes = ReadingCalendar::averageDailyMinutes(totals.globalDays, today);
-      streak = currentStreakIn(totals.globalDays, today);
-      hasHistory = totals.totalSeconds > 0 || !totals.globalDays.empty();
-      for (int i = 0; i < kRecentWeekDays && today > kRecentWeekDays; ++i) {
-        week[i] = static_cast<uint16_t>(secondsOn(totals.globalDays, today - (kRecentWeekDays - 1 - i)) / 60);
-      }
+      summarize(*meta, summary, /*withIndex=*/false);
+      dailyMinutes = ReadingCalendar::averageDailyMinutes(summary.globalDays, currentLocalDayIndex());
+      hasHistory = summary.totalSeconds > 0 || !summary.globalDays.empty();
+      std::vector<DayBucket>().swap(summary.globalDays);
     }
   }
   if (result != ReadResult::Ok) {
@@ -767,10 +759,10 @@ void ReadingStatsStore::prefetchRecent(const std::vector<std::string>& docIds) {
   }
   recent_ = std::move(snapshots);
   pooledPace_ = pace;
-  todaySeconds_ = todaySeconds;
   dailyMinutes_ = dailyMinutes;
-  streak_ = streak;
-  std::copy(week, week + kRecentWeekDays, week_);
+  totalSeconds_ = summary.totalSeconds;
+  totalPages_ = summary.totalPagesTurned;
+  finishedBooks_ = summary.finishedBookCount;
   hasHistory_ = hasHistory;
 }
 

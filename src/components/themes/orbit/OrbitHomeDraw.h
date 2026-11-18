@@ -34,7 +34,6 @@ struct View {
 
   bool hasBook = false;
   Book book;
-  std::string today;  // B: "Read 18 min today" beside the book's history; empty: nothing read today
   int shelfCount = 0;
 
   int menuCount = 0;
@@ -45,18 +44,17 @@ struct View {
   int selected = 0;  // HomeActivity's selector: books, then menu entries
 
   // The Reading Stats entry (its menu icon is UIIcon::Stats) is drawn as a small graphic in place of
-  // its icon and label: today's minutes against the goal as a ring, the streak, the last seven days
-  // as bars. A: the whole tile; B: an icon-size ring over "18/30 min"; C: ring, two lines, bars.
+  // its icon and label: the current book's progress as a ring and the next milestone. Nothing in it
+  // goes by the date (the X4's clock stops while it sleeps). A tile: the ring with the percent in it
+  // and "Next milestone / 50 hours / 13 h to go"; a dock slot: an icon-size ring over "Next: 50
+  // hours"; a row: the ring, "Next: 50 hours" and "13 h to go".
   struct Stats {
     bool hasHistory = false;   // false: the calm empty line instead
-    int minutes = 0;           // read today
-    int goalMinutes = 0;       // 0: no goal; the ring stays empty
-    uint16_t week[7] = {};     // minutes, oldest first, [6] = today
-    const char* caption = "";  // A, beside the ring: "of 30 min" / "min"
-    const char* today = "";    // C: "18 of 30 min today" / "Read 18 min today"
-    const char* compact = "";  // B: "18/30 min" / "18 min"
-    const char* streak = "";   // "6-day streak" / "No streak yet"
-    const char* heading = "";  // A: "Today"
+    int percent = -1;          // the current book's progress; -1: no book, a plain circle
+    const char* heading = "";  // tile: "Next milestone"
+    const char* goal = "";     // tile: "50 hours"
+    const char* toGo = "";     // "13 h to go"
+    const char* compact = "";  // dock slot and row: "Next: 50 hours"
     const char* empty = "";    // "Start reading to see your stats"
   };
   Stats stats;
