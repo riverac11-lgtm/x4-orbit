@@ -38,6 +38,9 @@ struct Shape {
   bool rightDeclared = false;  // short Right runs a screen action instead of stepping
   bool confirmLong = false;    // long Confirm has an action of its own
   bool tabbed = false;         // long Up/Down switch tabs instead of jumping to the ends
+  // Short Left/Right turn a whole page (a long book list) instead of stepping one row. A declared
+  // action on either side wins over it.
+  bool sidesPage = false;
 };
 
 // Whether each declared action applies to the selected row right now.
@@ -56,7 +59,8 @@ Result commandFor(Key key, Press press, const Shape& shape, const Availability& 
 
 // What a front Left/Right box shows after its page glyph: the default step, the declared action,
 // or nothing (the glyph alone: the pair is overloaded but this side does not apply right now).
-enum class FrontLabel : uint8_t { Step, Action, PageOnly };
+// Page: the box says the short press turns a page (sidesPage).
+enum class FrontLabel : uint8_t { Step, Action, PageOnly, Page };
 struct Labels {
   FrontLabel left = FrontLabel::Step;
   FrontLabel right = FrontLabel::Step;

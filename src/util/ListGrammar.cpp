@@ -28,6 +28,7 @@ Result once(const Command command) { return {command, 1}; }
 // action — none when it does not apply. Overloading either side takes the step off both.
 Result shortSide(const Side side, const Press press, const Shape& shape, const Availability& available) {
   if (!shape.leftDeclared && !shape.rightDeclared) {
+    if (shape.sidesPage) return once(side == Side::Left ? Command::PagePrev : Command::PageNext);
     const Command stepCommand = side == Side::Left ? Command::StepPrev : Command::StepNext;
     return {stepCommand, static_cast<uint8_t>(press == Press::Double ? 2 : 1)};
   }
@@ -62,7 +63,10 @@ Result commandFor(const Key key, const Press press, const Shape& shape, const Av
 }
 
 Labels labelsFor(const Shape& shape, const Availability& available) {
-  if (!shape.leftDeclared && !shape.rightDeclared) return {};
+  if (!shape.leftDeclared && !shape.rightDeclared) {
+    if (shape.sidesPage) return {FrontLabel::Page, FrontLabel::Page};
+    return {};
+  }
   const auto label = [](const bool declared, const bool applies) {
     return declared && applies ? FrontLabel::Action : FrontLabel::PageOnly;
   };

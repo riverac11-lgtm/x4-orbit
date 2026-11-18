@@ -5,61 +5,64 @@
 #include <strings.h>
 
 #include <algorithm>
-#include <cstring>
 
 #include "CrossPointSettings.h"
 #include "OpdsFilename.h"
 
 namespace OpdsOnDevice {
 
-uint32_t nameHash(const char* name) {
-  const char* end = strrchr(name, '.');
-  if (!end || end == name) end = name + strlen(name);
-  uint32_t h = 2166136261u;
-  for (const char* p = name; p < end; ++p) {
-    const char c = (*p >= 'A' && *p <= 'Z') ? static_cast<char>(*p + 32) : *p;
-    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
-  }
-  return h;
-}
-
-bool isBookFileName(const char* name) {
-  const char* dot = strrchr(name, '.');
-  if (!dot) return false;
-  return strcasecmp(dot, ".epub") == 0 || strcasecmp(dot, ".kepub") == 0 || strcasecmp(dot, ".txt") == 0 ||
-         strcasecmp(dot, ".md") == 0 || strcasecmp(dot, ".xtc") == 0 || strcasecmp(dot, ".xtch") == 0;
-}
-
-void scan(std::vector<uint32_t>& sortedHashes) {
-  sortedHashes.clear();
-  const char* folder = SETTINGS.opdsDownloadFolder[0] ? SETTINGS.opdsDownloadFolder : "/";
-  auto dir = Storage.open(folder);
+namespace {
+// The books directly in `folder` into `out`; with `subfolders`, those one folder down as well.
+void scanFolder(const std::string& folder, const bool subfolders, std::vector<uint32_t>& out) {
+  auto dir = Storage.open(folder.c_str());
   if (!dir || !dir.isDirectory()) return;
   dir.rewindDirectory();
+  const bool inRoot = folder == "/";
+  const bool endsInSlash = !folder.empty() && folder.back() == '/';
   char name[256];
-  for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
-    if (file.isDirectory()) continue;
+  for (auto file = dir.openNextFile(); file && out.size() < kMaxBooks; file = dir.openNextFile()) {
     file.getName(name, sizeof(name));
-    if (isBookFileName(name)) sortedHashes.push_back(nameHash(name));
+    if (!file.isDirectory()) {
+      if (isBookFileName(name)) out.push_back(nameHash(name));
+      continue;
+    }
+    file.close();
+    if (subfolders && scansSubfolder(name, inRoot))
+      scanFolder(endsInSlash ? folder + name : folder + '/' + name, false, out);
   }
   dir.close();
+}
+}  // namespace
+
+void scan(std::vector<uint32_t>& sortedHashes, std::vector<uint32_t>* readHashes) {
+  sortedHashes.clear();
+  const char* folder = SETTINGS.opdsDownloadFolder[0] ? SETTINGS.opdsDownloadFolder : "/";
+  scanFolder(folder, true, sortedHashes);
+  // /COMPLETED is scanned by itself (unless it is the download folder or directly inside it, and
+  // so scanned already): its books are on the device, and they are the read ones.
+  std::vector<uint32_t> local;
+  std::vector<uint32_t>& read = readHashes ? *readHashes : local;
+  read.clear();
+  const bool scannedAlready = strcasecmp(folder, kCompletedFolder) == 0;
+  if (!scannedAlready || readHashes) scanFolder(kCompletedFolder, false, read);
+  std::sort(read.begin(), read.end());
+  if (!scannedAlready) sortedHashes.insert(sortedHashes.end(), read.begin(), read.end());
   std::sort(sortedHashes.begin(), sortedHashes.end());
-  LOG_DBG("OPDS", "On-device scan: %u books in %s", static_cast<unsigned>(sortedHashes.size()), folder);
+  if (sortedHashes.size() >= kMaxBooks)
+    LOG_ERR("OPDS", "On-device scan stopped at %u books", static_cast<unsigned>(kMaxBooks));
+  LOG_DBG("OPDS", "On-device scan: %u books (%u read) from %s", static_cast<unsigned>(sortedHashes.size()),
+          static_cast<unsigned>(read.size()), folder);
 }
 
-bool contains(const std::vector<uint32_t>& sortedHashes, const std::string& author, const std::string& title) {
-  if (sortedHashes.empty()) return false;
+uint32_t bookHash(const std::string& author, const std::string& title) {
   // No extension: the hashes leave theirs off, so any format of the book counts.
   const std::string name =
       opdsBookFilename(author, title, static_cast<OpdsFilenameFormat>(SETTINGS.opdsFilenameFormat), "") + ".x";
-  return std::binary_search(sortedHashes.begin(), sortedHashes.end(), nameHash(name.c_str()));
+  return nameHash(name.c_str());
 }
 
-void add(std::vector<uint32_t>& sortedHashes, const std::string& path) {
-  const size_t slash = path.rfind('/');
-  const uint32_t h = nameHash(slash == std::string::npos ? path.c_str() : path.c_str() + slash + 1);
-  const auto it = std::lower_bound(sortedHashes.begin(), sortedHashes.end(), h);
-  if (it == sortedHashes.end() || *it != h) sortedHashes.insert(it, h);
+bool contains(const std::vector<uint32_t>& sortedHashes, const std::string& author, const std::string& title) {
+  return !sortedHashes.empty() && containsHash(sortedHashes, bookHash(author, title));
 }
 
 std::string downloadPath(const std::string& author, const std::string& title, const char* extension) {

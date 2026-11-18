@@ -31,6 +31,8 @@ class ListHost {
   // Whether the screen lays its rows out a whole page at a time, each page at a multiple of drawn.
   virtual bool listPagesAligned() const { return false; }
   virtual bool listSelectable(int /*row*/) const { return true; }
+  // Whether short Left/Right turn a page right now (a long list), instead of stepping one row.
+  virtual bool listSidesPage() const { return false; }
   // Whether a declared Left/Right action applies to `row` right now. Asked for declared sides only.
   virtual bool listActionAvailable(ListGrammar::Side /*side*/, int /*row*/) const { return true; }
 

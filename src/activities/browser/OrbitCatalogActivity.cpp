@@ -126,9 +126,29 @@ bool OrbitCatalogActivity::loadState() {
         &ctx);
     newCount = ctx.count;
   }
-  OpdsOnDevice::scan(onDeviceSet);
+  OpdsOnDevice::scan(onDeviceSet, &readSet);
+  dropPresentWaiting();
   reloadWaiting();
   return true;
+}
+
+void OrbitCatalogActivity::dropPresentWaiting() {
+  // A waiting book already on the card (read and moved to /COMPLETED, or fetched another way)
+  // comes off the list, so neither a charge run nor "Get all" fetches it a second time. A few per
+  // visit bound the ids held here; any more go on the next visit (or at download time).
+  struct Ctx {
+    const OrbitCatalogActivity* self;
+    std::vector<std::string> ids;
+  } ctx{this, {}};
+  OrbitCatalogFiles::forEach(
+      waitPath, OrbitCatalog::kWaitingKind, lineBuf.get(),
+      [](void* p, uint32_t, const RecordView& v) {
+        auto& c = *static_cast<Ctx*>(p);
+        if (c.self->onDevice(v)) c.ids.emplace_back(v[OrbitCatalog::kId]);
+        return c.ids.size() < 16;
+      },
+      &ctx);
+  for (const auto& id : ctx.ids) OrbitCatalogFiles::removeWaiting(server.url, id, lineBuf.get());
 }
 
 void OrbitCatalogActivity::reloadWaiting() {
@@ -143,6 +163,21 @@ bool OrbitCatalogActivity::isWaiting(std::string_view id) const {
 bool OrbitCatalogActivity::onDevice(const RecordView& v) const {
   return OpdsOnDevice::contains(onDeviceSet, std::string(v[OrbitCatalog::kAuthor]),
                                 std::string(v[OrbitCatalog::kTitle]));
+}
+
+OrbitCatalogActivity::Presence OrbitCatalogActivity::presence(const RecordView& v) const {
+  if (onDeviceSet.empty()) return Presence::Missing;
+  const uint32_t h =
+      OpdsOnDevice::bookHash(std::string(v[OrbitCatalog::kAuthor]), std::string(v[OrbitCatalog::kTitle]));
+  if (OpdsOnDevice::containsHash(readSet, h)) return Presence::Read;
+  return OpdsOnDevice::containsHash(onDeviceSet, h) ? Presence::OnDevice : Presence::Missing;
+}
+
+bool OrbitCatalogActivity::presentAt(const int index, char* buf) const {
+  const int row = index - (leadRow() == 0 ? 1 : 0);
+  if (row < 0 || row >= static_cast<int>(rows.size())) return false;
+  RecordView v;
+  return OrbitCatalogFiles::readAt(listPath(), rows[static_cast<size_t>(row)], buf, v) && onDevice(v);
 }
 
 const std::string& OrbitCatalogActivity::listPath() const { return kind == Kind::Waiting ? waitPath : catPath; }
@@ -358,7 +393,14 @@ const char* OrbitCatalogActivity::headerTitle() const {
 }
 
 const char* OrbitCatalogActivity::footerConfirmLabel() const {
-  if (view == View::Books && kind == Kind::Waiting && nav.selected.load() != leadRow()) return tr(STR_CATALOG_DONT_GET);
+  if (view == View::Books) {
+    const int selected = nav.selected.load();
+    if (kind == Kind::Waiting) {
+      if (selected != leadRow()) return tr(STR_CATALOG_DONT_GET);
+    } else if (selected != leadRow() && presentAt(selected, rowBuf.get())) {
+      return "";  // on the card already: nothing to get (activateIndex ignores Confirm there)
+    }
+  }
   return tr(STR_SELECT);
 }
 
@@ -470,7 +512,10 @@ void OrbitCatalogActivity::provideRow(void* ctx, const uint16_t index, fui::List
              static_cast<int>(v[OrbitCatalog::kSeriesIndex].size()), v[OrbitCatalog::kSeriesIndex].data());
   }
   if (sub[0]) item.subtitle = sub;
-  if (self->onDevice(v)) {
+  const Presence present = self->presence(v);
+  if (present == Presence::Read) {
+    item.value = tr(STR_CATALOG_READ);
+  } else if (present == Presence::OnDevice) {
     item.value = tr(STR_OPDS_ON_DEVICE);
   } else if (self->kind != Kind::Waiting && self->isWaiting(v[OrbitCatalog::kId])) {
     item.value = tr(STR_CATALOG_WAITING_MARK);
@@ -592,6 +637,9 @@ void OrbitCatalogActivity::activateIndex(const int index) {
         showBooks(Kind::Waiting, index);
         return;
       }
+      // A book on the card already (in the download folder or read in /COMPLETED) offers no second
+      // download; its row says where it is.
+      if (presentAt(index, lineBuf.get())) return;
       showActions(row, false);
       return;
     }
