@@ -20,6 +20,7 @@
 #include <cstring>
 #include <ctime>
 
+#include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "WifiCredentialStore.h"
 #include "activities/NetworkMemoryTrim.h"
@@ -849,14 +850,17 @@ void WifiSelectionActivity::checkConnectionStatus() {
     // internet on before, so the probe can only waste a full HTTP timeout
     // (~5 s, blocking the loop) when DNS/upstream is slow.
     const bool isNewNetwork = !usedSavedPassword && !enteredPassword.empty();
+    // Check for captive portal before declaring success (and before NTP, which a portal blocks).
+    if (isNewNetwork && checkCaptivePortal()) {
+      state = WifiSelectionState::CAPTIVE_PORTAL;
+      requestUpdate();
+      return;
+    }
+    // Every WiFi user comes through here, so this is where a clock that fell behind while asleep
+    // ("Use Clock" off) catches up: ~20 ms on the fast path, a no-op once fresh, and at worst one
+    // ~5 s timeout per WiFi session -- spent while "Connecting..." is still on screen.
+    HalClock::refreshWhileOnline(SETTINGS.ntpServer);
     if (isNewNetwork) {
-      // Check for captive portal before declaring success
-      if (checkCaptivePortal()) {
-        state = WifiSelectionState::CAPTIVE_PORTAL;
-        requestUpdate();
-        return;
-      }
-
       askToSavePassword();
     } else {
       // Using saved password or open network - complete immediately

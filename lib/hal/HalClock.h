@@ -150,9 +150,27 @@ void formatTime(char* buf, size_t bufSize, bool use24h);
 /// synced, or an empty string if not.
 void formatLogTime(char* buf, size_t bufSize);
 
-/// Tear down WiFi cleanly.  When skipNtpSync is false (default) and the
-/// clock is approximate, performs an opportunistic NTP sync before
-/// disconnecting — essentially free since we already have a connection.
+/// Bring a clock that is not NTP-fresh (isApproximate(), which includes a stale restore) up to
+/// date while the reader is online: one syncNtp(), a no-op returning true when the clock is
+/// already fresh. With "Use Clock" off the clock stops during sleep and restore() hands back the
+/// time saved before it, so it falls behind by every sleep -- and isSynced() is true for that, so
+/// it cannot be the test. Call it wherever WiFi comes up (WifiSelectionActivity, the charge run).
+///
+/// A failed attempt blocks further ones for ten minutes, so one WiFi session pays the ~5 s worst
+/// case at most once, however many screens call this.
+bool refreshWhileOnline(const char* preferredServer = nullptr);
+
+/// The fallback when NTP did not get through: a UTC epoch from an HTTP "Date:" header (see
+/// SecureNet's HttpDate.h). Applied only while the clock is approximate, only inside the
+/// isPlausibleForTls() window, and never more than an hour backwards -- the clock this replaces
+/// can only have fallen behind while asleep, so a Date far older than it is a cached or wrong
+/// reply, and taking it would undo the lower bound a stale restore keeps for TLS.
+/// Returns true when the clock was set.
+bool applyHttpDate(time_t epoch);
+
+/// Tear down WiFi cleanly.  When skipNtpSync is false (default), runs
+/// refreshWhileOnline() before disconnecting — essentially free since we
+/// already have a connection.
 void wifiOff(bool skipNtpSync = false);
 
 /// Apply a Unix timestamp (e.g., from a hotspot client upload).

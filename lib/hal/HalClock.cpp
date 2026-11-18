@@ -104,6 +104,19 @@ static bool clockApproximate = true;
 // Cleared by a successful NTP sync.
 static bool clockStaleRestore = false;
 
+// True while the clock came from restore()'s NVS branch (no elapsed correction): the time saved
+// before a sleep the clock did not run through. The gap an NTP sync then closes is the length of
+// that sleep, not drift, and feeding it to the drift learner drove rtcDriftScale to its clamp --
+// which then skews updatePeriodic()'s awake nudges. With "Use Clock" off that is every wake, and
+// refreshWhileOnline() now syncs on every one of them, so the learner must skip these.
+static bool clockFromUncorrectedRestore = false;
+
+// The certificate window isPlausibleForTls() tests, shared with applyHttpDate(). Lower bound:
+// comfortably after the newest curated root's notBefore, so any clock at or past it satisfies
+// every one of them. Upper bound: the curated set's latest notAfter is 2038, so cap below that.
+static constexpr time_t MIN_PLAUSIBLE_EPOCH = 1735689600;  // 2025-01-01 00:00:00 UTC
+static constexpr time_t MAX_PLAUSIBLE_EPOCH = 2114380800;  // 2037-01-01 00:00:00 UTC
+
 // How long the deep sleep that this boot woke from lasted, in seconds; 0 when it
 // cannot be established. Set once by restore(), reported on the System Information
 // screen. Only the two authoritative restore paths can produce it: the DS3231 and
@@ -838,7 +851,9 @@ bool syncNtp(char* errorBuf, size_t errorBufSize, const char* preferredServer) {
     nvsWriteLastSyncTemp(currentTemp);
   }
 
-  if (prevSyncTime > 0 && preSyncTime > 0 && rtcEpoch > prevSyncTime) {
+  const bool learnDrift = !clockFromUncorrectedRestore;
+  clockFromUncorrectedRestore = false;
+  if (learnDrift && prevSyncTime > 0 && preSyncTime > 0 && rtcEpoch > prevSyncTime) {
     float interval = (float)(rtcEpoch - prevSyncTime);
     // error = how far the local clock was off before NTP corrected it.
     // Negative means local clock was behind (NTP jumped us forward).
@@ -1010,6 +1025,7 @@ void restore() {
     rtcClockFlags = 0;
     rtcStateChecksum = computeRtcStateChecksum();
     clockApproximate = true;
+    clockFromUncorrectedRestore = true;
     LOG_INF("CLK", "Restored from NVS, epoch %lld (no elapsed correction)", (long long)epoch);
   }
 }
@@ -1092,12 +1108,8 @@ bool isSynced() {
 bool isApproximate() { return clockApproximate; }
 
 bool isPlausibleForTls() {
-  // Lower bound: comfortably after the newest curated root's notBefore, so any clock at or
-  // past it satisfies every one of them. Upper bound: the curated set's latest notAfter is
-  // 2038, so cap below that — a wildly-wrong FUTURE clock breaks notAfter just as effectively
-  // as 1970 breaks notBefore, and must also be treated as "needs SNTP".
-  constexpr time_t MIN_PLAUSIBLE_EPOCH = 1735689600;  // 2025-01-01 00:00:00 UTC
-  constexpr time_t MAX_PLAUSIBLE_EPOCH = 2114380800;  // 2037-01-01 00:00:00 UTC
+  // A wildly-wrong FUTURE clock breaks notAfter just as effectively as 1970 breaks notBefore,
+  // and must also be treated as "needs SNTP" -- hence both bounds.
   const time_t nowEpoch = time(nullptr);
   return nowEpoch >= MIN_PLAUSIBLE_EPOCH && nowEpoch < MAX_PLAUSIBLE_EPOCH;
 }
@@ -1176,10 +1188,47 @@ void formatLogTime(char* buf, size_t bufSize) {
   snprintf(buf, bufSize, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 }
 
-void wifiOff(bool skipNtpSync) {
-  if (!skipNtpSync && isApproximate() && WiFi.getMode() == WIFI_STA && WiFi.status() == WL_CONNECTED) {
-    syncNtp();
+bool refreshWhileOnline(const char* preferredServer) {
+  if (!clockApproximate && !clockStaleRestore) return true;
+  if (WiFi.status() != WL_CONNECTED) return false;
+  // Failed attempts only: a success clears clockApproximate and ends the calls above. Ten minutes
+  // outlasts a typical WiFi session (open the library, fetch a book, leave), so a network that
+  // drops NTP costs its ~5 s timeout once there rather than at every screen that comes online.
+  constexpr unsigned long RETRY_MIN_INTERVAL_MS = 10UL * 60UL * 1000UL;
+  static unsigned long lastFailMs = 0;
+  static bool failedBefore = false;
+  if (failedBefore && millis() - lastFailMs < RETRY_MIN_INTERVAL_MS) return false;
+  if (syncNtp(preferredServer)) return true;
+  failedBefore = true;
+  lastFailMs = millis();
+  return false;
+}
+
+bool applyHttpDate(time_t epoch) {
+  if (!clockApproximate && !clockStaleRestore) return false;  // NTP (or the DS3231) already won
+  if (epoch < MIN_PLAUSIBLE_EPOCH || epoch >= MAX_PLAUSIBLE_EPOCH) return false;
+  // The clock being replaced stopped while asleep, so the true time is at or after it; only a
+  // little drift while awake can put it ahead. An hour covers that. Anything older is a cached
+  // reply or a wrong server, and following it would pull the TLS lower bound backwards.
+  const time_t current = time(nullptr);
+  if (epoch < current - 3600) {
+    LOG_DBG("CLK", "HTTP Date %lld is behind the clock (%lld); ignored", (long long)epoch, (long long)current);
+    return false;
   }
+  setSystemClock(epoch);
+  clockApproximate = false;
+  clockStaleRestore = false;
+  clockFromUncorrectedRestore = false;
+  // As syncNtp(): rebaseline for the next boot, and record a sync so the next cold boot does not
+  // mistake this fresh epoch for a stale one. Not fed to the drift learner -- a one-second source.
+  capture(true);
+  nvsWriteSyncTime(rtcEpoch);
+  LOG_INF("CLK", "Clock set from HTTP Date, epoch %lld (was %lld)", (long long)epoch, (long long)current);
+  return true;
+}
+
+void wifiOff(bool skipNtpSync) {
+  if (!skipNtpSync) refreshWhileOnline();
   if (esp_sntp_enabled()) {
     esp_sntp_stop();
   }
@@ -1216,6 +1265,10 @@ bool applyClientTime(time_t timestamp) {
 
   setSystemClock(timestamp);
   clockApproximate = false;
+  // The client's time replaces a stale restore too; left set, isSynced() stayed false and the
+  // status bar kept "--:--" over a time that was now right.
+  clockStaleRestore = false;
+  clockFromUncorrectedRestore = false;
   rtcEpoch = timestamp;
   LOG_INF("CLK", "Applied client time: %lld", (long long)timestamp);
 
