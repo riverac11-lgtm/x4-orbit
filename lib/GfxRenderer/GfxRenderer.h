@@ -256,6 +256,19 @@ class GfxRenderer {
 
   // Setup
   void begin();  // must be called right after display.begin()
+  // Instead of begin(), for a pass with no panel at all (pictures prepared while charging,
+  // src/ChargeWarm.cpp): the panel's size as the reader last drew on it, and `scratch`
+  // (widthBytes * height bytes) standing in for the framebuffer. Only for image-cache writes under
+  // ScopedCacheOnlyImageWrites -- nothing here is ever displayed, and the reader sleeps or
+  // restarts after it. (0, 0, 0, nullptr) takes it back before the scratch is freed.
+  void beginWithoutPanel(const uint16_t width, const uint16_t height, const uint16_t widthBytes,
+                         uint8_t* const scratch) {
+    frameBuffer = scratch;
+    panelWidth = width;
+    panelHeight = height;
+    panelWidthBytes = widthBytes;
+    frameBufferSize = static_cast<uint32_t>(widthBytes) * height;
+  }
   void insertFont(int fontId, EpdFontFamily font);
   // Rebinds an already-registered ID to a different family, where insertFont() deliberately
   // refuses a duplicate. Used by the UI font ladder: the three UI font IDs are LOGICAL slots

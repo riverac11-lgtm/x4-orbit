@@ -1,5 +1,6 @@
 #include "ChargeDelivery.h"
 
+#include <GfxRenderer.h>
 #include <HalClock.h>
 #include <HalGPIO.h>
 #include <HalPowerManager.h>
@@ -17,10 +18,13 @@
 #include <cstring>
 #include <memory>
 
+#include "ChargeWarm.h"
 #include "CrossPointSettings.h"
 #include "OpdsServerStore.h"
 #include "WifiCredentialStore.h"
 #include "util/OrbitCatalogFiles.h"
+
+extern GfxRenderer renderer;  // main.cpp: never begun on this path (no panel), see ChargeWarm::prepare
 
 namespace ChargeDelivery {
 
@@ -68,6 +72,19 @@ bool headlessKeepGoing(void* p) {
     c.usb = c.gpio->isUsbConnected();
   }
   return c.usb && now - c.startMs < kMaxSessionMs;
+}
+
+// The pictures' share of a session (ChargeWarm): what the downloads left of kMaxSessionMs, and at
+// most this. Bounded so a reader that lives on its charger is not kept busy and warm for long per
+// charge; what is left is resumed at the next one.
+constexpr uint32_t kPicturesMaxMs = 4 * 60 * 1000;
+struct PicturesCtx {
+  HeadlessCtx* session;
+  uint32_t startMs;
+};
+bool picturesKeepGoing(void* p) {
+  auto& c = *static_cast<PicturesCtx*>(p);
+  return headlessKeepGoing(c.session) && millis() - c.startMs < kPicturesMaxMs;
 }
 
 // Joins the saved networks, the last used first, each for up to 15 s.
@@ -283,6 +300,11 @@ bool runHeadless(HalGPIO& gpio) {
     if (WiFi.getMode() != WIFI_MODE_NULL) {
       WiFi.disconnect(true);
       WiFi.mode(WIFI_OFF);
+    }
+    // The book being read next: its pictures, with the radio's memory given back (ChargeWarm.h).
+    if (SETTINGS.chargeDownload && headlessKeepGoing(&ctx)) {
+      PicturesCtx pictures{&ctx, millis()};
+      ChargeWarm::prepare(renderer, &picturesKeepGoing, &pictures);
     }
     Storage.prepareForSleep();
   }

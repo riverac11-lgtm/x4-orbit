@@ -18,6 +18,7 @@
 // (X3: highWater=9216/10240, failedAlloc=0, build time neutral). The former
 // per-site new/realloc path has been removed.
 #include <BuildArena.h>
+#include <CooperativeAbort.h>
 #include <GfxRenderer.h>
 #include <GlyphProvider.h>
 #include <InflateReader.h>
@@ -2469,6 +2470,76 @@ void Section::warmAllImageCaches(const int xOffset, const int yOffset, const boo
             scratchArena ? static_cast<uint32_t>(scratchArena->highWater()) : 0u,
             scratchArena ? static_cast<uint32_t>(scratchArena->failedAllocSize()) : 0u);
   }
+}
+
+Section::FileWarm Section::warmImagesInFile(GfxRenderer& renderer, const std::string& path, uint16_t& page,
+                                            const int xOffset, const int yOffset, const int viewportHeight,
+                                            const bool alsoWarmGrayscale, bool (*keepGoing)(void*), void* ctx) {
+  if (!Storage.exists(path.c_str())) return FileWarm::Unusable;
+  FsFile f;
+  if (!Storage.openFileForRead("SCT", path, f)) return FileWarm::Unusable;
+  uint8_t version = 0;
+  uint8_t status = 0;
+  uint16_t pages = 0;
+  uint32_t lutOffset = 0;
+  const bool headerRead = f.seek(header::kVersion) && f.read(&version, 1) == 1 && f.seek(header::kParseComplete) &&
+                          f.read(&status, 1) == 1 && f.seek(header::kPageCount) &&
+                          f.read(reinterpret_cast<uint8_t*>(&pages), sizeof(pages)) == sizeof(pages) &&
+                          f.read(reinterpret_cast<uint8_t*>(&lutOffset), sizeof(lutOffset)) == sizeof(lutOffset);
+  // What the reader rebuilds on entry (see EpubReaderActivity's cache probe) is not worth a decode:
+  // the rebuild may place the images differently.
+  constexpr uint8_t kRebuiltOnEntry =
+      kStatusImageHeaderDegraded | kStatusTableRowDegraded | kStatusCssDegraded | kStatusShapingDegraded;
+  if (!headerRead || version != SECTION_FILE_VERSION || (status & kStatusParseComplete) == 0 ||
+      (status & kRebuiltOnEntry) != 0 || pages == 0 || pages > 10000 || lutOffset < header::kSize ||
+      lutOffset + static_cast<uint32_t>(pages) * sizeof(uint32_t) > f.size()) {
+    f.close();
+    return FileWarm::Unusable;
+  }
+
+  // The decoders' scratch, as in warmAllImageCaches: one block for the whole pass instead of a
+  // round of large allocations per image. Best-effort; without it they use the heap.
+  auto arena = makeUniqueNoThrow<BuildArena>(WARM_PASS_SCRATCH_BYTES);
+  if (arena && !arena->valid()) arena.reset();
+  image_scratch::ScopedArena scratchScope(arena.get());
+
+  FileWarm result = FileWarm::Done;
+  int warmed = 0;
+  for (; page < pages; ++page) {
+    if (!keepGoing(ctx)) {
+      result = FileWarm::Stopped;
+      break;
+    }
+    uint32_t pos = 0;
+    if (!f.seek(lutOffset + static_cast<uint32_t>(page) * sizeof(uint32_t)) ||
+        f.read(reinterpret_cast<uint8_t*>(&pos), sizeof(pos)) != sizeof(pos) || pos < header::kSize ||
+        pos >= lutOffset || !f.seek(pos)) {
+      result = FileWarm::Unusable;
+      break;
+    }
+    const auto p = Page::deserialize(f);
+    if (!p) {
+      result = FileWarm::Unusable;
+      break;
+    }
+    if (!p->hasImages()) continue;
+    // ReaderPageLayout::imageOnlyPageYOffset: a page of pictures only sits centred.
+    const int top = yOffset + (viewportHeight > 0 && !p->isVertical() ? p->imageOnlyCentringOffset(viewportHeight) : 0);
+    if (arena) arena->reset();
+    p->warmImageCaches(renderer, xOffset, top, /*forceLoadLargeImages=*/false, /*monochromeOutput=*/true,
+                       alsoWarmGrayscale);
+    HalSystem::feedWatchdog();
+    ++warmed;
+    if (CooperativeAbort::consumeAborted()) {
+      result = FileWarm::Stopped;  // this page again next time: its decode was cut short
+      break;
+    }
+  }
+  f.close();
+  LOG_INF("SCT", "Prepared pictures on %d page(s) of %s (%s, next page %u of %u)", warmed, path.c_str(),
+          result == FileWarm::Done ? "done" : (result == FileWarm::Stopped ? "stopped" : "unusable"),
+          static_cast<unsigned>(page), static_cast<unsigned>(pages));
+  return result;
 }
 
 // Resolve TOC anchor-to-page mappings by scanning the section cache's on-disk anchor data.

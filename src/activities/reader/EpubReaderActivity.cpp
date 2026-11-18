@@ -52,6 +52,9 @@
 
 #include "BookRelocation.h"
 #include "BuildFeatures.h"
+#if CP_FEATURE_ORBIT_CATALOG
+#include "ChargeWarm.h"
+#endif
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "DictionaryWordSelectActivity.h"
@@ -875,6 +878,25 @@ void EpubReaderActivity::onExit() {
     const auto page = static_cast<uint16_t>(section->currentPage);
     saveProgress(currentSpineIndex, section->currentPage, section->pageCount, section->getParagraphIndexForPage(page),
                  shownProgress(), readingOffset());
+#if CP_FEATURE_ORBIT_CATALOG
+    // Pictures prepared while charging start here: the frame the image lane draws in (see
+    // warmPageForImageLane), and the layout file the pages ahead are read from. Before the
+    // orientation goes back to portrait below.
+    if (SETTINGS.chargeDownload) {
+      const RenderLayout layout = computeRenderLayout();
+      ChargeWarm::Frame frame;
+      frame.panelWidth = renderer.getDisplayWidth();
+      frame.panelHeight = renderer.getDisplayHeight();
+      frame.panelWidthBytes = renderer.getDisplayWidthBytes();
+      frame.orientation = static_cast<uint8_t>(renderer.getHeldOrientation());
+      frame.grayscale = getEffectiveTextAntiAliasing() ? 1 : 0;
+      frame.left = static_cast<int16_t>(layout.marginLeft);
+      frame.top = static_cast<int16_t>(layout.marginTop);
+      frame.viewportHeight = static_cast<int16_t>(layout.viewportHeight);
+      ChargeWarm::rememberReader(epub->getPath(), frame, section->getFilePath(), currentSpineIndex,
+                                 section->currentPage, epub->getSpineItemsCount());
+    }
+#endif
   } else {
     writeOwedPageSave();
   }
