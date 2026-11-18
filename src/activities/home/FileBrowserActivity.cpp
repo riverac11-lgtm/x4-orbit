@@ -35,6 +35,7 @@
 #include "BookDetails.h"
 #include "BookInfoActivity.h"
 #include "BookRelocation.h"
+#include "CompletedBooks.h"
 #include "CoverThumbLoader.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
@@ -125,6 +126,7 @@ void FileBrowserActivity::onEnter() {
     authorToOpen = false;
   }
   startLibraryBuildIfStale();
+  CompletedBooks::libraryOpened();
   int selectedIndex = 0;
 
   if (!focusName.empty()) {
@@ -202,6 +204,13 @@ void FileBrowserActivity::loop() {
     return;
   }
   if (stepLibraryBuild()) return;
+  // Once the list is up and its titles are in: books moved into /COMPLETED by hand free their cache.
+  // A cover in progress may be writing into a cache folder the sweep trims: dropped first, and
+  // started again by generateCovers().
+  if (CompletedBooks::sweepPending()) {
+    coverLoader->reset();
+    CompletedBooks::sweepIfPending();
+  }
   generateCovers();
 }
 
@@ -1740,6 +1749,9 @@ void FileBrowserActivity::doMarkAsRead(const std::string& fullPath) {
                              requestUpdate();
                              return;
                            }
+                           // The settings below may move the book and trim its cache folder: a cover
+                           // being made into that folder is dropped first.
+                           coverLoader->reset();
                            const auto& menuResult = std::get<MenuResult>(result.data);
                            if (menuResult.action == static_cast<int>(BookFinished::FinishedBookAction::GoHome)) {
                              BookFinished::applyFinishedBookSettings(fullPath, false);

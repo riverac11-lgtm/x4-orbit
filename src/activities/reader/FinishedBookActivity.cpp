@@ -27,6 +27,7 @@
 
 #include "BookRelocation.h"
 #include "BuildFeatures.h"
+#include "CompletedBooks.h"
 #if CP_FEATURE_ORBIT_CATALOG
 #include "util/OpdsOnDevice.h"
 #include "util/OrbitCatalogFiles.h"
@@ -540,10 +541,13 @@ bool moveFinishedBookToCompleted(const std::string& currentBookPath, std::string
   // Without this the book reopened from /COMPLETED at its first page with no bookmarks, its cache
   // stayed behind under the old path, and a kept recents row pointed at a missing file.
   // Based on crosspoint-reader PR #3354 (Sylve, @s0lness).
+  // A finished book also gives back the room its laid-out chapters and images take (CompletedBooks),
+  // once no reader holds it: for an open book, when the reader closes it.
   if (openInReader) {
-    BookRelocation::bookMovedWhileOpen(currentBookPath, targetPath);
+    BookRelocation::bookMovedWhileOpen(currentBookPath, targetPath, /*thenTrim=*/true);
   } else {
     BookRelocation::bookMoved(currentBookPath, targetPath);
+    CompletedBooks::trim(targetPath);
   }
 
   outMovedPath = targetPath;
