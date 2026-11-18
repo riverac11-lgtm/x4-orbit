@@ -21,7 +21,7 @@ call `pio run` directly:
 Run it with run_in_background and wait for the completion notification (it may queue behind another
 build). Use `cmake --build ... -j1` for host tests for the same reason.
 First build takes ~10 min (run it in the background / with a long timeout, do not poll with sleep).
-Flash: baseline is 98.5% (6455621 of 6553600 bytes) on orbit-next (v3.0). Report before/after. The
+Flash: baseline is 98.7% (6467457 of 6553600 bytes) on orbit-next (v3.1). Hard cap for the WHOLE release 6475264 (98.8%). Report before/after. The
 whole release must stay at or below 98.8%, so keep your change small (budgets are in your brief).
 Keep new code small: no new libraries, no large tables, avoid std::function/iostream/heavy templates.
 
