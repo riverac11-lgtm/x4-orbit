@@ -47,7 +47,8 @@ days+ticks. Not wanted: #1 audiobook catch-up, #5 highlights. He creates a BookO
 ## Released: v3.0 (x4-orbit = orbit-next) — the whole backlog below is DONE (merged orbit-lib, orbit-kbd,
 orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only: custom fast keyboard waveform.
 
-## v3.1 IN PROGRESS (user said "implement our list" 2026-11-17)
+## v3.1 RELEASED (all 6 to-do items; flash 98.7% = 6467457). Predecode = subset (laid-out chapters of current book only).
+## (was: v3.1 IN PROGRESS, user said "implement our list" 2026-11-17)
 Agents on branches orbit-lists (items 1,6), orbit-imgui (2,4), orbit-predecode (3), orbit-done (5); worktrees
 ~/wt-<name>; briefs docs/orbit-dev/briefs/v31-*.md. Flash total must stay <= 98.8% (~19.6 KB over v3.0).
 Then: merge --no-ff into orbit-next, combined build+tests, set [orbit] version = 3.1, release notes, push

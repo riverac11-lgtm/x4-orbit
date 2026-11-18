@@ -1,31 +1,83 @@
-# x4-orbit v3.0
+# x4-orbit v3.1
 
 Custom firmware for the **Xteink X4 and X3**, built for reading EPUBs and pulling books from a home OPDS library
 (BookOrbit). Based on [Witch(hunt) Reader](https://github.com/jpirnay/witchhunt-reader) 2.41-dev. Personal,
 unofficial build: not supported by the Witch(hunt) or CrossPoint projects. Use at your own risk.
 
-From this release the file is called `x4-orbit-v3.0.bin`, and the version shows as **3.0** on the boot screen and in
-Settings.
+The file is called `x4-orbit-v3.1.bin`, and the version shows as **3.1** on the boot screen and in Settings.
 
 ---
 
-## New in v3.0
+## New in v3.1
 
-### 1. Home: "More" is gone, a reading-stats tile takes its place
+### 1. Page through long lists with Left/Right (Online Library)
+In **All books**, search results, a series, an author's books, Waiting and New (and the Series / Authors name
+lists), **Left/Right now jump a whole screen** (12 books) back or forward. The button labels say "« Page" /
+"Page »". At the ends it stops on the first or last book. Up/Down still move one book. The Online Library's
+first menu and the Get now / Get when charging menu are unchanged.
+
+### 2. Big pictures load by themselves
+Pictures over 256 KB used to show a box saying **"Large Image / Press Confirm to load"**. Now the box says
+**"Loading image..."**, the reader decodes it in the background, and the page redraws itself once when it's
+ready. You don't press anything, and **Confirm always opens the reader menu**. If you turn the page before it
+finishes, nothing redraws. If memory is very tight, the page decodes it directly instead (or shows the existing
+"not enough memory" box).
+
+### 3. Pictures prepared while charging
+When the reader is charging (the same run that downloads books, and only with **Download while charging** on),
+it now also prepares the pictures for **the book you were reading**: the rest of the current chapter and the
+next 2 chapters, so those image pages open quickly the first time.
+- It remembers where you were when you close the book or put the reader to sleep from it.
+- At most 4 minutes per charge, screen untouched, Wi-Fi off. It stops on unplug or Power and carries on at the
+  next charge.
+- **Limits in this version:** it only prepares chapters the reader has already laid out (usually the current and
+  the next one, since the reader lays out ahead while you read). Newly downloaded books, and very large pictures
+  (over 256 KB), are left for the reader to do when you get there. Change font or margins after closing the book
+  and the prepared pictures are simply redone.
+
+### 4. Picture timings in the Speed check report
+**Settings > System > Speed check** now has an **IMAGES** section: the last 16 pictures shown, each with its file
+size, type (baseline JPEG, progressive JPEG, PNG, GIF), size in pixels, how long it took, and whether it was
+decoded on the page turn, in the background, or came from the saved copy. Totals at the end. Send me one after
+reading a picture-heavy book.
+
+### 5. Finished books free their space
+When a book goes into **/COMPLETED**, the reader deletes the files it built for reading it (laid-out chapters,
+decoded pictures, fonts and styles copied out of the book). It keeps the book, that it's finished, your place,
+bookmarks, stats, its Library entry and its cover. Reopening it later is slower the first time, as it lays the
+book out again.
+- **Happens:** when the reader moves a finished book there, and for books you move there yourself (file browser,
+  File Transfer, a computer) the next time you open the Library.
+- **First time after updating:** books already in /COMPLETED are cleaned up a few at a time, so the first few
+  Library opens can pause for up to about 1.5 s.
+
+### 6. "On device" is accurate, finished books show "Read"
+- Books in **/COMPLETED** (and in folders one level inside the download folder) now count as on the reader.
+  They show **Read** in the Online Library, and **Get all missing**, the **Send to X4** collection and the
+  waiting list no longer download them again.
+- Confirm on a book that's already on the reader (On device or Read) does nothing, so you can't fetch a
+  duplicate. Waiting entries that are already on the reader are removed from the list.
+- A book you delete shows as missing the next time you open the Online Library, so you can get it again.
+
+---
+
+## From v3.0
+
+#### 1. Home: "More" is gone, a reading-stats tile takes its place
 On Orbit-A, B and C the **More** tile is replaced by a small **reading stats picture**: a ring showing today's reading
 against your daily goal, your streak, and seven little bars for the last seven days. Confirm on it opens **Reading
 Stats** (today card, month calendar; Left/Right change month).
 
 **File Transfer** moved to **Settings > System > Network > File Transfer**. It works exactly as before.
 
-### 2. Library: Bookmarks tab, no New tab, easier tab switching
+#### 2. Library: Bookmarks tab, no New tab, easier tab switching
 - The tabs are now **Books, Recent, Authors, Bookmarks**. *New* is gone; Bookmarks (all your bookmarks across books)
   is its own tab. Confirm on a bookmark jumps into the book at that spot; Left renames it, Right deletes it.
 - **Switching tabs works like Settings:** press **Up** on the first row to move onto the tab bar, then **Left/Right**
   to change tab. **Down** or **Confirm** goes back into the list. Holding Up/Down no longer switches tabs.
 - **Hold Confirm** on a book for its **Options** (it used to be the Right button). A short press still opens the book.
 
-### 3. Online Library: tidier order, fixes
+#### 3. Online Library: tidier order, fixes
 - The list now starts with **Search**, then **All books**, then Waiting, New, Series, Authors, Browse live server and
   Update catalog.
 - **All books** opened with a "Get now" label by mistake; it now opens the A–Z list properly.
@@ -34,11 +86,11 @@ Stats** (today card, month calendar; Left/Right change month).
   update runs, it shows **"N books saved"** instead.
 - Leftover outlines from the previous screen ("ghosts") are cleared when the Online Library opens.
 
-### 4. More titles per screen
+#### 4. More titles per screen
 Two-line lists (book title + author) are tighter on the Orbit themes: **12 books per screen instead of 9**. This applies
 to the Library, All books, search results, series and authors lists.
 
-### 5. Keyboard: quicker to respond
+#### 5. Keyboard: quicker to respond
 Keys now act the moment you **press** a button rather than when you let go, which removes about 0.1 s per key. Holds
 still work: **hold Confirm** types the key's alternate character (e.g. capital/symbol), **hold Up** moves the text
 cursor, **hold Delete** clears the field.
@@ -48,7 +100,7 @@ the panel, so typing feels better but not instant.
 
 ---
 
-## Already in this build (from v2.41-orbit.3 and .4)
+## From v2.41-orbit.3 and .4
 
 #### 1. Orbit themes (Settings > Display > UI Theme)
 Three new looks: **Orbit-A**, **Orbit-B** and **Orbit-C**. **Orbit-A** is switched on for you if you were still on the
@@ -148,11 +200,29 @@ already on the reader, the existing **Open the next book** row shows instead.)
 
 ---
 
-## Test checklist (v3.0)
+## Test checklist (v3.1)
 
 | Try this | You should see |
 | --- | --- |
-| Boot the reader | "3.0" under the orbit picture; Settings shows version 3.0 |
+| Boot the reader | "3.1" under the orbit picture |
+| Online Library > All books > Right, Right, Left | Jumps 12 books forward each press, back one screen; hints "« Page" / "Page »" |
+| Same in Search results, a series, an author | Same paging |
+| A book page with a big picture | "Loading image..." box, then the picture appears by itself. Confirm opens the menu |
+| Read a picture book a bit, go Home, put it on the charger to sleep, wake later | The next chapters' picture pages open quickly the first time |
+| Speed check report after a picture-heavy book | An IMAGES section with each picture's type and ms |
+| Finish a book (moved to /COMPLETED) | Same Library entry and cover; reopening it is slower the first time |
+| Online Library on a book in /COMPLETED | Shows "Read"; Confirm does nothing |
+| Delete a downloaded book, open Online Library | It no longer shows On device; you can get it again |
+
+**Re-check from v3.0:** Library tabs and hold-Confirm Options, the stats tile, "Last updated" after a charge.
+
+**Please tell me:** whether pictures ever stay on "Loading image..." for good, whether the first few Library opens
+pause, and send a Speed check report with the IMAGES section.
+
+### v3.0 checklist
+
+| Try this | You should see |
+| --- | --- |
 | Home (Orbit-A/B/C) | No More tile; a stats tile with a ring, streak and 7 bars. Confirm opens Reading Stats |
 | Settings > System > Network | **File Transfer** is there and starts the web server as before |
 | Library | Tabs Books, Recent, Authors, Bookmarks (no New) |
