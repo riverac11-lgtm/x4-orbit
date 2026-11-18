@@ -6,8 +6,8 @@ EPUBs and pulling books from an OPDS server (BookOrbit). Branch: `x4-orbit`. Bui
 
 Witch(hunt) was chosen as the base for its rendering: CSS and embedded-style layout, SD-card
 fonts at every size, a 4-level grayscale image pipeline with pixel caches, background
-pre-rendering of the next pages and sections, and large images shown as a placeholder that loads
-at full quality on Confirm.
+pre-rendering of the next pages and sections, and large images shown as a placeholder (upstream:
+loaded on Confirm; here: loaded by themselves, below).
 
 ## What is different from Witch(hunt)
 
@@ -23,6 +23,16 @@ at full quality on Confirm.
 - **Long Back leaves the OPDS browser** from any screen in it (lists, loading, errors, book
   details) and goes Home.
 - **Own boot splash.**
+- **Large images load by themselves.** An image over 256 KB shows a "Loading image..." box (with its
+  alt text) while the background image lane decodes it, and the page redraws itself once when it is
+  ready (not if the page was turned meanwhile). Confirm always opens the reader menu. If the lane
+  cannot decode it (it failed twice there, or there is no secondary buffer), the page render
+  decodes it itself, the old Confirm path, or shows the low-memory box. `ImageBlock.h`
+  `LARGE_IMAGES_LOAD_THEMSELVES`; the "Placeholder for large images" setting OFF still decodes them
+  on the page turn.
+- **Speed check: images.** The report lists the last 16 images drawn (name, source size, baseline /
+  progressive JPEG, PNG or GIF, source and output size, milliseconds, page-turn decode, background
+  decode or cache hit) and totals for each kind.
 
 **Speed**
 - **Hot paths built for speed.** The firmware is compiled for size (`-Os`); this profile builds the

@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <BoardConfig.h>
+#include <Epub/blocks/ImageBlock.h>
 #include <HalGPIO.h>
 #include <HalPowerManager.h>
 #include <HalStorage.h>
@@ -16,6 +17,34 @@
 namespace SpeedCheck {
 namespace {
 Log theLog;
+
+static_assert(static_cast<uint8_t>(ImageBlock::DecodeFormat::Gif) == static_cast<uint8_t>(ImageFormat::Gif) &&
+                  static_cast<uint8_t>(ImageBlock::DecodeFormat::ProgressiveJpeg) ==
+                      static_cast<uint8_t>(ImageFormat::ProgressiveJpeg),
+              "ImageFormat follows ImageBlock::DecodeFormat");
+static_assert(static_cast<uint8_t>(ImageBlock::DecodeHow::PageTurn) == static_cast<uint8_t>(ImageHow::PageTurn) &&
+                  static_cast<uint8_t>(ImageBlock::DecodeHow::Background) == static_cast<uint8_t>(ImageHow::Background),
+              "ImageHow follows ImageBlock::DecodeHow");
+
+// Called by ImageBlock under the render lock (the page render, the image lane): a copy into the ring, no card.
+void imageDrawn(const ImageBlock::DecodeReport& report) {
+  ImageDraw draw;
+  setImageName(draw, report.name);
+  draw.sourceBytes = report.sourceBytes;
+  draw.ms = report.ms;
+  draw.srcWidth = report.srcWidth;
+  draw.srcHeight = report.srcHeight;
+  draw.outWidth = report.outWidth;
+  draw.outHeight = report.outHeight;
+  draw.format = static_cast<ImageFormat>(report.format);
+  draw.how = static_cast<ImageHow>(report.how);
+  draw.ok = report.ok;
+  draw.grey = report.grey;
+  theLog.imageDrawn(draw);
+}
+
+// Installed before setup() runs: ImageBlock's observer is a constant-initialized pointer, set here once.
+[[maybe_unused]] const bool imageObserverInstalled = (ImageBlock::setDecodeObserver(&imageDrawn), true);
 }  // namespace
 
 Log& log() { return theLog; }

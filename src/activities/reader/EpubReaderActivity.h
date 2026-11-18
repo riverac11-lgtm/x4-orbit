@@ -851,6 +851,8 @@ class EpubReaderActivity final : public Activity {
   }
   bool glyphStarvedPage(int spine, int page) const { return glyphStarvedSpine_ == spine && glyphStarvedPage_ == page; }
   bool imageWarmGaveUp(int spine, int page) const;
+  // Whether this render decodes the page's large images rather than drawing them as boxes (see the definition).
+  bool largeImagesDecodeInRender() const;
   void noteImageWarmMiss(int spine, int page);
   // Lend the secondary framebuffer to Background-B's build arena. Mirrors the Background-C
   // borrow site in buildSection(): the lent block never enters the heap, so the return cannot

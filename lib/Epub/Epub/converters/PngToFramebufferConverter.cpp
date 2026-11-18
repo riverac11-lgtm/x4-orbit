@@ -295,6 +295,7 @@ bool PngToFramebufferConverter::decodeOpenFile(FsFile& file, const std::string& 
 
   const int srcWidth = static_cast<int>(info.width);
   const int srcHeight = static_cast<int>(info.height);
+  imageSourceFacts = {static_cast<uint16_t>(info.width), static_cast<uint16_t>(info.height), false};
   const int screenWidth = renderer.getScreenWidth();
   const int screenHeight = renderer.getScreenHeight();
 

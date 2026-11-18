@@ -1576,6 +1576,7 @@ bool JpegToFramebufferConverter::decodeToFramebuffer(const std::string& imagePat
     srcWidth = jdec.width;
     srcHeight = jdec.height;
   }
+  imageSourceFacts = {static_cast<uint16_t>(srcWidth), static_cast<uint16_t>(srcHeight), fullProgressive};
   if (srcWidth <= 0 || srcHeight <= 0) {
     LOG_ERR("JPG", "Invalid JPEG dimensions: %dx%d", srcWidth, srcHeight);
     file.close();

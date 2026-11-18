@@ -10,6 +10,7 @@
 #include <cstring>
 #include <string>
 
+#include "util/SpeedCheck.h"  // kReportBytes; the rest of it is declarations only
 #include "util/SpeedCheckLog.h"
 
 namespace {
@@ -359,7 +360,7 @@ TEST(SpeedCheckReport, AFullLogIsWrittenOutAndFitsItsBuffer) {
     now += 100000;
   }
 
-  char out[3072];  // SpeedCheck::kReportBytes
+  char out[kReportBytes];
   const size_t n = formatReport(log, testEnv(), out, sizeof(out));
   const std::string text(out, n);
   EXPECT_NE(text.find("  total: 3605 ms (open request to first page settled)\n"), std::string::npos);
@@ -420,6 +421,115 @@ TEST(SpeedCheckReport, DescribesEachWayAChapterWasHad) {
   s.pages = 31;
   describeSection(s, out, sizeof(out));
   EXPECT_STREQ(out, "shown while building, build 5200 ms, 31 pages");
+}
+
+// ---- images ------------------------------------------------------------------------------
+
+ImageDraw imageDraw(const char* name, ImageHow how, uint32_t ms, ImageFormat format = ImageFormat::BaselineJpeg) {
+  ImageDraw d;
+  setImageName(d, name);
+  d.how = how;
+  d.ms = ms;
+  d.format = format;
+  d.outWidth = 400;
+  d.outHeight = 600;
+  if (how != ImageHow::CacheHit) {
+    d.sourceBytes = 300 * 1024;
+    d.srcWidth = 1600;
+    d.srcHeight = 2400;
+  }
+  return d;
+}
+
+TEST(SpeedCheckImages, ShortensALongNameInTheMiddle) {
+  ImageDraw d;
+  setImageName(d, "cover.jpg");
+  EXPECT_STREQ(d.name, "cover.jpg");
+  setImageName(d, "chapter-01-illustration-large.jpeg");
+  EXPECT_EQ(strlen(d.name), kImageNameBytes - 1);
+  EXPECT_STREQ(d.name, "chapter-0~arge.jpeg");
+  setImageName(d, "exactly-19-chars.ab");  // 19: fits whole
+  EXPECT_STREQ(d.name, "exactly-19-chars.ab");
+}
+
+TEST(SpeedCheckImages, KeepsTheLastSixteenOldestFirstAndTotalsEveryKind) {
+  Log log;
+  for (int i = 0; i < 20; i++) {
+    char name[16];
+    snprintf(name, sizeof(name), "img%02d.jpg", i);
+    log.imageDrawn(imageDraw(name, i % 2 ? ImageHow::Background : ImageHow::PageTurn, 100));
+  }
+  ASSERT_EQ(log.imageCount(), kImageCapacity);
+  EXPECT_STREQ(log.image(0).name, "img04.jpg");
+  EXPECT_STREQ(log.image(kImageCapacity - 1).name, "img19.jpg");
+  EXPECT_EQ(log.imageTotals(ImageHow::PageTurn).count, 10u);
+  EXPECT_EQ(log.imageTotals(ImageHow::Background).count, 10u);
+  EXPECT_EQ(log.imageTotals(ImageHow::Background).ms, 1000u);
+  EXPECT_EQ(log.imageTotals(ImageHow::CacheHit).count, 0u);
+}
+
+TEST(SpeedCheckImages, ACacheHitIsListedOncePerImageButAlwaysCounted) {
+  Log log;
+  log.imageDrawn(imageDraw("a.png", ImageHow::Background, 4000, ImageFormat::Png));
+  for (int i = 0; i < 30; i++) log.imageDrawn(imageDraw("a.png", ImageHow::CacheHit, 20));
+  ImageDraw grey = imageDraw("a.png", ImageHow::CacheHit, 30);
+  grey.grey = true;
+  log.imageDrawn(grey);
+  log.imageDrawn(grey);
+  EXPECT_EQ(log.imageCount(), 2);  // the decode (its 1-bit hits are that image again), one grey hit
+  EXPECT_EQ(log.image(0).how, ImageHow::Background);
+  EXPECT_EQ(log.image(1).how, ImageHow::CacheHit);
+  EXPECT_TRUE(log.image(1).grey);
+  EXPECT_EQ(log.imageTotals(ImageHow::CacheHit).count, 32u);
+  EXPECT_EQ(log.imageTotals(ImageHow::CacheHit).ms, 660u);
+}
+
+TEST(SpeedCheckReport, ListsEachImageWithItsFormatSizesAndTime) {
+  Log log;
+  log.imageDrawn(imageDraw("map.jpg", ImageHow::PageTurn, 5321, ImageFormat::ProgressiveJpeg));
+  ImageDraw failed = imageDraw("broken.gif", ImageHow::Background, 12, ImageFormat::Gif);
+  failed.ok = false;
+  log.imageDrawn(failed);
+  ImageDraw inPlace = imageDraw("plate.png", ImageHow::Background, 800, ImageFormat::Png);
+  inPlace.sourceBytes = 0;
+  log.imageDrawn(inPlace);
+  log.imageDrawn(imageDraw("map.jpg", ImageHow::CacheHit, 45));    // listed already: counted only
+  log.imageDrawn(imageDraw("cover.jpg", ImageHow::CacheHit, 38));  // decoded before the list began
+  char out[kReportBytes];
+  const std::string report(out, formatReport(log, testEnv(), out, sizeof(out)));
+  EXPECT_NE(report.find("IMAGES (last 4)\n"), std::string::npos);
+  EXPECT_NE(report.find("  decoded on a page turn: 1, 5321 ms in all\n"), std::string::npos);
+  EXPECT_NE(report.find("  decoded in the background: 2, 812 ms in all\n"), std::string::npos);
+  EXPECT_NE(report.find("  drawn from the cache: 2, 83 ms in all\n"), std::string::npos);
+  EXPECT_NE(report.find("   map.jpg: page turn, progressive JPEG, 300 KB, 1600x2400 -> 400x600, 5321 ms\n"),
+            std::string::npos);
+  EXPECT_NE(report.find("   broken.gif: background, GIF, 300 KB, 1600x2400 -> 400x600, 12 ms, FAILED\n"),
+            std::string::npos);
+  EXPECT_NE(report.find("   plate.png: background, PNG, ? KB,"), std::string::npos);
+  EXPECT_NE(report.find("   cover.jpg: cache, 400x600, 38 ms\n"), std::string::npos);
+  EXPECT_EQ(report.find("   map.jpg: cache"), std::string::npos);
+  EXPECT_LT(report.find("IMAGES"), report.find("CPU AND POWER"));
+}
+
+TEST(SpeedCheckReport, AFullReportFitsTheDeviceBuffer) {
+  Log log;
+  for (int i = 0; i < 40; i++) {
+    log.noteInput(1000u * i, 1000u * i + 10, i % 3 == 0);
+    log.refreshStart(1000u * i + 400);
+    log.pageVisible(1000u * i + 900);
+  }
+  for (int i = 0; i < 20; i++) {
+    char name[40];
+    snprintf(name, sizeof(name), "chapter-%02d-illustration-plate.jpeg", i);
+    ImageDraw d = imageDraw(name, ImageHow::Background, 65000, ImageFormat::ProgressiveJpeg);
+    d.grey = true;
+    d.ok = false;
+    log.imageDrawn(d);
+  }
+  char out[kReportBytes];
+  ReportEnv env = testEnv();
+  const size_t n = formatReport(log, env, out, sizeof(out));
+  EXPECT_NE(std::string(out, n).find("SD CARD\n"), std::string::npos) << n;
 }
 
 }  // namespace
