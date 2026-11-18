@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "ChargeSession.h"
+#include "OpdsOnDevice.h"
 #include "OrbitCatalogFormat.h"
 
 using namespace OrbitCatalog;
@@ -301,4 +302,45 @@ TEST(ChargeSessionSummary, NameCutOnCharacterBoundary) {
   const std::string name = s.names[0];
   EXPECT_LT(name.size(), Summary::kNameLength);
   EXPECT_NE(static_cast<unsigned char>(name.back()) & 0xC0, 0xC0);  // never a dangling lead byte
+}
+
+// --- On device: the name rules the card scan applies -------------------------------------------
+
+TEST(OpdsOnDevice, NameHashIgnoresExtensionAndCase) {
+  using OpdsOnDevice::nameHash;
+  EXPECT_EQ(nameHash("Isaac Asimov - Foundation.epub"), nameHash("isaac asimov - FOUNDATION.xtc"));
+  EXPECT_EQ(nameHash("Isaac Asimov - Foundation.epub"), nameHash("Isaac Asimov - Foundation.x"));
+  EXPECT_NE(nameHash("Isaac Asimov - Foundation.epub"), nameHash("Isaac Asimov - Foundation 2.epub"));
+  EXPECT_EQ(nameHash(".hidden"), nameHash(".hidden"));  // a leading dot is not an extension
+}
+
+TEST(OpdsOnDevice, BookFileNames) {
+  EXPECT_TRUE(OpdsOnDevice::isBookFileName("a.EPUB"));
+  EXPECT_TRUE(OpdsOnDevice::isBookFileName("a.kepub"));
+  EXPECT_TRUE(OpdsOnDevice::isBookFileName("a.xtch"));
+  EXPECT_FALSE(OpdsOnDevice::isBookFileName("a.jpg"));
+  EXPECT_FALSE(OpdsOnDevice::isBookFileName("README"));
+}
+
+TEST(OpdsOnDevice, SubfoldersScanned) {
+  EXPECT_TRUE(OpdsOnDevice::scansSubfolder("Sci-Fi", false));
+  EXPECT_TRUE(OpdsOnDevice::scansSubfolder("Sci-Fi", true));
+  EXPECT_FALSE(OpdsOnDevice::scansSubfolder(".crosspoint", true));
+  EXPECT_FALSE(OpdsOnDevice::scansSubfolder("", false));
+  // /COMPLETED is scanned on its own (its books are the read ones), not twice from the root.
+  EXPECT_FALSE(OpdsOnDevice::scansSubfolder("COMPLETED", true));
+  EXPECT_FALSE(OpdsOnDevice::scansSubfolder("completed", true));
+  EXPECT_TRUE(OpdsOnDevice::scansSubfolder("COMPLETED", false));  // /Books/COMPLETED: just a folder
+}
+
+TEST(OpdsOnDevice, AddKeepsTheSetSortedAndUnique) {
+  std::vector<uint32_t> set;
+  OpdsOnDevice::add(set, "/Books/B - Two.epub");
+  OpdsOnDevice::add(set, "/Books/A - One.epub");
+  OpdsOnDevice::add(set, "A - One.xtc");  // the same book in another format
+  ASSERT_EQ(set.size(), 2u);
+  EXPECT_TRUE(std::is_sorted(set.begin(), set.end()));
+  EXPECT_TRUE(OpdsOnDevice::containsHash(set, OpdsOnDevice::nameHash("a - one.epub")));
+  EXPECT_FALSE(OpdsOnDevice::containsHash(set, OpdsOnDevice::nameHash("C - Three.epub")));
+  EXPECT_FALSE(OpdsOnDevice::containsHash({}, OpdsOnDevice::nameHash("A - One.epub")));
 }

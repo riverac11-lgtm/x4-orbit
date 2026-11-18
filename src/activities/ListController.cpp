@@ -37,8 +37,11 @@ ListGrammar::Press pressFor(const ButtonEventManager::PressType type) {
 // "« Search", "» Down", or the glyph alone for a declared side that does not apply. The glyph goes
 // first because hint boxes cut long labels off at the end.
 void composeFront(char* out, const size_t size, const char* glyph, const ListGrammar::FrontLabel label,
-                  const StrId action, const StrId stepLabel) {
+                  const StrId action, const StrId stepLabel, const StrId pageLabel) {
   switch (label) {
+    case ListGrammar::FrontLabel::Page:  // "« Page" / "Page »" carry their own glyph
+      snprintf(out, size, "%s", I18n::getInstance().get(pageLabel));
+      return;
     case ListGrammar::FrontLabel::PageOnly:
       snprintf(out, size, "%s", glyph);
       return;
@@ -63,6 +66,7 @@ ListGrammar::Shape ListController::shape() const {
   s.rightDeclared = declaration.right.declared;
   s.confirmLong = declaration.confirmLong;
   s.tabbed = declaration.tabbed;
+  s.sidesPage = host.listSidesPage();
   return s;
 }
 
@@ -292,8 +296,10 @@ void ListController::drawHints(GfxRenderer& renderer, const char* backLabel, con
   const auto labels = ListGrammar::labelsFor(shape(), availability());
   char left[48];
   char right[48];
-  composeFront(left, sizeof(left), kPrevGlyph, labels.left, declaration.left.label, StrId::STR_DIR_UP);
-  composeFront(right, sizeof(right), kNextGlyph, labels.right, declaration.right.label, StrId::STR_DIR_DOWN);
+  composeFront(left, sizeof(left), kPrevGlyph, labels.left, declaration.left.label, StrId::STR_DIR_UP,
+               StrId::STR_LIST_PAGE_PREV);
+  composeFront(right, sizeof(right), kNextGlyph, labels.right, declaration.right.label, StrId::STR_DIR_DOWN,
+               StrId::STR_LIST_PAGE_NEXT);
   const auto hints = input.mapHints(backLabel, confirmLabel, left, right, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, hints.front.btn1, hints.front.btn2, hints.front.btn3, hints.front.btn4);
   GUI.drawSideButtonHints(renderer, hints.side.up, hints.side.down);

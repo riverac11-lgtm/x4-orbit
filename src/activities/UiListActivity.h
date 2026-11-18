@@ -83,6 +83,8 @@ class UiListActivity : public Activity, protected UiAppHost {
   // more than leave overrides it.
   virtual void homeFromList();
   virtual void switchTab(int /*direction*/) {}
+  // True while the list on screen is a long one whose short Left/Right turn a whole page.
+  [[nodiscard]] virtual bool sidesPage() const { return false; }
 
   // The content area a list lays out in: room for the bottom hints AND the side Up/Down boxes.
   [[nodiscard]] Rect listContentRect() const;
@@ -136,6 +138,7 @@ class UiListActivity : public Activity, protected UiAppHost {
     ListWindow listWindow() const override { return list.positionWindow(); }
     int listLeadPositions() const override { return list.leadPositions(); }
     bool listSelectable(const int position) const override { return list.isPositionSelectable(position); }
+    bool listSidesPage() const override { return list.sidesPage(); }
     int listSelected() const override { return list.selectedPosition(); }
     void listSelect(const int position) override { list.selectPosition(position); }
     void listShowPage(const int position, const int top) override { list.showPositionPage(position, top); }

@@ -2,6 +2,7 @@ add_executable(OrbitCatalogTest
   OrbitCatalogTest.cpp
   ${REPO_ROOT}/src/util/OrbitCatalogFormat.cpp
   ${REPO_ROOT}/src/util/ChargeSession.cpp
+  ${REPO_ROOT}/src/util/OpdsOnDeviceRules.cpp
   ${REPO_ROOT}/lib/Epub/Epub/BookTextSearch.cpp
   ${REPO_ROOT}/lib/Epub/Epub/htmlEntities.cpp
   ${REPO_ROOT}/lib/Utf8/Utf8.cpp

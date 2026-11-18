@@ -15,11 +15,13 @@
 //   Browse live server / Update catalog (last updated ...)
 //
 // Lists of books show each book's state at the right: "On device" (by the browser's file-name
-// rule, so earlier downloads count) or "Waiting". Confirm on a book offers Get now / Get when
-// charging (or Don't get it); a series lists its books in number order with "Get all missing" on
-// top; the waiting list takes a book off with Confirm. Without a saved catalog the screen offers
-// to save one, or the live browser. Downloads and updates run in CatalogSyncActivity, which
-// reboots on its way out like every Wi-Fi screen.
+// rule, so earlier downloads count), "Read" (in /COMPLETED) or "Waiting". A book already on the
+// card offers no download, and leaves the waiting list when the screen opens. Confirm on a book offers Get now / Get
+// when charging (or Don't get it); a series lists its books in number order with "Get all missing" on top; the waiting
+// list takes a book off with Confirm. Without a saved catalog the screen offers to save one, or the live browser.
+// Downloads and updates run in CatalogSyncActivity, which reboots on its way out like every Wi-Fi screen.
+//
+// Left/Right turn a whole screen of rows in the book and name lists (the menus keep their step).
 //
 // RAM: the rows of the list on screen as 4-byte file offsets (a names list: 24 bytes a name, up to
 // kMaxNames), one line buffer, and the on-device and waiting sets (4 bytes a book).
@@ -46,6 +48,7 @@ class OrbitCatalogActivity final : public UiListActivity {
   void onBackButton() override;
   const char* headerTitle() const override;
   const char* footerConfirmLabel() const override;
+  bool sidesPage() const override { return view == View::Books || view == View::Names; }
   static void provideRow(void* ctx, uint16_t index, freeink::ui::ListItem& item);
 
   bool loadState();
@@ -64,6 +67,11 @@ class OrbitCatalogActivity final : public UiListActivity {
   void setRows(View v, Kind k, int selected);
   bool isWaiting(std::string_view id) const;
   bool onDevice(const OrbitCatalog::RecordView& view) const;
+  enum class Presence : uint8_t { Missing, OnDevice, Read };
+  Presence presence(const OrbitCatalog::RecordView& view) const;
+  // Whether book-list row `index` (lead row counted) is a book on the card; `buf` is a line buffer.
+  bool presentAt(int index, char* buf) const;
+  void dropPresentWaiting();
   void reloadWaiting();
 
   const OpdsServer& server;  // an OPDS_STORE entry, which outlives this screen
@@ -88,6 +96,7 @@ class OrbitCatalogActivity final : public UiListActivity {
   int actionRow = -1;       // the book the actions are for, or -1 for the whole series
   int missingCount = 0;
   std::vector<uint32_t> onDeviceSet;
+  std::vector<uint32_t> readSet;  // the books in /COMPLETED
   std::vector<uint32_t> waitingSet;
   std::string actionTitle;
   bool actionWaiting = false;  // the book the actions are for is on the waiting list

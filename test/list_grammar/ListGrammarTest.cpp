@@ -359,3 +359,37 @@ TEST(ListGrammarDoubleTap, NoEarlierTapOrAnEarlierTimeIsNotADoubleTap) {
   EXPECT_FALSE(ListGrammar::completesDoubleTap(Key::Down, 100, Key::Down, 0, rows));
   EXPECT_FALSE(ListGrammar::completesDoubleTap(Key::Down, 900, Key::Down, 1000, rows));
 }
+
+// --- Short Left/Right turning pages (a long book list) -------------------------------------
+
+TEST(ListGrammarSidesPage, ShortLeftRightTurnAPage) {
+  Shape s = kDefault;
+  s.sidesPage = true;
+  expectCommand(Key::Left, Press::Short, s, kNone, Command::PagePrev, 1);
+  expectCommand(Key::Right, Press::Short, s, kNone, Command::PageNext, 1);
+  expectCommand(Key::Right, Press::Double, s, kNone, Command::PageNext, 1);
+  // Long still pages (and repeats in the controller); Up/Down keep their meaning.
+  expectCommand(Key::Left, Press::Long, s, kNone, Command::PagePrev, 1);
+  expectCommand(Key::Down, Press::Long, s, kNone, Command::Last, 1);
+  const auto labels = ListGrammar::labelsFor(s, kNone);
+  EXPECT_EQ(labels.left, FrontLabel::Page);
+  EXPECT_EQ(labels.right, FrontLabel::Page);
+}
+
+TEST(ListGrammarSidesPage, DeclaredActionWinsOverPaging) {
+  Shape s = kBoth;
+  s.sidesPage = true;
+  expectCommand(Key::Left, Press::Short, s, kAll, Command::LeftAction, 1);
+  EXPECT_EQ(ListGrammar::labelsFor(s, kAll).right, FrontLabel::Action);
+}
+
+TEST(ListGrammarSidesPage, PageMovesByTheDrawnWindowAndClampsAtTheEnds) {
+  // 40 books, 12 drawn (Orbit two-line rows): the selection keeps its line, the view moves 12.
+  expectTurn(ListGrammar::page(plainRows(40, 12, 0), 3, 1), 15, 12);
+  expectTurn(ListGrammar::page(plainRows(40, 12, 12), 15, -1), 3, 0);
+  // The last screen starts at 28; from there forward goes to the last book, back from the top
+  // screen to the first.
+  expectTurn(ListGrammar::page(plainRows(40, 12, 24), 30, 1), 34, 28);
+  expectTurn(ListGrammar::page(plainRows(40, 12, 28), 34, 1), 39, 28);
+  expectTurn(ListGrammar::page(plainRows(40, 12, 0), 5, -1), 0, 0);
+}
