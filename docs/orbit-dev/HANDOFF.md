@@ -54,6 +54,21 @@ Agents on branches orbit-lists (items 1,6), orbit-imgui (2,4), orbit-predecode (
 Then: merge --no-ff into orbit-next, combined build+tests, set [orbit] version = 3.1, release notes, push
 orbit-next:refs/heads/x4-orbit (push URL https://github.com/riverac11-lgtm/x4-orbit), verify + send bin.
 
+## NEXT TO-DO (v3.2) — WAIT until the user says to implement
+1. Reading Stats rework, no day-based stats (the X4 clock is off while asleep, so dates are unreliable;
+   photo 2026-11-17: calendar showed 15th on the 17th). Data: ReadingStatsTypes.h (per-book seconds, pages,
+   sessions, progress, finishedCount; totals). Layout agreed with user:
+   - Ring = current book: % in the middle; "About X h Y min left, roughly N sessions at your pace" (pace from
+     that book's seconds/pages or seconds/% ). Under it "Last session: 42 min, 38 pages".
+   - "Recent sessions" bars: last 14 sessions (NEW small ring buffer of session length/pages on SD), newest
+     right; "Average session · Longest".
+   - Milestones: lifetime hours / pages / books finished with the next threshold (10,25,50,100,250,500...;
+     pages 1k,2.5k,5k,10k,25k...; books 5,10,15,25,50,100...) and how far to go.
+   - Top books stays; merge duplicates by title+author (user saw "The Talisman" twice).
+   - Remove: calendar, day streak, "today", Daily Reading Goal setting (OrbitProfile sets it; keep key
+     harmless). Orbit home stats tile/dock/row: small book ring + next milestone.
+   - "Since last charge" was considered and REJECTED (a charge lasts ~2 weeks).
+
 ## NEXT TO-DO (being implemented as v3.1)
 1. Online Library > All books: Left/Right = page up/down, moving the list by one whole screen of items
    (12 rows on Orbit two-line lists). Labels on the Left/Right hints. (Requested 2026-11-15 after v3.0.)
