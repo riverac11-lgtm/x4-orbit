@@ -336,6 +336,23 @@ class Section {
   // with the framebuffers released, where the full progressive workspace fits.
   void warmAllImageCaches(int xOffset, int yOffset, bool forceLoad, bool monochromeOutput = true,
                           bool alsoWarmGrayscale = false, bool redecodeCoarse = false);
+
+  // Pictures prepared while charging (src/ChargeWarm.cpp), with no reader running: the pages of
+  // the layout file at `path` from `page` on, read straight from the card, each page's images
+  // decoded into their pixel caches the way the reader's image lane does it (Page::warmImageCaches
+  // at the reader's margins; an image-only page centred in `viewportHeight`). The file is never
+  // loaded as a Section, so one that does not suit is left alone -- loadSectionFile() would delete
+  // it. Large images (LARGE_IMAGE_SOURCE_BYTES) are left to the reader: their decode cannot be
+  // interrupted and runs for many seconds. `page` comes back as the page to resume from.
+  // Stopped: `keepGoing` said no (asked between pages, and inside a decode through
+  // CooperativeAbort). Unusable: no such file, another layout version, or a file the reader
+  // would rebuild (interrupted, or degraded for lack of memory).
+  enum class FileWarm : uint8_t { Done, Stopped, Unusable };
+  static FileWarm warmImagesInFile(GfxRenderer& renderer, const std::string& path, uint16_t& page, int xOffset,
+                                   int yOffset, int viewportHeight, bool alsoWarmGrayscale, bool (*keepGoing)(void*),
+                                   void* ctx);
+  // The layout file this section reads (or is built into).
+  const std::string& getFilePath() const { return filePath; }
   bool isTruncatedCache() const { return truncatedCache; }
   bool isEmbeddedStyleFallback() const { return embeddedStyleFallback; }
   // True when the last build's CSS resolution hit low-heap skips (styles silently
