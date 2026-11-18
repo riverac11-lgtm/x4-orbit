@@ -1064,7 +1064,8 @@ void EpubReaderActivity::loop() {
         return;
       }
       if (ev.type == ButtonEventManager::PressType::Short) {
-        if (pageHasPlaceholders) {
+        // Where large images load by themselves Confirm is always the menu: there is no box to press on.
+        if (pageHasPlaceholders && !LARGE_IMAGES_LOAD_THEMSELVES) {
           forceLoadLargeImages = true;
           pageHasPlaceholders = false;
           requestUpdate();
@@ -2245,6 +2246,7 @@ bool EpubReaderActivity::warmPageForImageLane(const Page& page, const int spine,
     // The lane after the build has the whole buffer: what does not fit beside the build is better left to it.
     image_scratch::ScopedCanWait canWait(building);
     GfxRenderer::ScopedCacheOnlyImageWrites cacheOnly(renderer);
+    const ImageBlock::BackgroundDecodeScope background;  // the Speed check's image list tells these apart
     // Cheaper here than on a page turn: a page whose images the lane decodes is drawn from their caches.
     ladder = warmImagesClimbingLadder(page, layout.marginLeft, contentTop, /*forceLoad=*/true, warmGrayscale, arena,
                                       /*drawsPage=*/false);
@@ -2257,13 +2259,19 @@ bool EpubReaderActivity::warmPageForImageLane(const Page& page, const int spine,
 
   const bool complete = !page.hasUncachedImages(true, true, warmGrayscale);
   if (!complete && !preempted && !building) noteImageWarmMiss(spine, pageIndex);  // a build's lane tries nothing twice
+  // The lane has just given up on the page on screen: where large images load by themselves its large images' boxes
+  // say "Loading image...", so it is drawn once more, and that render decodes them itself (largeImagesDecodeInRender).
+  // Once only: the lane skips a page it gave up on. A page without such a box has nothing to gain from the redraw.
+  const bool gaveUpOnScreen = LARGE_IMAGES_LOAD_THEMSELVES && onScreen && !complete && !preempted && !building &&
+                              imageWarmGaveUp(spine, pageIndex) &&
+                              page.hasPlaceholderImages(/*forceLoadLargeImages=*/false, /*monochromeOutput=*/true);
   if (preempted) imageWarmPreemptedMs_ = millis();
   // The lazy load: the page on screen showed these images as placeholders, and their caches now
   // exist, so a plain redraw renders them (from the cache, no decode). Not while input waits --
   // the press it belongs to is about to replace this page anyway.
   const bool shownNowCached = shownWasUncached && !page.hasUncachedImages(true, true, false);
   const bool inputWaiting = CooperativeAbort::shouldAbortLongTask();
-  const bool redraw = shownNowCached && !inputWaiting;
+  const bool redraw = (shownNowCached || gaveUpOnScreen) && !inputWaiting;
   if (building && redraw)
     buildDisplayedPage_ = -1;  // the build's pass draws a page once: this one again, from its caches
   // The page after the one on screen just became pre-renderable. Its pre-render ran when this
@@ -2293,6 +2301,16 @@ bool EpubReaderActivity::warmPageForImageLane(const Page& page, const int spine,
   checkHeapIntegrity("after_image_lane");
   if (redraw || nextPageNowPreRenderable) requestUpdate();
   return true;
+}
+
+bool EpubReaderActivity::largeImagesDecodeInRender() const {
+  if (forceLoadLargeImages || !SETTINGS.largeImagePlaceholder) return true;
+  if (!LARGE_IMAGES_LOAD_THEMSELVES || !section) return false;
+  // The image lane cannot do it: it gave up on this page (two decodes there came back incomplete), or there is no
+  // secondary buffer for it to decode in at all. A "Loading image..." box would then never change, so the render
+  // decodes the images itself, the old Confirm path: the image, or the low-memory box when the heap is short.
+  return imageWarmGaveUp(currentSpineIndex, section->currentPage) ||
+         (!secondaryBorrowed_ && !backgroundBorrowActive_ && !renderer.hasSecondaryBuffer());
 }
 
 bool EpubReaderActivity::imageWarmGaveUp(const int spine, const int page) const {
@@ -6011,9 +6029,11 @@ void EpubReaderActivity::renderContents(RenderLock& lock, std::unique_ptr<Page> 
   // (recoverSecondaryBufferIfNeeded). A decode now would run on the heap beside that build (LaneBeforeBuild): B gives
   // the buffer back first, and the page renders as if B had never held it. Past B's yields the images wait for it as
   // placeholders, and the image lane decodes them and redraws the page once B is done.
+  // Asked once, before this render borrows the secondary buffer: the answer reads whether the buffer is there.
+  const bool decodeLargeImages = largeImagesDecodeInRender();
   bool imagesWaitForBuild = false;
   if (backgroundBorrowActive_ && section && !memoryDegradedPage(currentSpineIndex, section->currentPage) &&
-      page->hasUncachedImages(forceLoadLargeImages || !SETTINGS.largeImagePlaceholder, /*monochromeOutput=*/true)) {
+      page->hasUncachedImages(decodeLargeImages, /*monochromeOutput=*/true)) {
     switch (LaneBeforeBuild::decodeWhileBuilding(backgroundImageYields_)) {
       case LaneBeforeBuild::Decode::TakeFromBuild:
         yieldBackgroundBorrowToImages("the page render");
@@ -6057,7 +6077,7 @@ void EpubReaderActivity::renderContents(RenderLock& lock, std::unique_ptr<Page> 
   // is safe to release here because no waveform is pending: displayBuffer() has
   // not been called yet this render cycle. We reallocate after warm completes.
   // This mirrors the same technique used during section indexing (createSectionFile).
-  const bool warmForceLoad = forceLoadLargeImages || !SETTINGS.largeImagePlaceholder;
+  const bool warmForceLoad = decodeLargeImages;
   bool releasedSecondaryForWarm = false;
   // Set for the whole warm pass (decode included, not just the release/realloc bracket):
   // stepBackgroundSectionBuild()/stepCurrentSectionBuild() check this and refuse to start
@@ -6190,7 +6210,7 @@ void EpubReaderActivity::renderContents(RenderLock& lock, std::unique_ptr<Page> 
   // there is no pass for a page turn to abort.
   const bool singlePushAaThisRender = aaEnabledForThisRender && renderer.supportsGrayFrame();
 
-  const bool effectiveForceLoad = forceLoadLargeImages || !SETTINGS.largeImagePlaceholder;
+  const bool effectiveForceLoad = decodeLargeImages;
   pageHasPlaceholders = page->hasPlaceholderImages(effectiveForceLoad, imageMonochrome);
 
   // The image-page half refresh is owed to the page AFTER an image page. A redraw of the image page

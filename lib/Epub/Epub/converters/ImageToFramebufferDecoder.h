@@ -109,6 +109,15 @@ struct RenderConfig {
   DirectGray8Writer* gray8 = nullptr;
 };
 
+// What the decode under way found in its file's header, for the Speed check's image list: ImageBlock clears it
+// before decodeToFramebuffer() and reads it after. One shared record, as no two decodes ever run at once.
+struct ImageSourceFacts {
+  uint16_t width = 0;
+  uint16_t height = 0;
+  bool progressive = false;  // a progressive (SOF2) JPEG
+};
+extern ImageSourceFacts imageSourceFacts;
+
 class ImageToFramebufferDecoder {
  public:
   virtual ~ImageToFramebufferDecoder() = default;

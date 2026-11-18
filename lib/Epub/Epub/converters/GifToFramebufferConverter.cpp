@@ -330,6 +330,7 @@ bool GifToFramebufferConverter::decodeToFramebuffer(const std::string& imagePath
 
   const int srcW = st->frameWidth;
   const int srcH = st->frameHeight;
+  imageSourceFacts = {static_cast<uint16_t>(srcW), static_cast<uint16_t>(srcH), false};
   float scale;
   int dstW, dstH;
   if (config.useExactDimensions && config.maxWidth > 0 && config.maxHeight > 0) {

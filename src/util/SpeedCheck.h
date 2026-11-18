@@ -17,9 +17,10 @@ inline constexpr char kReportPath[] = "/speed-report.txt";
 /// All Files still shows it, to copy or delete).
 inline bool isReport(const std::string_view path) { return path == kReportPath; }
 inline constexpr char kReportName[] = "speed-report.txt";
-/// Room for the whole report (about 2 KB with a full ring of page turns). Heap, taken only while a
-/// report is being written or served; a buffer that is too small still gets whole lines.
-inline constexpr size_t kReportBytes = 3072;
+/// Room for the whole report (about 2 KB with a full ring of page turns, 1.5 KB more with a full list of
+/// images). Heap, taken only while a report is being written or served; a buffer that is too small still
+/// gets whole lines.
+inline constexpr size_t kReportBytes = 4608;
 
 Log& log();
 

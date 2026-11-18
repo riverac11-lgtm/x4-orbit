@@ -13,7 +13,8 @@
 /// the button).
 ///
 /// Everything here is fixed-size and allocation-free: one book-open record, one chapter-change
-/// record and a ring of the last kTurnCapacity page turns, about 300 bytes of .bss in all. The hot
+/// record, a ring of the last kTurnCapacity page turns and one of the last kImageCapacity images drawn,
+/// about 1 KB of .bss in all. The hot
 /// path stores a few integers per page turn and never touches the card. Split from SpeedCheck.cpp
 /// (millis(), the card, the settings) so the bookkeeping and the report text can be tested on the
 /// host: this header depends on nothing but <cstdint> and <cstdio>.
@@ -79,6 +80,50 @@ struct Stats {
 };
 
 inline uint16_t clampMs(const uint32_t ms) { return ms > 0xFFFFu ? 0xFFFFu : static_cast<uint16_t>(ms); }
+
+// ---- images ------------------------------------------------------------------------
+/// The last kImageCapacity images the reader drew, so image speed work can aim at the slow case it actually has.
+inline constexpr uint8_t kImageCapacity = 16;
+inline constexpr size_t kImageNameBytes = 20;
+
+/// The same order as ImageBlock::DecodeFormat / DecodeHow (SpeedCheck.cpp checks it).
+enum class ImageFormat : uint8_t { Unknown, BaselineJpeg, ProgressiveJpeg, Png, Gif };
+enum class ImageHow : uint8_t { CacheHit, Background, PageTurn };
+inline constexpr uint8_t kImageHowCount = 3;
+
+struct ImageDraw {
+  char name[kImageNameBytes] = {};  // the file name, shortened in the middle when long (setImageName)
+  uint32_t sourceBytes = 0;         // 0: not known
+  uint32_t ms = 0;
+  uint16_t srcWidth = 0, srcHeight = 0;  // decodes only
+  uint16_t outWidth = 0, outHeight = 0;
+  ImageFormat format = ImageFormat::Unknown;
+  ImageHow how = ImageHow::PageTurn;
+  bool ok = true;
+  bool grey = false;
+};
+
+/// A long name keeps its start and its end ("chapter01~ration.jpg"): books number their images at either.
+inline void setImageName(ImageDraw& draw, const char* name) {
+  size_t length = 0;
+  while (name[length] != '\0') length++;
+  constexpr size_t kKeep = kImageNameBytes - 1;
+  if (length <= kKeep) {
+    for (size_t i = 0; i <= length; i++) draw.name[i] = name[i];
+    return;
+  }
+  constexpr size_t kHead = (kKeep - 1) / 2;
+  constexpr size_t kTail = kKeep - 1 - kHead;
+  for (size_t i = 0; i < kHead; i++) draw.name[i] = name[i];
+  draw.name[kHead] = '~';
+  for (size_t i = 0; i < kTail; i++) draw.name[kHead + 1 + i] = name[length - kTail + i];
+  draw.name[kKeep] = '\0';
+}
+
+struct ImageTotals {
+  uint32_t count = 0;
+  uint32_t ms = 0;
+};
 
 class Log {
  public:
@@ -200,6 +245,34 @@ class Log {
     awaiting_ = buildOwed ? Awaiting::Chapter : Awaiting::None;
   }
 
+  // ---- images ----------------------------------------------------------------------
+  /// An image was drawn from its pixel cache or decoded. Every one counts in the totals; a cache hit of an image the
+  /// list holds already (decoded or hit, same variant) is not listed again, or paging back and forth would push every
+  /// decode out of the list.
+  void imageDrawn(const ImageDraw& draw) {
+    ImageTotals& totals = imageTotals_[static_cast<uint8_t>(draw.how) % kImageHowCount];
+    totals.count++;
+    totals.ms += draw.ms;
+    if (draw.how == ImageHow::CacheHit) {
+      for (uint8_t i = 0; i < imageCount_; i++) {
+        const ImageDraw& kept = images_[i];
+        if (kept.grey == draw.grey && sameName(kept.name, draw.name)) return;
+      }
+    }
+    images_[imageNext_] = draw;
+    imageNext_ = static_cast<uint8_t>((imageNext_ + 1) % kImageCapacity);
+    if (imageCount_ < kImageCapacity) imageCount_++;
+  }
+  uint8_t imageCount() const { return imageCount_; }
+  /// i = 0 is the oldest image kept.
+  const ImageDraw& image(const uint8_t i) const {
+    const uint8_t first = imageCount_ < kImageCapacity ? 0 : imageNext_;
+    return images_[(first + i) % kImageCapacity];
+  }
+  const ImageTotals& imageTotals(const ImageHow how) const {
+    return imageTotals_[static_cast<uint8_t>(how) % kImageHowCount];
+  }
+
   // ---- reading the records ----------------------------------------------------------
   const OpenRecord& lastOpen() const { return open_; }
   const ChapterRecord& lastChapter() const { return chapter_; }
@@ -260,6 +333,14 @@ class Log {
   enum class InFlight : uint8_t { None, Turn, Section };
   enum class Awaiting : uint8_t { None, Open, Chapter };
 
+  static bool sameName(const char* a, const char* b) {
+    for (size_t i = 0; i < kImageNameBytes; i++) {
+      if (a[i] != b[i]) return false;
+      if (a[i] == '\0') return true;
+    }
+    return true;
+  }
+
   void finishBuild(SectionTiming& timing, const uint32_t nowMs, const uint16_t pages) const {
     timing.buildDone = true;
     timing.buildMs = nowMs - sectionEntryMs_;
@@ -272,6 +353,10 @@ class Log {
   SectionTiming openSection_;
   SectionTiming pending_;
   Turn turns_[kTurnCapacity] = {};
+  ImageDraw images_[kImageCapacity] = {};
+  ImageTotals imageTotals_[kImageHowCount] = {};
+  uint8_t imageNext_ = 0;
+  uint8_t imageCount_ = 0;
   uint32_t inputEventMs_ = 0;
   uint32_t inputDispatchMs_ = 0;
   uint32_t flightEventMs_ = 0;
@@ -388,6 +473,58 @@ inline void describeSection(const SectionTiming& s, char* out, const size_t cap)
   }
 }
 
+inline const char* imageFormatName(const ImageFormat format) {
+  switch (format) {
+    case ImageFormat::BaselineJpeg:
+      return "baseline JPEG";
+    case ImageFormat::ProgressiveJpeg:
+      return "progressive JPEG";
+    case ImageFormat::Png:
+      return "PNG";
+    case ImageFormat::Gif:
+      return "GIF";
+    case ImageFormat::Unknown:
+      break;
+  }
+  return "unknown format";
+}
+
+/// The IMAGES section: the totals by kind, then one line per image kept, oldest first.
+inline void formatImages(const Log& log, LineWriter& w) {
+  const ImageTotals& turn = log.imageTotals(ImageHow::PageTurn);
+  const ImageTotals& lane = log.imageTotals(ImageHow::Background);
+  const ImageTotals& hit = log.imageTotals(ImageHow::CacheHit);
+  w.line("IMAGES (last %u)", log.imageCount());
+  if (turn.count + lane.count + hit.count == 0) {
+    w.line("  none drawn since the reader was switched on");
+    return;
+  }
+  w.line("  decoded on a page turn: %lu, %lu ms in all", static_cast<unsigned long>(turn.count),
+         static_cast<unsigned long>(turn.ms));
+  w.line("  decoded in the background: %lu, %lu ms in all", static_cast<unsigned long>(lane.count),
+         static_cast<unsigned long>(lane.ms));
+  w.line("  drawn from the cache: %lu, %lu ms in all", static_cast<unsigned long>(hit.count),
+         static_cast<unsigned long>(hit.ms));
+  w.line("  each image, oldest first (a cache hit is listed once per image):");
+  for (uint8_t i = 0; i < log.imageCount(); i++) {
+    const ImageDraw& d = log.image(i);
+    const char* grey = d.grey ? ", grey" : "";
+    if (d.how == ImageHow::CacheHit) {
+      w.line("   %s: cache, %ux%u, %lu ms%s", d.name, d.outWidth, d.outHeight, static_cast<unsigned long>(d.ms), grey);
+      continue;
+    }
+    char size[16];
+    if (d.sourceBytes == 0) {
+      snprintf(size, sizeof(size), "? KB");
+    } else {
+      snprintf(size, sizeof(size), "%lu KB", static_cast<unsigned long>((d.sourceBytes + 1023) / 1024));
+    }
+    w.line("   %s: %s, %s, %s, %ux%u -> %ux%u, %lu ms%s%s", d.name,
+           d.how == ImageHow::Background ? "background" : "page turn", imageFormatName(d.format), size, d.srcWidth,
+           d.srcHeight, d.outWidth, d.outHeight, static_cast<unsigned long>(d.ms), grey, d.ok ? "" : ", FAILED");
+  }
+}
+
 /// The whole report as plain text. Returns the number of bytes written (without the terminator);
 /// a buffer that is too small gets as many whole lines as fit.
 inline size_t formatReport(const Log& log, const ReportEnv& env, char* out, const size_t cap) {
@@ -465,6 +602,9 @@ inline size_t formatReport(const Log& log, const ReportEnv& env, char* out, cons
       }
     }
   }
+  w.line("%s", "");
+
+  formatImages(log, w);
   w.line("%s", "");
 
   w.line("CPU AND POWER");

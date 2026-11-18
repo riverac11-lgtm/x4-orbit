@@ -29,6 +29,15 @@ class BuildArena;  // lib/Memory — optional decode scratch (see image_scratch 
 // that is the axis to add rather than moving this number.
 static constexpr uint32_t LARGE_IMAGE_SOURCE_BYTES = 256 * 1024;
 
+// x4-orbit: a large image is not left for the reader to ask for. Its box says "Loading image..." while the reader's
+// background image lane decodes it (that lane always decodes large images), and the page redraws itself once the
+// cache lands; Confirm keeps opening the reader menu. Elsewhere the box says "Large Image / Press Confirm to load".
+#if defined(CP_ORBIT_PROFILE) && CP_ORBIT_PROFILE
+static constexpr bool LARGE_IMAGES_LOAD_THEMSELVES = true;
+#else
+static constexpr bool LARGE_IMAGES_LOAD_THEMSELVES = false;
+#endif
+
 // Process-wide scratch arena for image decoding, installed for the duration of a multi-image
 // pass (see Section::warmAllImageCaches).
 //
@@ -223,6 +232,31 @@ class ImageBlock final : public Block {
   // prepared (a mid-build draw), or there was not memory enough to decode it.
   enum class Placeholder : uint8_t { Large, Loading, LowMemory };
 
+  // The Speed check's image list (src/util/SpeedCheck): one report per image drawn from its pixel cache or decoded
+  // by render(). The observer is a plain function so that nothing here depends on the app.
+  enum class DecodeFormat : uint8_t { Unknown, BaselineJpeg, ProgressiveJpeg, Png, Gif };
+  enum class DecodeHow : uint8_t { CacheHit, Background, PageTurn };
+  struct DecodeReport {
+    const char* name = "";     // the image's file name, without its folder
+    uint32_t sourceBytes = 0;  // 0 when not known (a PNG decoded where it lies in the archive)
+    uint16_t srcWidth = 0, srcHeight = 0;
+    uint16_t outWidth = 0, outHeight = 0;
+    uint32_t ms = 0;  // cache read, or extract + decode
+    DecodeFormat format = DecodeFormat::Unknown;
+    DecodeHow how = DecodeHow::PageTurn;
+    bool ok = true;     // false: the decode failed or stopped for input
+    bool grey = false;  // the 4-level (anti-aliasing) variant, not the 1-bit one
+  };
+  using DecodeObserver = void (*)(const DecodeReport&);
+  static void setDecodeObserver(const DecodeObserver observer) { decodeObserver_ = observer; }
+  // While one is live, decodes count as the background image lane's (the reader's warm-ahead), not a page turn's.
+  struct BackgroundDecodeScope {
+    BackgroundDecodeScope() { backgroundDecode_ = true; }
+    ~BackgroundDecodeScope() { backgroundDecode_ = false; }
+    BackgroundDecodeScope(const BackgroundDecodeScope&) = delete;
+    BackgroundDecodeScope& operator=(const BackgroundDecodeScope&) = delete;
+  };
+
   // The LowMemory placeholders drawn since the last call: the reader shows its low-memory indicator while the page
   // on screen has one.
   static uint16_t takeLowMemoryPlaceholders() {
@@ -241,6 +275,9 @@ class ImageBlock final : public Block {
   static Placeholder placeholderOnlyKind_;
   static uint16_t placeholdersDrawn_;
   static uint16_t lowMemoryDrawn_;
+  static DecodeObserver decodeObserver_;
+  static bool backgroundDecode_;
+  void reportDecode(DecodeReport& report, unsigned long startMs, bool monochromeOutput) const;
 
  public:
   // While one of these is live, render() draws every image that is not already in its pixel

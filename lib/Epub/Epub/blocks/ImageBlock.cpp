@@ -459,6 +459,27 @@ bool ImageBlock::placeholderOnly_ = false;
 ImageBlock::Placeholder ImageBlock::placeholderOnlyKind_ = ImageBlock::Placeholder::Loading;
 uint16_t ImageBlock::placeholdersDrawn_ = 0;
 uint16_t ImageBlock::lowMemoryDrawn_ = 0;
+ImageBlock::DecodeObserver ImageBlock::decodeObserver_ = nullptr;
+bool ImageBlock::backgroundDecode_ = false;
+
+void ImageBlock::reportDecode(DecodeReport& report, const unsigned long startMs, const bool monochromeOutput) const {
+  report.ms = millis() - startMs;
+  const std::string& path = epubEntryPath_.empty() ? imagePath : epubEntryPath_;
+  const size_t slash = path.rfind('/');
+  report.name = path.c_str() + (slash == std::string::npos ? 0 : slash + 1);
+  report.outWidth = static_cast<uint16_t>(width);
+  report.outHeight = static_cast<uint16_t>(height);
+  report.grey = !monochromeOutput;
+  if (report.how != DecodeHow::CacheHit) {
+    report.how = backgroundDecode_ ? DecodeHow::Background : DecodeHow::PageTurn;
+    report.srcWidth = imageSourceFacts.width;
+    report.srcHeight = imageSourceFacts.height;
+    if (report.format == DecodeFormat::BaselineJpeg && imageSourceFacts.progressive) {
+      report.format = DecodeFormat::ProgressiveJpeg;
+    }
+  }
+  decodeObserver_(report);
+}
 
 void ImageBlock::renderPlaceholder(GfxRenderer& renderer, const int x, const int y, const Placeholder kind) const {
   constexpr int BORDER = 1;
@@ -469,8 +490,9 @@ void ImageBlock::renderPlaceholder(GfxRenderer& renderer, const int x, const int
 
   const int lineH = renderer.getLineHeight(UI_10_FONT_ID);
   const bool hasAlt = !altText.empty();
-  // Loading, low memory: the alt text (if any) and one line saying which. Large image: three lines as before.
-  const bool large = kind == Placeholder::Large;
+  // Loading, low memory: the alt text (if any) and one line saying which. Large image: three lines as before, or
+  // where large images load by themselves, the alt text and "Loading image...".
+  const bool large = kind == Placeholder::Large && !LARGE_IMAGES_LOAD_THEMSELVES;
   const int lineCount = large ? (hasAlt ? 3 : 2) : (hasAlt ? 2 : 1);
   const int totalTextH = lineH * lineCount;
 
@@ -480,7 +502,9 @@ void ImageBlock::renderPlaceholder(GfxRenderer& renderer, const int x, const int
     if (!large) {
       if (hasAlt) renderer.drawText(UI_10_FONT_ID, textX, textY, altText.c_str());
       renderer.drawText(UI_10_FONT_ID, textX, textY + lineH * (lineCount - 1),
-                        kind == Placeholder::Loading ? tr(STR_INDEXING) : tr(STR_DICT_LOW_MEMORY));
+                        kind == Placeholder::Loading     ? tr(STR_INDEXING)
+                        : kind == Placeholder::LowMemory ? tr(STR_DICT_LOW_MEMORY)
+                                                         : tr(STR_LOADING_IMAGE));
       return;
     }
     renderer.drawText(UI_10_FONT_ID, textX, textY, tr(STR_LARGE_IMAGE));
@@ -530,7 +554,13 @@ void ImageBlock::renderUpright(GfxRenderer& renderer, const int x, const int y, 
   const std::string cachePath = monochromeOutput ? getBwCachePath(imagePath) : getGrayscaleCachePath(imagePath);
 
   // Try to render from pixel cache first (always, regardless of forceLoad)
+  const unsigned long startMs = millis();
   if (renderFromCache(renderer, cachePath, x, y, width, renderedHeight, srcYOffset_, srcHeight_)) {
+    if (decodeObserver_) {
+      DecodeReport report;
+      report.how = DecodeHow::CacheHit;
+      reportDecode(report, startMs, monochromeOutput);
+    }
     return;
   }
 
@@ -584,8 +614,15 @@ void ImageBlock::renderUpright(GfxRenderer& renderer, const int x, const int y, 
   // The extension is a hint, not a guarantee (a .png that is really an AVIF is a thing that
   // happens), but it costs nothing to be wrong: the decoder rejects the signature and we fall
   // through to the extract exactly as before.
+  const unsigned long decodeStartMs = millis();
+  imageSourceFacts = {};
   if (!epubFilePath_.empty() && !epubEntryPath_.empty() && !Storage.exists(imagePath.c_str()) &&
       FsHelpers::hasPngExtension(imagePath) && decodePngInPlace(epubFilePath_, epubEntryPath_, renderer, config)) {
+    if (decodeObserver_) {
+      DecodeReport report;
+      report.format = DecodeFormat::Png;
+      reportDecode(report, decodeStartMs, monochromeOutput);
+    }
     return;
   }
 
@@ -650,6 +687,16 @@ void ImageBlock::renderUpright(GfxRenderer& renderer, const int x, const int y, 
   const bool resuming = jpeg && Storage.exists(config.checkpointPath.c_str());
   const uint32_t heapShortBefore = image_scratch::heapShortCount();
   bool success = decoder->decodeToFramebuffer(imagePath, renderer, config);
+  if (decodeObserver_) {
+    DecodeReport report;
+    report.sourceBytes = static_cast<uint32_t>(fileSize);
+    report.format = format == ImageFormatDetector::Format::Jpeg  ? DecodeFormat::BaselineJpeg
+                    : format == ImageFormatDetector::Format::Png ? DecodeFormat::Png
+                    : format == ImageFormatDetector::Format::Gif ? DecodeFormat::Gif
+                                                                 : DecodeFormat::Unknown;
+    report.ok = success;
+    reportDecode(report, decodeStartMs, monochromeOutput);
+  }
   if (!success) {
     LOG_ERR("IMG", "Failed to decode image: %s", imagePath.c_str());
     // Short of memory: say so in the image's place rather than leave it blank. Not in a pass that writes the

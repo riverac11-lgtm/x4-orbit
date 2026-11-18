@@ -2,6 +2,8 @@
 
 #include <Logging.h>
 
+ImageSourceFacts imageSourceFacts;
+
 bool ImageToFramebufferDecoder::validateImageDimensions(int width, int height, const std::string& format) {
   if (imageDimensionsWouldOverflow(width, height, MAX_SOURCE_PIXELS)) {
     const int64_t area = static_cast<int64_t>(width) * static_cast<int64_t>(height);
