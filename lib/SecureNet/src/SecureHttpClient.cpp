@@ -1,5 +1,6 @@
 #include "SecureHttpClient.h"
 
+#include <HalClock.h>
 #include <Logging.h>
 #include <WiFi.h>
 #include <base64.h>
@@ -9,6 +10,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+#include "HttpDate.h"
 
 namespace crosspoint {
 
@@ -340,8 +343,17 @@ bool SecureHttpClient::readHeaders(ResponseMeta& meta) {
   // Connection: keep-alive header (parsed below) overrides that.
   if (line.compare(0, 9, "HTTP/1.0 ") == 0) keepAlive = false;
 
+  // The clock fallback (HalClock::applyHttpDate): every reply's Date, read only while the clock is
+  // not NTP-fresh, so a synced reader parses nothing. Age is added for a reply served from a cache,
+  // whose Date is when it was first made.
+  const bool wantDate = HalClock::isApproximate() || HalClock::isStaleRestore();
+  time_t dateEpoch = 0;
+  long ageSec = 0;
   while (readLine(line, deadline)) {
-    if (line.empty()) return true;  // end of headers
+    if (line.empty()) {  // end of headers
+      if (dateEpoch > 0) HalClock::applyHttpDate(dateEpoch + (ageSec > 0 ? ageSec : 0));
+      return true;
+    }
     const size_t colon = line.find(':');
     if (colon == std::string::npos) continue;
     std::string name = toLowerAscii(line.substr(0, colon));
@@ -357,6 +369,10 @@ bool SecureHttpClient::readHeaders(ResponseMeta& meta) {
       location = value;
     } else if (name == "content-range") {
       meta.hasContentRange = http_range::parseContentRange(value.c_str(), meta.contentRange);
+    } else if (wantDate && name == "date") {
+      http_date::parse(value.c_str(), dateEpoch);
+    } else if (wantDate && name == "age") {
+      ageSec = strtol(value.c_str(), nullptr, 10);
     }
   }
   return false;  // ran out before blank line

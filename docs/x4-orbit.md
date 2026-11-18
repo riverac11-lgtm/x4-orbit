@@ -33,6 +33,17 @@ loaded on Confirm; here: loaded by themselves, below).
 - **Speed check: images.** The report lists the last 16 images drawn (name, source size, baseline /
   progressive JPEG, PNG or GIF, source and output size, milliseconds, page-turn decode, background
   decode or cache hit) and totals for each kind.
+- **Clock catches up when online.** With "Use Clock" off (it costs battery) the X4 clock stops while
+  asleep and wakes at the time it went to sleep. Now, whenever Wi-Fi connects (every screen that
+  goes online passes through the Wi-Fi screen) and on charge runs, a clock that is not NTP-fresh
+  (`HalClock::isApproximate()`, which covers a stale restore) gets one NTP sync
+  (`HalClock::refreshWhileOnline`: no-op when fresh, ~20 ms fast path, a failed ~5 s attempt is
+  not repeated for 10 minutes). If NTP does not get through, the `Date:` header of the next HTTP
+  reply (BookOrbit/OPDS, any `SecureHttpClient` request; `Age` added) sets it
+  (`HalClock::applyHttpDate`, parser `lib/SecureNet/HttpDate`): only while approximate, only inside
+  the TLS-plausible window, and never more than an hour backwards, so the stale-restore lower
+  bound for certificate checks holds. Syncs after an uncorrected wake no longer feed the drift
+  learner (the gap is the sleep, not drift).
 
 **Speed**
 - **Hot paths built for speed.** The firmware is compiled for size (`-Os`); this profile builds the
