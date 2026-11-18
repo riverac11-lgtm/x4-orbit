@@ -7,7 +7,6 @@ add_executable(OrbitHomeLayoutTest
   # The Reading Stats graphic on the home screens draws its ring with StatsDraw.
   ${REPO_ROOT}/src/components/StatsDraw.cpp
   ${REPO_ROOT}/src/util/ChapterMarks.cpp
-  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
   ${REPO_ROOT}/lib/GfxRenderer/TextTruncation.cpp
   ${REPO_ROOT}/lib/EpdFont/EpdFont.cpp
   ${BIDI_MARK_SOURCES}

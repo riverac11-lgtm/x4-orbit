@@ -10,6 +10,7 @@
 
 #include "Arduino.h"
 #include "HalClock.h"
+#include "ReadingSessionLog.h"
 #include "ReadingSessionTracker.h"
 #include "ReadingStats.h"
 
@@ -23,6 +24,7 @@ struct Session {
   time_t walltime;
 };
 std::vector<Session> g_sessions;
+std::vector<Session> g_logged;  // what the recent-sessions log was handed
 
 time_t g_now = 0;
 bool g_synced = true;
@@ -48,6 +50,9 @@ ReadingStatsStore::WriteResult ReadingStatsStore::recordSession(const std::strin
   g_sessions.push_back({docId, seconds, pages, progress, walltime});
   return WriteResult::Done;
 }
+void ReadingSessionLog::append(const std::string& docId, const uint32_t seconds, const uint32_t pages) {
+  g_logged.push_back({docId, seconds, pages, 0, 0});
+}
 ReadingStatsStore::WriteResult ReadingStatsStore::markFinished(const std::string&, const std::string&,
                                                                const std::string&, time_t) {
   return WriteResult::Done;
@@ -59,6 +64,7 @@ class Tracker : public ::testing::Test {
  protected:
   void SetUp() override {
     g_sessions.clear();
+    g_logged.clear();
     host_clock::valueRef() = 1000;
     g_now = kBeforeMidnight;
     g_synced = true;
@@ -151,4 +157,29 @@ TEST_F(Tracker, AClockSetBackIsNoCut) {
   readFor(60);
   tracker.end();
   EXPECT_EQ(g_sessions.size(), 1u);
+}
+
+// The recent-sessions bars show sittings: one past midnight is one bar, not two.
+TEST_F(Tracker, TheSessionLogTakesASittingOnceAndWhole) {
+  tracker.begin("doc", "T", "A");
+  readFor(60);
+  readFor(80);  // cut at midnight here
+  readFor(40);
+  tracker.end();
+  ASSERT_EQ(g_sessions.size(), 2u);
+  ASSERT_EQ(g_logged.size(), 1u);
+  EXPECT_EQ(g_logged[0].docId, "doc");
+  EXPECT_EQ(g_logged[0].seconds, 180u);
+  EXPECT_EQ(g_logged[0].pages, 3u);
+}
+
+TEST_F(Tracker, EverySittingReachesTheSessionLog) {
+  tracker.begin("doc", "T", "A");
+  readFor(30);
+  tracker.end();
+  tracker.begin("other", "T", "A");
+  readFor(20);
+  tracker.end();
+  ASSERT_EQ(g_logged.size(), 2u);  // the log itself leaves out the short ones (ReadingInsightsTest)
+  EXPECT_EQ(g_logged[1].docId, "other");
 }

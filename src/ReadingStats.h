@@ -115,16 +115,13 @@ class ReadingStatsStore {
   void prefetchRecent(const std::vector<std::string>& docIds);
   const RecentSnapshot* recent(const std::string& docId) const;
   float recentPooledPace() const { return pooledPace_; }
-  // From the same read: seconds read today (0 without a clock), and the average minutes a day over
-  // the last two weeks (ReadingCalendar::averageDailyMinutes; 0 when unknown).
-  uint32_t recentTodaySeconds() const { return todaySeconds_; }
+  // From the same read: the average minutes a day over the last two weeks for the battery estimate
+  // (ReadingCalendar::averageDailyMinutes; 0 when unknown), and for the Orbit homes' Reading Stats
+  // graphic the lifetime figures its next milestone comes from, and whether any reading is recorded.
   uint16_t recentDailyMinutes() const { return dailyMinutes_; }
-  // Also from that read, for the Orbit homes' Reading Stats graphic: the current streak, the minutes
-  // of the last seven days (oldest first, [6] = today; all 0 without a clock), and whether any
-  // reading is recorded at all.
-  static constexpr int kRecentWeekDays = 7;
-  uint16_t recentStreak() const { return streak_; }
-  const uint16_t* recentWeekMinutes() const { return week_; }
+  uint32_t recentTotalSeconds() const { return totalSeconds_; }
+  uint32_t recentTotalPages() const { return totalPages_; }
+  uint32_t recentFinishedBooks() const { return finishedBooks_; }
   bool recentHasHistory() const { return hasHistory_; }
 
   // ---- The web ----------------------------------------------------------------------------------
@@ -214,10 +211,10 @@ class ReadingStatsStore {
   bool prepared_ = false;
   std::vector<RecentSnapshot> recent_;
   float pooledPace_ = 0.0f;
-  uint32_t todaySeconds_ = 0;
   uint16_t dailyMinutes_ = 0;
-  uint16_t streak_ = 0;
-  uint16_t week_[kRecentWeekDays] = {};
+  uint32_t totalSeconds_ = 0;
+  uint32_t totalPages_ = 0;
+  uint32_t finishedBooks_ = 0;
   bool hasHistory_ = false;
 };
 

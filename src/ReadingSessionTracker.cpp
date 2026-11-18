@@ -4,6 +4,7 @@
 #include <HalClock.h>
 #include <Logging.h>
 
+#include "ReadingSessionLog.h"
 #include "ReadingStats.h"
 
 ReadingSessionTracker& globalReadingSessionTracker() {
@@ -61,7 +62,9 @@ void ReadingSessionTracker::cutAtMidnight() {
   const uint8_t progress = lastKnownProgress;
   const uint32_t seconds = getLiveSeconds();
   const uint32_t pages = getLivePages();
+  cutting = true;
   end();
+  cutting = false;
   begin(book, bookTitle, bookAuthor);
   lastKnownProgress = progress;
   carriedSeconds = seconds;
@@ -109,6 +112,8 @@ void ReadingSessionTracker::end() {
       LOG_ERR("RST", "Session not recorded (%u) doc=%s secs=%u pages=%u wall=%lld", static_cast<unsigned>(result),
               docId.c_str(), seconds, pagesTurnedThisSession, (long long)walltime);
     }
+    // The recent-sessions bars on Reading Stats: the whole sitting, both sides of a midnight cut.
+    if (!cutting) ReadingSessionLog::append(docId, carriedSeconds + seconds, carriedPages + pagesTurnedThisSession);
   }
 
   active = false;

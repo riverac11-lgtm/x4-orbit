@@ -9,7 +9,7 @@ add_executable(OrbitPreview
   ${REPO_ROOT}/src/components/StatsDraw.cpp
   ${REPO_ROOT}/src/components/CardLayout.cpp
   ${REPO_ROOT}/src/util/ChapterMarks.cpp
-  ${REPO_ROOT}/src/util/ReadingCalendar.cpp
+  ${REPO_ROOT}/src/util/ReadingInsights.cpp
   ${REPO_ROOT}/lib/GfxRenderer/TextTruncation.cpp
   ${REPO_ROOT}/lib/EpdFont/EpdFont.cpp
   ${BIDI_MARK_SOURCES}

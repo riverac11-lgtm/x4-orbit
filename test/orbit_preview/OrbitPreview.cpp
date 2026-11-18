@@ -27,7 +27,7 @@
 #include "components/themes/orbit/OrbitListStyle.h"
 #include "fontIds.h"
 #include "util/ChapterMarks.h"
-#include "util/ReadingCalendar.h"
+#include "util/ReadingInsights.h"
 
 namespace {
 
@@ -104,15 +104,11 @@ OrbitHomeDraw::View baseView(const OrbitHomeLayout::Variant v, const bool hasBoo
     view.menuBitmap[i] = StatsIcon;
   }
   view.stats.hasHistory = true;
-  view.stats.minutes = 18;
-  view.stats.goalMinutes = 30;
-  const uint16_t week[7] = {12, 0, 35, 31, 0, 22, 18};
-  for (int i = 0; i < 7; i++) view.stats.week[i] = week[i];
-  view.stats.caption = "of 30 min";
-  view.stats.today = "18 of 30 min today";
-  view.stats.compact = "18/30 min";
-  view.stats.streak = "2-day streak";
-  view.stats.heading = "Today";
+  view.stats.percent = hasBook ? 41 : -1;
+  view.stats.heading = "Next milestone";
+  view.stats.goal = "50 hours";
+  view.stats.toGo = "13 h to go";
+  view.stats.compact = "Next: 50 hours";
   view.stats.empty = "Start reading to see your stats";
   view.selected = selected;
   view.caption = v == OrbitHomeLayout::Variant::C ? "Good morning" : "Continue reading";
@@ -251,10 +247,12 @@ void renderList(const std::string& dir, const std::string& name, const bool orbi
   writePgm(r, dir + "/" + name + ".pgm");
 }
 
-// Reading Stats as ReadingStatsActivity composes it: the Lyra header, the today card, the month,
-// then the all-time card, the cards CardLayout draws at the activity's margins (Lyra: 32 px).
-void renderStats(const std::string& dir, const std::string& name, const int goal, const bool calendar,
-                 const int minutesToday) {
+// Reading Stats as ReadingStatsActivity composes it: the Lyra header, the current book, the recent
+// sessions, the milestones and the top books, the cards CardLayout draws at the activity's margins
+// (Lyra: 32 px), from the same ReadingInsights arithmetic and StatsDraw painting.
+void renderStats(const std::string& dir, const std::string& name, const int sessionCount, const uint8_t progress,
+                 const uint32_t bookSeconds) {
+  using namespace ReadingInsights;
   GfxRenderer r;
   r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
   battery(r);
@@ -263,57 +261,98 @@ void renderStats(const std::string& dir, const std::string& name, const int goal
   CardLayoutConfig cfg;
   cfg.outerMarginX = 32;
   CardLayout layout(r, Rect{0, 0, 480, 760}, 5 + 84 + 16, cfg);
+  const auto dur = [](char* out, const size_t size, const uint32_t seconds) {
+    formatDuration(out, size, seconds, "%d h %d min", "%d h", "%d min");
+  };
 
-  char caption[24], line[40], streak[32];
-  StatsDraw::Today today;
-  today.minutes = minutesToday;
-  today.goalMinutes = goal;
-  if (goal > 0) {
-    snprintf(caption, sizeof(caption), "of %d min", goal);
-    if (minutesToday >= goal) {
-      snprintf(line, sizeof(line), "Goal reached");
-    } else {
-      snprintf(line, sizeof(line), "%d min to your goal", goal - minutesToday);
-    }
+  SessionLog log;
+  const uint32_t minutes[] = {24, 41, 12, 65, 30, 18, 112, 22, 35, 9, 48, 27, 15, 42, 33, 20};
+  for (int i = 0; i < sessionCount; ++i) add(log, "0123456789abcdef0123456789abcdef", minutes[i] * 60, minutes[i]);
+
+  char line[48] = "", note[48] = "", last[64] = "", text[24];
+  const TimeLeft left = timeLeft(bookSeconds, progress, averageSeconds(log));
+  if (progress >= 100) {
+    snprintf(line, sizeof(line), "Finished");
+  } else if (left.known) {
+    dur(text, sizeof(text), left.seconds);
+    snprintf(line, sizeof(line), "About %s left", text);
+    if (left.sessions > 1) snprintf(note, sizeof(note), "~%d sessions at your pace", left.sessions);
   } else {
-    snprintf(caption, sizeof(caption), "min");
-    snprintf(line, sizeof(line), "%d min read", minutesToday);
+    snprintf(note, sizeof(note), "Keep reading to see time left");
   }
-  snprintf(streak, sizeof(streak), "%d-day streak", 6);
-  today.ringCaption = caption;
-  today.heading = "Today";
-  today.line = line;
-  today.streak = streak;
+  if (const Session* n = newest(log)) {
+    dur(text, sizeof(text), n->seconds);
+    snprintf(last, sizeof(last), "Last session: %s, %d pages", text, static_cast<int>(n->pages));
+  }
+  StatsDraw::Book book;
+  book.percent = progress;
+  book.title = "Black House";
+  book.line = line;
+  book.note = note;
+  book.last = last;
   layout.card(nullptr, [&](CardLayout::Body& b) {
-    b.advance(StatsDraw::drawToday(r, b.innerLeft(), b.currentY(), b.innerWidth(), today));
+    b.advance(StatsDraw::drawBook(r, b.innerLeft(), b.currentY(), b.innerWidth(), book));
   });
 
-  if (calendar) {
-    // November 2026, today the 15th, as in the mock-up.
-    StatsDraw::Month month;
-    month.title = "November 2026";
-    month.weekdays = "M|T|W|T|F|S|S";
-    month.firstWeekday = ReadingCalendar::weekdayMondayFirst(ReadingCalendar::dayIndexOf(2026, 11, 1));
-    month.dayCount = ReadingCalendar::daysInMonth(2026, 11);
-    const int minutes[15] = {0, 12, 0, 35, 31, 0, 0, 0, 0, 22, 45, 8, 0, 5, minutesToday};
-    for (int d = 0; d < 15; ++d) month.shade[d] = ReadingCalendar::shade(minutes[d] * 60u, goal);
-    month.today = 15;
-    month.lastDay = 15;
-    month.canGoBack = true;
-    layout.card(nullptr, [&](CardLayout::Body& b) {
-      b.advance(StatsDraw::drawMonth(r, b.innerLeft(), b.currentY(), b.innerWidth(), month));
-    });
-  }
+  const int smallH = r.getLineHeight(SMALL_FONT_ID);
+  layout.card("Recent sessions", [&](CardLayout::Body& b) {
+    if (log.count == 0) {
+      b.centeredMessage("Your reading sessions will show here");
+      return;
+    }
+    uint32_t seconds[kCapacity];
+    for (int i = 0; i < log.count; ++i) seconds[i] = log.sessions[i].seconds;
+    b.advance(
+        StatsDraw::drawSessionBars(r, b.innerLeft(), b.currentY(), b.innerWidth(), 48, seconds, log.count, kCapacity) +
+        4);
+    char average[24], longest[24], caption[64];
+    dur(average, sizeof(average), averageSeconds(log));
+    dur(longest, sizeof(longest), longestSeconds(log));
+    snprintf(caption, sizeof(caption), "Average %s \xC2\xB7 Longest %s", average, longest);
+    r.drawText(SMALL_FONT_ID, b.innerLeft(), b.currentY(), caption);
+    b.advance(smallH);
+  });
 
-  layout.card("Total time", [&](CardLayout::Body& b) {
-    b.statGrid({{{"42", "Sessions"}, {"7", "Books tracked"}, {"6", "Streak"}, {"11", "Longest"}}});
-    b.rowLR("Total time", "23h 40m");
-    b.rowLR("Pages turned", "1873");
-    b.rowLR("Pages/min", "1.3");
+  layout.card("Milestones", [&](CardLayout::Body& b) {
+    const struct {
+      Kind kind;
+      uint32_t amount;
+      const char* label;
+      const char* goal;
+    } rows[] = {{Kind::Hours, 37 * 3600 + 20 * 60, "Hours read", "%s hours"},
+                {Kind::Pages, 4812, "Pages turned", "%s pages"},
+                {Kind::Books, 3, "Books finished", "%s books"}};
+    for (int i = 0; i < 3; ++i) {
+      const Milestone m = milestone(rows[i].kind, rows[i].amount);
+      char value[16], threshold[16], goal[32], toGo[24], next[72];
+      groupThousands(value, sizeof(value), m.value);
+      groupThousands(threshold, sizeof(threshold), m.next);
+      snprintf(goal, sizeof(goal), rows[i].goal, threshold);
+      if (m.kind == Kind::Hours) {
+        dur(toGo, sizeof(toGo), m.toGo);
+      } else {
+        groupThousands(toGo, sizeof(toGo), m.toGo);
+      }
+      snprintf(next, sizeof(next), "Next: %s \xC2\xB7 %s to go", goal, toGo);
+      StatsDraw::Milestone view{rows[i].label, value, next, m.permille};
+      if (i > 0) b.advance(8);
+      b.advance(StatsDraw::drawMilestone(r, b.innerLeft(), b.currentY(), b.innerWidth(), view));
+    }
+  });
+
+  layout.card("Top books", [&](CardLayout::Body& b) {
+    const char* titles[] = {"The Talisman", "Black House", "Middlemarch"};
+    const char* times[] = {"9h 12m", "6h 40m", "3h 05m"};
+    for (int i = 0; i < 3; ++i) {
+      const int w = r.getTextWidth(UI_10_FONT_ID, times[i]);
+      r.drawText(UI_10_FONT_ID, b.innerRight() - w, b.currentY(), times[i]);
+      r.drawText(UI_10_FONT_ID, b.innerLeft(), b.currentY(), titles[i], true, EpdFontFamily::BOLD);
+      b.advance(b.rowStep());
+    }
   });
   if (layout.cursorY() > 760 - 16)
     std::fprintf(stderr, "%s: cards run past the hints (%d)\n", name.c_str(), layout.cursorY());
-  hints(r, "\xC2\xAB Back", "All books", calendar ? "Earlier" : "", "");
+  hints(r, "\xC2\xAB Back", "All books", "", "");
   writePgm(r, dir + "/" + name + ".pgm");
 }
 
@@ -463,23 +502,21 @@ int main(int argc, char** argv) {
   cEmpty.stats.hasHistory = false;
   render(dir, "home-c-stats-empty", cEmpty);
 
-  // x4-orbit stats: the Orbit-B line and the battery estimate, Reading Stats, the reader's bar.
-  auto bToday = baseView(Variant::B, true, 1);
-  bToday.today = "Read 18 min today";
+  // x4-orbit stats: the battery estimate, Reading Stats, the reader's bar.
   {
     GfxRenderer r;
     r.fonts = {{SMALL_FONT_ID, smallFamily}, {UI_10_FONT_ID, ui10Family}, {UI_12_FONT_ID, ui12Family}};
     battery(r);
     StatsDraw::drawQuietText(r, 480 - 12 - 16 - 4 - r.getTextWidth(SMALL_FONT_ID, "90%") - 10, 5, "~9 days");
-    const auto frame = OrbitHomeDraw::layout(r, bToday);
-    OrbitHomeDraw::draw(r, bToday, frame);
+    const auto view = baseView(Variant::B, true, 1);
+    const auto frame = OrbitHomeDraw::layout(r, view);
+    OrbitHomeDraw::draw(r, view, frame);
     hints(r, "", "Open", "Left", "Right");
-    writePgm(r, dir + "/home-b-today.pgm");
+    writePgm(r, dir + "/home-b-battery.pgm");
   }
-  renderStats(dir, "stats-goal", 30, true, 18);
-  renderStats(dir, "stats-goal-met", 20, true, 26);
-  renderStats(dir, "stats-no-goal", 0, true, 18);
-  renderStats(dir, "stats-no-clock", 30, false, 18);
+  renderStats(dir, "stats", 14, 41, 2 * 3600 + 10 * 60);
+  renderStats(dir, "stats-few-sessions", 3, 1, 300);
+  renderStats(dir, "stats-no-sessions", 0, 100, 9 * 3600);
   renderReaderBar(dir, "reader-bar", 4, false);
   renderReaderBar(dir, "reader-bar-thin-rtl", 2, true);
   return 0;

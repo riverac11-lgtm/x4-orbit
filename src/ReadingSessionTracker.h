@@ -92,6 +92,8 @@ class ReadingSessionTracker {
   // What this sitting read before midnight, recorded already (cutAtMidnight): for the live figures only.
   uint32_t carriedSeconds = 0;
   uint32_t carriedPages = 0;
+  // Set while cutAtMidnight() ends the first part: the recent-sessions log takes the sitting once, whole, at its end.
+  bool cutting = false;
 };
 
 // Global tracker singleton; readers route their lifecycle calls through here.

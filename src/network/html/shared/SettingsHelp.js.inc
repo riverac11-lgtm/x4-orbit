@@ -166,7 +166,6 @@ const SETTINGS_HELP = {
     "statusBarClock": "Shows the time in the reader's status bar; needs Use Clock turned on.",
     "statusBarBatteryDays": "Shows about how many days of reading the battery has left, from how fast it has been draining and how long you usually read a day.",
     "statusBarChapterMarks": "Marks where each chapter starts on a progress bar that shows the whole book.",
-    "readingGoal": "Minutes a day to aim for. Reading Stats shows your progress toward it and shades each day of its calendar.",
     "statusBarClockPosition": "Puts the clock at the left or the right end of the status bar.",
     "statusBarLowerProgressBar": "A progress bar along the bottom of the page, for the whole book or the current chapter, or none."
   }

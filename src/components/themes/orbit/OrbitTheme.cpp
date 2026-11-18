@@ -24,7 +24,7 @@
 #include "components/themes/TapTargets.h"
 #include "components/themes/orbit/OrbitHomeDraw.h"
 #include "fontIds.h"
-#include "util/ReadingCalendar.h"
+#include "util/ReadingInsights.h"
 
 namespace {
 
@@ -121,14 +121,6 @@ void OrbitTheme::drawOrbitHome(GfxRenderer& renderer, const int top, const int b
     view.book.percent = getRecentBookProgressPercent(book);
     view.book.eta = BookProgressPresentation::etaText(book, view.book.percent);
     view.book.history = BookProgressPresentation::historyLine(book);
-    if (variant_ == Variant::B) {
-      const uint32_t minutes = READING_STATS.recentTodaySeconds() / 60;
-      if (minutes > 0) {
-        char today[40];
-        snprintf(today, sizeof(today), tr(STR_ORBIT_READ_TODAY), static_cast<int>(minutes));
-        view.today = today;
-      }
-    }
   }
   const int bookCount = static_cast<int>(books.size());
   view.shelfCount = variant_ == Variant::C ? std::max(0, bookCount - (view.hasBook ? 1 : 0)) : 0;
@@ -142,34 +134,40 @@ void OrbitTheme::drawOrbitHome(GfxRenderer& renderer, const int top, const int b
     view.menuBitmap[i] = iconForName(view.menuIcon[i], 32);
     if (view.menuBitmap[i] == nullptr) view.menuBitmap[i] = iconForName(view.menuIcon[i], 24);
   }
-  // The Reading Stats graphic, from the stats Home prefetched on entry (no file read here).
-  char statsCaption[24], statsToday[40], statsCompact[24], statsStreak[32];
+  // The Reading Stats graphic, from the stats Home prefetched on entry (no file read here): the current
+  // book's ring and the milestone closest to done.
+  char statsGoal[32], statsToGo[32], statsCompact[48];
   {
+    using ReadingInsights::Kind;
     View::Stats& st = view.stats;
     st.hasHistory = READING_STATS.recentHasHistory();
-    st.minutes = static_cast<int>(READING_STATS.recentTodaySeconds() / 60);
-    st.goalMinutes = ReadingCalendar::goalMinutes(SETTINGS.readingGoal);
-    std::copy(READING_STATS.recentWeekMinutes(), READING_STATS.recentWeekMinutes() + 7, st.week);
-    if (st.goalMinutes > 0) {
-      snprintf(statsCaption, sizeof(statsCaption), tr(STR_GOAL_OF), st.goalMinutes);
-      snprintf(statsToday, sizeof(statsToday), tr(STR_ORBIT_STATS_OF_GOAL), st.minutes, st.goalMinutes);
-      snprintf(statsCompact, sizeof(statsCompact), tr(STR_ORBIT_STATS_SHORT), st.minutes, st.goalMinutes);
+    st.percent = view.hasBook ? view.book.percent : -1;
+    const ReadingInsights::Milestone milestones[] = {
+        ReadingInsights::milestone(Kind::Hours, READING_STATS.recentTotalSeconds()),
+        ReadingInsights::milestone(Kind::Pages, READING_STATS.recentTotalPages()),
+        ReadingInsights::milestone(Kind::Books, READING_STATS.recentFinishedBooks())};
+    const ReadingInsights::Milestone& m = milestones[ReadingInsights::closest(milestones, 3)];
+    char number[16], amount[24];
+    ReadingInsights::groupThousands(number, sizeof(number), m.next);
+    snprintf(statsGoal, sizeof(statsGoal),
+             m.kind == Kind::Hours   ? tr(STR_STATS_GOAL_HOURS)
+             : m.kind == Kind::Pages ? tr(STR_STATS_GOAL_PAGES)
+                                     : tr(STR_STATS_GOAL_BOOKS),
+             number);
+    if (m.kind == Kind::Hours) {
+      // Whole hours past the first, so the line stays short enough for a half-width tile.
+      const uint32_t toGo = m.toGo >= 3600 ? (m.toGo + 3599) / 3600 * 3600 : std::max<uint32_t>(m.toGo, 60);
+      ReadingInsights::formatDuration(amount, sizeof(amount), toGo, tr(STR_STATS_DUR_HM), tr(STR_STATS_DUR_H),
+                                      tr(STR_STATS_DUR_M));
     } else {
-      snprintf(statsCaption, sizeof(statsCaption), "%s", tr(STR_GOAL_MIN));
-      snprintf(statsToday, sizeof(statsToday), tr(STR_ORBIT_READ_TODAY), st.minutes);
-      snprintf(statsCompact, sizeof(statsCompact), "%d%s", st.minutes, tr(STR_MIN_SUFFIX));
+      ReadingInsights::groupThousands(amount, sizeof(amount), m.toGo);
     }
-    const int streak = READING_STATS.recentStreak();
-    if (streak > 0) {
-      snprintf(statsStreak, sizeof(statsStreak), tr(STR_GOAL_STREAK), streak);
-    } else {
-      snprintf(statsStreak, sizeof(statsStreak), "%s", tr(STR_GOAL_NO_STREAK));
-    }
-    st.caption = statsCaption;
-    st.today = statsToday;
+    snprintf(statsToGo, sizeof(statsToGo), tr(STR_STATS_TO_GO), amount);
+    snprintf(statsCompact, sizeof(statsCompact), tr(STR_STATS_NEXT_SHORT), statsGoal);
+    st.heading = tr(STR_STATS_NEXT_MILESTONE);
+    st.goal = statsGoal;
+    st.toGo = statsToGo;
     st.compact = statsCompact;
-    st.streak = statsStreak;
-    st.heading = tr(STR_GOAL_TODAY);
     st.empty = tr(STR_ORBIT_STATS_EMPTY);
   }
   view.selected = selector;
