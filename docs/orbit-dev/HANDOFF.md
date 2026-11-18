@@ -65,6 +65,11 @@ orbit-home; tab-bar hints are bare «/» chevrons). Flash 98.5%. Open idea only:
    Today moveFinishedBookToCompleted (FinishedBookActivity.cpp ~510) calls BookRelocation::bookMoved, which
    MOVES the cache along. Also cover books moved into /COMPLETED by hand (file browser / web transfer) --
    e.g. a sweep at boot or on Library open. Reopening a completed book just rebuilds the cache. (2026-11-16)
+6. "On device" stays accurate (2026-11-17). OpdsOnDevice scans ONLY the top level of the download folder by
+   file-name hash. Verify + fix: (a) a book deleted on the reader drops its On device mark (rescan / invalidate
+   on delete, incl. web-transfer deletes) so it can be fetched again; (b) a book moved to /COMPLETED (or any
+   subfolder) must NOT look missing -- otherwise charge runs / Get all missing re-download finished books.
+   Show such books as "Read" in the catalog instead of offering them. Also: Send-to-X4 auto-add must skip them.
 
 ## BACKLOG (DONE in v3.0, kept for reference)
 1. Remove the "More" home entry. Move File Transfer into Settings (System > Network area). Replace the
