@@ -68,6 +68,12 @@ orbit-next:refs/heads/x4-orbit (push URL https://github.com/riverac11-lgtm/x4-or
    - Remove: calendar, day streak, "today", Daily Reading Goal setting (OrbitProfile sets it; keep key
      harmless). Orbit home stats tile/dock/row: small book ring + next milestone.
    - "Since last charge" was considered and REJECTED (a charge lasts ~2 weeks).
+2. Clock fix (Use Clock stays OFF: user says it costs too much battery). Re-sync time whenever online, not only
+   when never set: ChargeDelivery.cpp ~200 uses !HalClock::isSynced() -> use isApproximate()/isStaleRestore()
+   (or always, once per Wi-Fi session). Also sync on other Wi-Fi uses (Online Library open/Get now, File
+   Transfer) if cheap. Fallback: parse the HTTP "Date:" header of BookOrbit replies (HttpDownloader/OPDS) and
+   set the clock when NTP failed and the clock is approximate. Never move the clock backwards in a way that
+   breaks anything (stats are no longer day-based after item 1).
 
 ## NEXT TO-DO (being implemented as v3.1)
 1. Online Library > All books: Left/Right = page up/down, moving the list by one whole screen of items
