@@ -18,6 +18,7 @@ namespace BookCache {
 enum class Keep : uint8_t {
   Nothing,       // the folder goes, and the book's reading state with it
   ReadingState,  // the isReadingState() files stay; the next open rebuilds everything else
+  Finished,      // a finished book's: the reading state and isKeptWhenFinished(); the heavy rest goes
 };
 
 // The reader's own files: where the book was left (progress.bin) and the link Back stack that
@@ -27,6 +28,14 @@ enum class Keep : uint8_t {
 // the next open lays the book out again the same way from the same book and settings; a position
 // also carries its page's paragraph, which finds it in a layout that did change.
 bool isReadingState(std::string_view name);
+
+// What a finished book (moved to /COMPLETED) keeps besides its reading state: the small files that
+// let Home, the Library, the sleep screen and KOReader sync show it as before without reading the
+// book again -- its metadata (book.bin and what only its build writes: pagelist.bin, fingerprint.bin,
+// toc.retry; details.bin), its KOReader document id (a hash of the whole file), a TXT book's page index, and the
+// cover and thumbnail BMPs. The laid-out chapters, extracted images and pixel caches, the raw
+// cover.img and the rest are what fill the card, and the next open makes them again.
+bool isKeptWhenFinished(std::string_view name);
 
 // Covers and thumbnails. They are derived from the book, but slow to make again (an inflate and an
 // image conversion), so a clear can leave them for a book that Home is about to show.

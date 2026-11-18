@@ -9,6 +9,7 @@
 #include <Txt.h>
 #include <Xtc.h>
 
+#include "CompletedBooks.h"
 #include "CrossPointState.h"
 #include "GlobalBookmarkIndex.h"
 #include "ReadingStats.h"
@@ -30,6 +31,7 @@ std::string cacheKind(const std::string& cacheDir) {
 // One move at a time: the reader that has the book open closes it right after the move.
 std::string pendingOldPath;
 std::string pendingNewPath;
+bool pendingTrim = false;
 
 }  // namespace
 
@@ -113,20 +115,24 @@ void moved(const std::string& oldPath, const std::string& newPath) {
   }
 }
 
-void bookMovedWhileOpen(const std::string& oldPath, const std::string& newPath) {
+void bookMovedWhileOpen(const std::string& oldPath, const std::string& newPath, const bool thenTrim) {
   // A move still held would be lost by overwriting it; carry it over now instead.
   bookClosed();
   pendingOldPath = oldPath;
   pendingNewPath = newPath;
+  pendingTrim = thenTrim;
 }
 
 void bookClosed() {
   if (pendingOldPath.empty()) return;
   const std::string oldPath = std::move(pendingOldPath);
   const std::string newPath = std::move(pendingNewPath);
+  const bool trim = pendingTrim;
   pendingOldPath.clear();
   pendingNewPath.clear();
+  pendingTrim = false;
   bookMoved(oldPath, newPath);
+  if (trim) CompletedBooks::trim(newPath);
 }
 
 }  // namespace BookRelocation

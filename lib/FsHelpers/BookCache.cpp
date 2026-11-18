@@ -15,6 +15,19 @@ bool isReadingState(const std::string_view name) {
          name == "koreader_syncmethod.txt";
 }
 
+bool isKeptWhenFinished(const std::string_view name) {
+  if (isReadingState(name)) return true;
+  // pagelist.bin (printed page numbers) is written only by the book.bin build, so it stays with it.
+  if (name == "book.bin" || name == "pagelist.bin" || name == "details.bin" || name == "fingerprint.bin" ||
+      name == "toc.retry" || name == "koreader_docid.txt" || name == "index.bin") {
+    return true;
+  }
+  // cover.bmp / cover_crop.bmp (sleep screen) and thumb_<h>.bmp / thumb_<w>x<h>.bmp (Home, Library),
+  // 0-byte "no cover" sentinels included. Not every BMP: a book's own BMP images are extracted here.
+  const bool coverOrThumb = name.substr(0, 6) == "thumb_" || name.substr(0, 5) == "cover";
+  return coverOrThumb && FsHelpers::hasBmpExtension(name);
+}
+
 bool isCoverImage(const std::string_view name) {
   // cover.img is the cover image as the book stores it, before it is converted to a BMP.
   return FsHelpers::hasBmpExtension(name) || name == "cover.img";
@@ -44,7 +57,8 @@ bool clear(const std::string& cacheDir, const Keep keep, const bool keepCovers) 
     entry.getName(name, sizeof(name));
     const bool isDir = entry.isDirectory();
     entry.close();
-    if ((keep == Keep::ReadingState && isReadingState(name)) || (keepCovers && isCoverImage(name))) {
+    if ((keep == Keep::ReadingState && isReadingState(name)) || (keep == Keep::Finished && isKeptWhenFinished(name)) ||
+        (keepCovers && isCoverImage(name))) {
       anyKept = true;
       continue;
     }
